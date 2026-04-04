@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>像素转换工具 - Pixel Map Converter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', monospace;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    h1 { font-size: 20px; color: #ffd700; margin-bottom: 16px; text-align: center; }
+    .container {
+      display: flex; gap: 16px; max-width: 1400px; margin: 0 auto;
+      flex-wrap: wrap; justify-content: center;
+    }
+    .panel {
+      background: #16213e; border: 2px solid #0f3460;
+      border-radius: 8px; padding: 14px; flex: 1; min-width: 320px;
+    }
+    .panel h2 {
+      font-size: 13px; color: #4fc3f7; margin-bottom: 10px;
+      border-bottom: 1px solid #0f3460; padding-bottom: 5px;
+    }
+    /* 上传区 */
+    .drop-zone {
+      border: 2px dashed #4fc3f7; border-radius: 8px;
+      padding: 30px 20px; text-align: center; cursor: pointer;
+      transition: all 0.3s; margin-bottom: 10px;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: #ffd700; background: rgba(255, 215, 0, 0.05);
+    }
+    .drop-zone p { color: #888; font-size: 12px; margin-top: 6px; }
+    /* 控件 */
+    .controls { margin-bottom: 10px; }
+    .control-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .control-row label { font-size: 12px; color: #aaa; }
+    .control-row input[type="range"] { width: 110px; }
+    .control-row .val { font-size: 12px; color: #ffd700; width: 36px; text-align: right; }
+    .control-row input[type="checkbox"] { margin-right: 6px; }
+    .control-row select {
+      background: #0d1117; color: #e0e0e0; border: 1px solid #0f3460;
+      padding: 3px 6px; border-radius: 3px; font-family: inherit; font-size: 11px;
+    }
+    .control-row input[type="text"], .control-row input[type="number"] {
+      background: #0d1117; border: 1px solid #0f3460; color: #ffd700;
+      padding: 3px 6px; border-radius: 3px; font-family: inherit; font-size: 11px;
+      width: 80px;
+    }
+    /* 按钮 */
+    .btn {
+      background: #0f3460; color: #e0e0e0; border: 1px solid #1a4a8a;
+      padding: 6px 14px; border-radius: 4px; cursor: pointer;
+      font-family: inherit; font-size: 11px; transition: all 0.2s;
+      margin-right: 4px; margin-top: 6px;
+    }
+    .btn:hover { background: #1a4a8a; border-color: #4fc3f7; }
+    .btn-primary { background: #e94560; border-color: #ff6b6b; }
+    .btn-primary:hover { background: #ff6b6b; }
+    .btn-sm { padding: 4px 10px; font-size: 10px; }
+    .btn-warn { background: #8b6914; border-color: #c9981a; }
+    .btn-warn:hover { background: #c9981a; }
+    /* 源图裁剪画布 */
+    .crop-area {
+      position: relative; background: #0d1117; border-radius: 4px;
+      margin-bottom: 10px; overflow: hidden; display: flex;
+      justify-content: center; align-items: center; min-height: 200px;
+    }
+    .crop-area canvas { display: block; }
+    /* 棋盘格 */
+    .checker-bg {
+      background-image:
+        linear-gradient(45deg, #1a1a2e 25%, transparent 25%),
+        linear-gradient(-45deg, #1a1a2e 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #1a1a2e 75%),
+        linear-gradient(-45deg, transparent 75%, #1a1a2e 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    }
+    /* 预览区 */
+    .preview-area {
+      display: flex; justify-content: center; align-items: center;
+      min-height: 180px; background: #0d1117; border-radius: 4px;
+      margin-bottom: 10px; position: relative;
+      background-image:
+        linear-gradient(45deg, #1a1a2e 25%, transparent 25%),
+        linear-gradient(-45deg, #1a1a2e 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #1a1a2e 75%),
+        linear-gradient(-45deg, transparent 75%, #1a1a2e 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    }
+    .preview-area canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+    /* 调色板 */
+    .palette-row { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+    .palette-swatch {
+      width: 16px; height: 16px; border: 1px solid #333; border-radius: 2px;
+    }
+    /* 输出 */
+    .output {
+      width: 100%; min-height: 180px; background: #0d1117; color: #4fc3f7;
+      border: 1px solid #0f3460; border-radius: 4px; padding: 8px;
+      font-family: 'Courier New', monospace; font-size: 10px;
+      resize: vertical; white-space: pre; overflow: auto;
+    }
+    .info { font-size: 11px; color: #666; margin-top: 4px; }
+    .info-highlight { color: #ffd700; }
+    /* 颜色替换 */
+    .color-replace { margin-top: 8px; padding-top: 8px; border-top: 1px solid #0f3460; }
+    .color-replace h3 { font-size: 11px; color: #4fc3f7; margin-bottom: 6px; }
+    .color-row { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; font-size: 10px; }
+    .color-row input[type="color"] { width: 26px; height: 20px; border: none; background: none; cursor: pointer; }
+    .color-row .arrow { color: #ffd700; }
+    .color-row .hex { color: #888; width: 60px; }
+    /* 裁剪信息 */
+    .crop-info {
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      margin-bottom: 8px; font-size: 11px;
+    }
+    .crop-info span { color: #888; }
+    .crop-info .val { color: #ffd700; }
+    .btn-group { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+    .divider { border-top: 1px solid #0f3460; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>Pixel Map Converter - 图片转像素数据</h1>
+
+  <div class="container">
+    <!-- 左侧：源图 + 裁剪 -->
+    <div class="panel" style="max-width:480px">
+      <h2>1. 选择图片</h2>
+      <div class="drop-zone" id="dropZone">
+        <div>拖拽图片到这里，或点击选择文件</div>
+        <p>支持 PNG / JPG / GIF / WebP</p>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+      <div class="info" id="imageInfo">尚未选择图片</div>
+
+      <h2 style="margin-top:12px">2. 裁剪源图</h2>
+      <div class="control-row">
+        <label>比例约束</label>
+        <select id="aspectRatio">
+          <option value="0">自由裁剪</option>
+          <option value="1">1:1 正方形</option>
+          <option value="1.3333">4:3 横屏</option>
+          <option value="0.75">3:4 竖屏</option>
+          <option value="1.7778">16:9 宽屏</option>
+          <option value="0.5625">9:16 手机</option>
+          <option value="custom">自定义...</option>
+        </select>
+      </div>
+      <div class="control-row" id="customRatioRow" style="display:none">
+        <label>自定义 (宽:高)</label>
+        <input type="number" id="customRatioW" value="1" min="1" max="99" style="width:40px">
+        <span style="color:#888">:</span>
+        <input type="number" id="customRatioH" value="1" min="1" max="99" style="width:40px">
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-sm btn-warn" id="autoTrimBtn">自动抠图</button>
+        <button class="btn btn-sm" id="resetCropBtn">重置选区</button>
+        <button class="btn btn-sm" id="selectAllBtn">全选</button>
+      </div>
+      <div class="control-row">
+        <label>抠图阈值 (alpha)</label>
+        <input type="range" id="trimThreshold" min="1" max="254" value="10">
+        <span class="val" id="trimThresholdVal">10</span>
+      </div>
+      <div class="control-row">
+        <label>内缩边距 (px)</label>
+        <input type="range" id="trimPadding" min="0" max="50" value="2">
+        <span class="val" id="trimPaddingVal">2</span>
+      </div>
+      <div class="crop-area" id="cropArea">
+        <canvas id="cropCanvas" width="400" height="300"></canvas>
+      </div>
+      <div class="crop-info" id="cropInfo">
+        <span>选区: <span class="val" id="cropRectText">无</span></span>
+        <span>尺寸: <span class="val" id="cropSizeText">-</span></span>
+      </div>
+      <div class="info">在图片上拖拽鼠标进行裁剪选区</div>
+    </div>
+
+    <!-- 中间：参数 -->
+    <div class="panel" style="max-width:320px">
+      <h2>3. 转换参数</h2>
+      <div class="controls">
+        <div class="control-row">
+          <label>输出像素宽</label>
+          <input type="range" id="targetWidth" min="4" max="64" value="32">
+          <span class="val" id="targetWidthVal">32</span>
+        </div>
+        <div class="control-row">
+          <label>颜色数量</label>
+          <input type="range" id="colorCount" min="2" max="64" value="16">
+          <span class="val" id="colorCountVal">16</span>
+        </div>
+        <div class="control-row">
+          <label>透明阈值</label>
+          <input type="range" id="alphaThreshold" min="0" max="255" value="128">
+          <span class="val" id="alphaThresholdVal">128</span>
+        </div>
+        <div class="control-row">
+          <label>去背景 (亮度)</label>
+          <input type="range" id="bgThreshold" min="0" max="255" value="0">
+          <span class="val" id="bgThresholdVal">0</span>
+        </div>
+        <div class="control-row">
+          <label><input type="checkbox" id="outlineMode"> 轮廓模式</label>
+        </div>
+      </div>
+
+      <div style="margin-top:10px">
+        <button class="btn btn-primary" id="convertBtn">转换</button>
+        <button class="btn" id="resetBtn">全部重置</button>
+      </div>
+
+      <div class="divider"></div>
+      <h2>调色板</h2>
+      <div class="palette-row" id="palette"></div>
+      <div class="info">转换后自动生成</div>
+
+      <div class="color-replace" id="colorReplace" style="display:none">
+        <h3>颜色替换</h3>
+        <div id="colorReplaceList"></div>
+      </div>
+    </div>
+
+    <!-- 右侧：预览 & 输出 -->
+    <div class="panel" style="max-width:400px">
+      <h2>预览</h2>
+      <div class="preview-area">
+        <canvas id="previewCanvas" width="256" height="256"></canvas>
+      </div>
+      <div class="info" id="previewInfo">等待转换...</div>
+
+      <h2 style="margin-top:12px">4. 导出</h2>
+      <div class="control-row">
+        <label>变量名</label>
+        <input type="text" id="varName" value="SPRITE">
+      </div>
+      <div>
+        <button class="btn" id="copyBtn">复制代码</button>
+        <button class="btn" id="downloadBtn">下载 .ts</button>
+      </div>
+
+      <h2 style="margin-top:12px">输出代码</h2>
+      <textarea class="output" id="codeOutput" readonly></textarea>
+    </div>
+  </div>
+
+  <script>
+    // ========== 元素引用 ==========
+    const $ = id => document.getElementById(id);
+    const dropZone = $('dropZone');
+    const fileInput = $('fileInput');
+    const imageInfo = $('imageInfo');
+    const aspectRatioSel = $('aspectRatio');
+    const customRatioRow = $('customRatioRow');
+    const customRatioW = $('customRatioW');
+    const customRatioH = $('customRatioH');
+    const autoTrimBtn = $('autoTrimBtn');
+    const resetCropBtn = $('resetCropBtn');
+    const selectAllBtn = $('selectAllBtn');
+    const trimThresholdSlider = $('trimThreshold');
+    const trimThresholdVal = $('trimThresholdVal');
+    const trimPaddingSlider = $('trimPadding');
+    const trimPaddingVal = $('trimPaddingVal');
+    const cropCanvas = $('cropCanvas');
+    const cropCtx = cropCanvas.getContext('2d');
+    const cropRectText = $('cropRectText');
+    const cropSizeText = $('cropSizeText');
+    const targetWidthSlider = $('targetWidth');
+    const targetWidthVal = $('targetWidthVal');
+    const colorCountSlider = $('colorCount');
+    const colorCountVal = $('colorCountVal');
+    const alphaThresholdSlider = $('alphaThreshold');
+    const alphaThresholdVal = $('alphaThresholdVal');
+    const bgThresholdSlider = $('bgThreshold');
+    const bgThresholdVal = $('bgThresholdVal');
+    const outlineMode = $('outlineMode');
+    const convertBtn = $('convertBtn');
+    const resetBtn = $('resetBtn');
+    const previewCanvas = $('previewCanvas');
+    const previewCtx = previewCanvas.getContext('2d');
+    const previewInfo = $('previewInfo');
+    const paletteDiv = $('palette');
+    const codeOutput = $('codeOutput');
+    const copyBtn = $('copyBtn');
+    const downloadBtn = $('downloadBtn');
+    const varNameInput = $('varName');
+
+    // ========== 状态 ==========
+    let sourceImage = null;
+    let sourceImageData = null; // ImageData of full source
+    let currentPixelMap = null;
+    let colorMap = {};
+
+    // 裁剪选区（源图像素坐标系）
+    let cropRect = null; // { x, y, w, h }
+    // 显示坐标到源图坐标的缩放
+    let displayScale = 1;
+
+    // ========== 滑块联动 ==========
+    const sliderBindings = [
+      [targetWidthSlider, targetWidthVal],
+      [colorCountSlider, colorCountVal],
+      [alphaThresholdSlider, alphaThresholdVal],
+      [bgThresholdSlider, bgThresholdVal],
+      [trimThresholdSlider, trimThresholdVal],
+      [trimPaddingSlider, trimPaddingVal],
+    ];
+    sliderBindings.forEach(([s, v]) => s.oninput = () => v.textContent = s.value);
+
+    // ========== 比例约束 ==========
+    aspectRatioSel.onchange = () => {
+      customRatioRow.style.display = aspectRatioSel.value === 'custom' ? 'flex' : 'none';
+    };
+
+    function getAspectRatio() {
+      const v = aspectRatioSel.value;
+      if (v === '0') return 0; // free
+      if (v === 'custom') {
+        const w = parseInt(customRatioW.value) || 1;
+        const h = parseInt(customRatioH.value) || 1;
+        return w / h;
+      }
+      return parseFloat(v);
+    }
+
+    // ========== 文件上传 ==========
+    dropZone.onclick = () => fileInput.click();
+    dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add('dragover'); };
+    dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+    dropZone.ondrop = e => {
+      e.preventDefault(); dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) loadImage(e.dataTransfer.files[0]);
+    };
+    fileInput.onchange = e => { if (e.target.files.length) loadImage(e.target.files[0]); };
+
+    function loadImage(file) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          sourceImage = img;
+          // 读取全图像素数据
+          const tmp = document.createElement('canvas');
+          tmp.width = img.width; tmp.height = img.height;
+          const tctx = tmp.getContext('2d');
+          tctx.drawImage(img, 0, 0);
+          sourceImageData = tctx.getImageData(0, 0, img.width, img.height);
+
+          imageInfo.innerHTML = `已加载: <span class="info-highlight">${img.width} x ${img.height} px</span>`;
+
+          // 自动设置输出宽度
+          const autoW = Math.min(Math.max(Math.round(img.width / 8), 8), 32);
+          targetWidthSlider.value = autoW;
+          targetWidthVal.textContent = autoW;
+
+          // 默认全选
+          cropRect = { x: 0, y: 0, w: img.width, h: img.height };
+          renderCropCanvas();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // ========== 裁剪画布渲染 ==========
+    function renderCropCanvas() {
+      if (!sourceImage) return;
+      const img = sourceImage;
+
+      // 计算显示缩放，适配容器宽度 440px
+      const maxW = 440, maxH = 360;
+      displayScale = Math.min(maxW / img.width, maxH / img.height, 1);
+      const dw = Math.round(img.width * displayScale);
+      const dh = Math.round(img.height * displayScale);
+      cropCanvas.width = dw;
+      cropCanvas.height = dh;
+
+      // 绘制原图
+      cropCtx.clearRect(0, 0, dw, dh);
+      cropCtx.drawImage(img, 0, 0, dw, dh);
+
+      // 绘制暗化遮罩 + 选区
+      if (cropRect) {
+        const sx = cropRect.x * displayScale;
+        const sy = cropRect.y * displayScale;
+        const sw = cropRect.w * displayScale;
+        const sh = cropRect.h * displayScale;
+
+        // 暗化选区外部
+        cropCtx.fillStyle = 'rgba(0,0,0,0.55)';
+        // 上
+        cropCtx.fillRect(0, 0, dw, sy);
+        // 下
+        cropCtx.fillRect(0, sy + sh, dw, dh - sy - sh);
+        // 左
+        cropCtx.fillRect(0, sy, sx, sh);
+        // 右
+        cropCtx.fillRect(sx + sw, sy, dw - sx - sw, sh);
+
+        // 选区边框
+        cropCtx.strokeStyle = '#ffd700';
+        cropCtx.lineWidth = 2;
+        cropCtx.setLineDash([4, 3]);
+        cropCtx.strokeRect(sx, sy, sw, sh);
+        cropCtx.setLineDash([]);
+
+        // 四角小方块
+        const cs = 5;
+        cropCtx.fillStyle = '#ffd700';
+        [[sx, sy], [sx + sw - cs, sy], [sx, sy + sh - cs], [sx + sw - cs, sy + sh - cs]]
+          .forEach(([cx, cy]) => cropCtx.fillRect(cx, cy, cs, cs));
+
+        // 更新信息
+        cropRectText.textContent = `${cropRect.x}, ${cropRect.y}`;
+        cropSizeText.textContent = `${cropRect.w} x ${cropRect.h}`;
+      }
+    }
+
+    // ========== 裁剪拖拽交互 ==========
+    let isDragging = false;
+    let dragStart = null; // 源图坐标
+
+    function displayToSource(dx, dy) {
+      return { x: Math.round(dx / displayScale), y: Math.round(dy / displayScale) };
+    }
+
+    function clampCrop(x, y, w, h) {
+      if (!sourceImage) return { x, y, w, h };
+      x = Math.max(0, Math.round(x));
+      y = Math.max(0, Math.round(y));
+      w = Math.max(1, Math.round(Math.min(w, sourceImage.width - x)));
+      h = Math.max(1, Math.round(Math.min(h, sourceImage.height - y)));
+      return { x, y, w, h };
+    }
+
+    function applyAspectRatio(x, y, w, h) {
+      const ratio = getAspectRatio();
+      if (!ratio) return { x, y, w, h };
+      // 以选区中心为锚点调整
+      const cx = x + w / 2, cy = y + h / 2;
+      if (w / h > ratio) {
+        w = h * ratio;
+      } else {
+        h = w / ratio;
+      }
+      x = cx - w / 2;
+      y = cy - h / 2;
+      return clampCrop(x, y, w, h);
+    }
+
+    cropCanvas.onmousedown = e => {
+      if (!sourceImage) return;
+      const rect = cropCanvas.getBoundingClientRect();
+      const dx = e.clientX - rect.left;
+      const dy = e.clientY - rect.top;
+      dragStart = displayToSource(dx, dy);
+      isDragging = true;
+    };
+
+    cropCanvas.onmousemove = e => {
+      if (!isDragging || !dragStart) return;
+      const rect = cropCanvas.getBoundingClientRect();
+      const dx = e.clientX - rect.left;
+      const dy = e.clientY - rect.top;
+      const cur = displayToSource(dx, dy);
+
+      let x = Math.min(dragStart.x, cur.x);
+      let y = Math.min(dragStart.y, cur.y);
+      let w = Math.abs(cur.x - dragStart.x);
+      let h = Math.abs(cur.y - dragStart.y);
+
+      // 应用比例约束
+      const ratio = getAspectRatio();
+      if (ratio) {
+        // 基于宽度调整高度
+        if (w / h > ratio) {
+          h = w / ratio;
+        } else {
+          w = h * ratio;
+        }
+      }
+
+      cropRect = clampCrop(x, y, w, h);
+      renderCropCanvas();
+    };
+
+    cropCanvas.onmouseup = () => { isDragging = false; };
+    cropCanvas.onmouseleave = () => { isDragging = false; };
+
+    // 触摸支持
+    cropCanvas.ontouchstart = e => {
+      e.preventDefault();
+      const t = e.touches[0];
+      cropCanvas.onmousedown({ clientX: t.clientX, clientY: t.clientY });
+    };
+    cropCanvas.ontouchmove = e => {
+      e.preventDefault();
+      const t = e.touches[0];
+      cropCanvas.onmousemove({ clientX: t.clientX, clientY: t.clientY });
+    };
+    cropCanvas.ontouchend = () => { isDragging = false; };
+
+    // ========== 自动抠图 ==========
+    autoTrimBtn.onclick = () => {
+      if (!sourceImage || !sourceImageData) { alert('请先选择图片！'); return; }
+      const data = sourceImageData.data;
+      const w = sourceImage.width, h = sourceImage.height;
+      const alphaTh = parseInt(trimThresholdSlider.value);
+      const padding = parseInt(trimPaddingSlider.value);
+
+      let top = h, bottom = 0, left = w, right = 0;
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4;
+          if (data[i + 3] > alphaTh) {
+            if (y < top) top = y;
+            if (y > bottom) bottom = y;
+            if (x < left) left = x;
+            if (x > right) right = x;
+          }
+        }
+      }
+
+      if (top > bottom || left > right) {
+        alert('未检测到有效内容，请检查抠图阈值');
+        return;
+      }
+
+      // 内缩边距
+      left = Math.max(0, left - padding);
+      top = Math.max(0, top - padding);
+      right = Math.min(w - 1, right + padding);
+      bottom = Math.min(h - 1, bottom + padding);
+
+      let cw = right - left + 1;
+      let ch = bottom - top + 1;
+
+      // 应用比例约束
+      const result = applyAspectRatio(left, top, cw, ch);
+      cropRect = result;
+      renderCropCanvas();
+    };
+
+    // ========== 重置选区 / 全选 ==========
+    resetCropBtn.onclick = () => {
+      if (sourceImage) {
+        cropRect = { x: 0, y: 0, w: sourceImage.width, h: sourceImage.height };
+        renderCropCanvas();
+      }
+    };
+
+    selectAllBtn.onclick = () => {
+      if (sourceImage) {
+        cropRect = { x: 0, y: 0, w: sourceImage.width, h: sourceImage.height };
+        renderCropCanvas();
+      }
+    };
+
+    // ========== 颜色工具 ==========
+    function rgbToHex(r, g, b) {
+      return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+    }
+    function hexToRgb(hex) {
+      const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+      return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : null;
+    }
+    function colorDistance(c1, c2) {
+      return Math.sqrt((c1.r - c2.r) ** 2 + (c1.g - c2.g) ** 2 + (c1.b - c2.b) ** 2);
+    }
+
+    // ========== 颜色量化 ==========
+    function quantizeColors(pixels, numColors) {
+      if (pixels.length === 0) return [];
+      if (numColors >= pixels.length) return [...new Set(pixels.map(p => rgbToHex(p.r, p.g, p.b)))];
+      let boxes = [pixels.slice()];
+      while (boxes.length < numColors) {
+        let maxRange = -1, maxIdx = 0;
+        for (let i = 0; i < boxes.length; i++) {
+          if (boxes[i].length < 2) continue;
+          const range = getColorRange(boxes[i]);
+          if (range.maxRange > maxRange) { maxRange = range.maxRange; maxIdx = i; }
+        }
+        if (maxRange <= 0) break;
+        const box = boxes[maxIdx];
+        const range = getColorRange(box);
+        box.sort((a, b) => a[range.channel] - b[range.channel]);
+        const mid = Math.floor(box.length / 2);
+        boxes.splice(maxIdx, 1, box.slice(0, mid), box.slice(mid));
+      }
+      return boxes.map(box => {
+        const avg = { r: 0, g: 0, b: 0 };
+        box.forEach(p => { avg.r += p.r; avg.g += p.g; avg.b += p.b; });
+        avg.r = Math.round(avg.r / box.length);
+        avg.g = Math.round(avg.g / box.length);
+        avg.b = Math.round(avg.b / box.length);
+        return rgbToHex(avg.r, avg.g, avg.b);
+      });
+    }
+
+    function getColorRange(pixels) {
+      let rMin = 255, rMax = 0, gMin = 255, gMax = 0, bMin = 255, bMax = 0;
+      pixels.forEach(p => {
+        rMin = Math.min(rMin, p.r); rMax = Math.max(rMax, p.r);
+        gMin = Math.min(gMin, p.g); gMax = Math.max(gMax, p.g);
+        bMin = Math.min(bMin, p.b); bMax = Math.max(bMax, p.b);
+      });
+      const ranges = { r: rMax - rMin, g: gMax - gMin, b: bMax - bMin };
+      const channel = ranges.r >= ranges.g && ranges.r >= ranges.b ? 'r'
+        : ranges.g >= ranges.b ? 'g' : 'b';
+      return { channel, maxRange: ranges[channel] };
+    }
+
+    function findNearestColor(r, g, b, palette) {
+      let minDist = Infinity, nearest = palette[0];
+      for (const hex of palette) {
+        const c = hexToRgb(hex);
+        const d = colorDistance({ r, g, b }, c);
+        if (d < minDist) { minDist = d; nearest = hex; }
+      }
+      return nearest;
+    }
+
+    // ========== 轮廓提取 ==========
+    function extractOutline(data, width, height) {
+      const result = new Uint8ClampedArray(data.length);
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 4;
+          if (data[i + 3] < 128) continue;
+          let isEdge = false;
+          for (const [dx, dy] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || nx >= width || ny < 0 || ny >= height) { isEdge = true; break; }
+            if (data[(ny * width + nx) * 4 + 3] < 128) { isEdge = true; break; }
+          }
+          if (isEdge) {
+            result[i] = data[i]; result[i+1] = data[i+1];
+            result[i+2] = data[i+2]; result[i+3] = 255;
+          }
+        }
+      }
+      return result;
+    }
+
+    // ========== 主转换 ==========
+    function convert() {
+      if (!sourceImage) { alert('请先选择一张图片！'); return; }
+      if (!cropRect) { alert('请先在源图上选择裁剪区域！'); return; }
+
+      const tw = parseInt(targetWidthSlider.value);
+      const numColors = parseInt(colorCountSlider.value);
+      const alphaThresh = parseInt(alphaThresholdSlider.value);
+      const bgThresh = parseInt(bgThresholdSlider.value);
+      const isOutline = outlineMode.checked;
+      const cr = cropRect;
+
+      // 计算目标高度（基于裁剪区域比例）
+      const cropRatio = cr.h / cr.w;
+      const th = Math.max(1, Math.round(tw * cropRatio));
+
+      // 从裁剪区域绘制到离屏 canvas
+      const offscreen = document.createElement('canvas');
+      offscreen.width = tw;
+      offscreen.height = th;
+      const ctx = offscreen.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'medium';
+      ctx.drawImage(sourceImage, cr.x, cr.y, cr.w, cr.h, 0, 0, tw, th);
+
+      const imageData = ctx.getImageData(0, 0, tw, th);
+      const data = imageData.data;
+
+      if (isOutline) {
+        const outlined = extractOutline(data, tw, th);
+        for (let i = 0; i < data.length; i++) data[i] = outlined[i];
+      }
+
+      // 收集有效像素
+      const opaquePixels = [];
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+        if (a < alphaThresh) continue;
+        if (bgThresh > 0 && r > bgThresh && g > bgThresh && b > bgThresh) continue;
+        opaquePixels.push({ r, g, b });
+      }
+
+      const palette = quantizeColors(opaquePixels, numColors);
+      const finalPalette = palette.map(hex => colorMap[hex] || hex);
+
+      // 构建像素矩阵
+      const pixelMap = [];
+      for (let y = 0; y < th; y++) {
+        const row = [];
+        for (let x = 0; x < tw; x++) {
+          const i = (y * tw + x) * 4;
+          const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+          if (a < alphaThresh || (bgThresh > 0 && r > bgThresh && g > bgThresh && b > bgThresh)) {
+            row.push(0);
+          } else {
+            const original = findNearestColor(r, g, b, palette);
+            row.push(colorMap[original] || original);
+          }
+        }
+        pixelMap.push(row);
+      }
+
+      currentPixelMap = pixelMap;
+      renderPreview(pixelMap, tw, th);
+      renderPalette(finalPalette);
+      renderColorReplace(palette);
+      generateCode(pixelMap);
+      previewInfo.textContent = `${tw} x ${th} px | ${finalPalette.length} 色 | 裁剪区域 ${cr.w}x${cr.h}`;
+    }
+
+    function renderPreview(pixelMap, tw, th) {
+      const scale = Math.max(1, Math.min(Math.floor(300 / Math.max(tw, th)), 12));
+      previewCanvas.width = tw * scale;
+      previewCanvas.height = th * scale;
+      previewCtx.imageSmoothingEnabled = false;
+      previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      for (let y = 0; y < th; y++) {
+        for (let x = 0; x < tw; x++) {
+          if (pixelMap[y][x]) {
+            previewCtx.fillStyle = pixelMap[y][x];
+            previewCtx.fillRect(x * scale, y * scale, scale, scale);
+          }
+        }
+      }
+    }
+
+    function renderPalette(palette) {
+      paletteDiv.innerHTML = '';
+      palette.forEach(hex => {
+        const d = document.createElement('div');
+        d.className = 'palette-swatch';
+        d.style.background = hex;
+        d.title = hex;
+        paletteDiv.appendChild(d);
+      });
+    }
+
+    function renderColorReplace(palette) {
+      const container = $('colorReplaceList');
+      const wrapper = $('colorReplace');
+      container.innerHTML = '';
+      palette.forEach(originalHex => {
+        const row = document.createElement('div');
+        row.className = 'color-row';
+        const swatch = document.createElement('input');
+        swatch.type = 'color';
+        swatch.value = colorMap[originalHex] || originalHex;
+        const hexLabel = document.createElement('span');
+        hexLabel.className = 'hex';
+        hexLabel.textContent = originalHex;
+        const arrow = document.createElement('span');
+        arrow.className = 'arrow';
+        arrow.textContent = '→';
+        const resultLabel = document.createElement('span');
+        resultLabel.className = 'hex';
+        resultLabel.textContent = swatch.value;
+        swatch.oninput = () => {
+          if (swatch.value === originalHex) delete colorMap[originalHex];
+          else colorMap[originalHex] = swatch.value;
+          resultLabel.textContent = swatch.value;
+          convert();
+        };
+        row.append(swatch, hexLabel, arrow, resultLabel);
+        container.appendChild(row);
+      });
+      wrapper.style.display = 'block';
+    }
+
+    function generateCode(pixelMap) {
+      const name = varNameInput.value.trim() || 'SPRITE';
+      const lines = pixelMap.map(row => {
+        const cells = row.map(c => c ? `'${c}'` : '0');
+        return '  [' + cells.join(', ') + ']';
+      });
+      codeOutput.value = `export const ${name}: PixelMap = [\n${lines.join(',\n')}\n];\n`;
+    }
+
+    // ========== 按钮事件 ==========
+    convertBtn.onclick = convert;
+
+    resetBtn.onclick = () => {
+      sourceImage = null; sourceImageData = null; currentPixelMap = null; colorMap = {};
+      cropRect = null;
+      imageInfo.textContent = '尚未选择图片';
+      codeOutput.value = '';
+      paletteDiv.innerHTML = '';
+      $('colorReplace').style.display = 'none';
+      previewInfo.textContent = '等待转换...';
+      previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+      cropRectText.textContent = '无'; cropSizeText.textContent = '-';
+      fileInput.value = '';
+    };
+
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(codeOutput.value).then(() => {
+        copyBtn.textContent = '已复制!';
+        setTimeout(() => copyBtn.textContent = '复制代码', 1500);
+      });
+    };
+
+    downloadBtn.onclick = () => {
+      const name = varNameInput.value.trim() || 'sprite';
+      const blob = new Blob([codeOutput.value], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${name}.ts`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+
+    varNameInput.oninput = () => { if (currentPixelMap) generateCode(currentPixelMap); };
+  </script>
+</body>
+</html>
