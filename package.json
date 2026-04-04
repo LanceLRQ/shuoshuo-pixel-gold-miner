@@ -1,0 +1,18 @@
+{
+  "name": "goldminer-h5",
+  "version": "1.0.0",
+  "description": "黄金矿工 H5 - 经典像素风复刻游戏",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "keywords": ["goldminer", "game", "html5", "canvas", "pixel"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^6.0.2",
+    "vite": "^8.0.3"
+  }
+}
