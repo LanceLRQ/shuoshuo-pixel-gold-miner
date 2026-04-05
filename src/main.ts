@@ -8,7 +8,7 @@ import { Game } from './core/Game';
 
 // 逻辑分辨率常量（横屏）
 const LOGICAL_WIDTH = 800;
-const LOGICAL_HEIGHT = 480;
+const LOGICAL_HEIGHT = 540;
 
 const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
 

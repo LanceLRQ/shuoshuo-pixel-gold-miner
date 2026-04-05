@@ -1,17 +1,17 @@
 /**
  * 背景渲染器
- * 天空 / 地表 / 地下三层背景（横屏 800x480 布局）
+ * 天空 / 地表 / 地下三层背景（横屏 800x540 布局）
  * 颜色由主题系统提供，布局参数固定
  */
 
 import type { Renderer } from '../core/Renderer';
 import type { BackgroundColors } from './theme/types';
 
-/** 地表 Y 坐标 */
-export const GROUND_Y = 80;
+/** 地表 Y 坐标（下移给天空更大空间） */
+export const GROUND_Y = 140;
 
 /** 地下浅层结束位置 */
-const DIRT_DEEP_Y = 260;
+const DIRT_DEEP_Y = 300;
 
 /**
  * 渲染三层背景

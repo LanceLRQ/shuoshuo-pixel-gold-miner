@@ -14,7 +14,7 @@ import { Hook, HookState } from '../entity/Hook';
 import { Mineral } from '../entity/Mineral';
 import { HUD } from '../ui/HUD';
 import { Audio, SoundType } from '../core/Audio';
-import { renderBackground } from '../assets/background';
+import { renderBackground, GROUND_Y } from '../assets/background';
 import type { SpriteCacheMap } from '../assets/types';
 import { randomInt, weightedRandom } from '../utils/random';
 
@@ -66,9 +66,9 @@ export class GameScene extends SceneBase {
     // 从主题管理器获取精灵缓存
     this.spriteCache = game.getThemeManager().getSpriteCache();
 
-    // 初始化矿工和钩爪
+    // 初始化矿工和钩爪（钩爪锚点在矿工底部，即地面位置）
     this.miner = new Miner(GAME_CONFIG.MINER_X, GAME_CONFIG.MINER_Y, this.spriteCache);
-    this.hook = new Hook(GAME_CONFIG.MINER_X, GAME_CONFIG.MINER_Y + 20, this.spriteCache);
+    this.hook = new Hook(GAME_CONFIG.MINER_X, GROUND_Y, this.spriteCache);
 
     // 初始化 HUD
     this.hud = new HUD(this.spriteCache, this.targetMoney);
@@ -183,19 +183,46 @@ export class GameScene extends SceneBase {
     this.miner.setState(MinerState.IDLE);
   }
 
-  /** 随机生成矿物 */
+  /** 随机生成矿物（检测重叠，最多重试 20 次后放弃） */
   private generateMinerals(count: number): void {
     this.minerals = [];
     for (let i = 0; i < count; i++) {
       const typeIndex = weightedRandom(MINERAL_WEIGHTS);
       const type = MINERAL_TYPES[typeIndex]!;
 
-      // 在矿物区域内随机放置，避免重叠
+      // 随机放置，尝试避开已有矿物
+      const placed = this.tryPlaceMineral(type);
+      if (placed) {
+        this.minerals.push(placed);
+      }
+    }
+  }
+
+  /** 尝试在不重叠的位置放置矿物 */
+  private tryPlaceMineral(type: MineralType, maxAttempts: number = 20): Mineral | null {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const x = randomInt(GAME_CONFIG.MINERAL_AREA_LEFT, GAME_CONFIG.MINERAL_AREA_RIGHT);
       const y = randomInt(GAME_CONFIG.MINERAL_AREA_TOP, GAME_CONFIG.MINERAL_AREA_BOTTOM);
+      const mineral = new Mineral(x, y, type, this.spriteCache);
 
-      this.minerals.push(new Mineral(x, y, type, this.spriteCache));
+      if (!this.isOverlapping(mineral)) {
+        return mineral;
+      }
     }
+    return null;
+  }
+
+  /** 检查新矿物是否与已有矿物重叠 */
+  private isOverlapping(mineral: Mineral): boolean {
+    for (const existing of this.minerals) {
+      const dx = mineral.x - existing.x;
+      const dy = mineral.y - existing.y;
+      const minDist = mineral.radius + existing.radius + 4; // 4px 间距
+      if (dx * dx + dy * dy < minDist * minDist) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** 跳转到结算场景 */

@@ -13,6 +13,7 @@ import { ShopScene } from '../scene/ShopScene';
 import { Storage } from './Storage';
 import { ThemeManager } from '../assets/theme/ThemeManager';
 import { CLASSIC_THEME } from '../assets/theme/classic';
+import { SHUOSHUO_CRYSTAL_THEME } from '../assets/theme/shuoshuo-crystal';
 
 /** 游戏全局状态枚举 */
 export enum GameState {
@@ -74,7 +75,12 @@ export class Game {
     // 初始化主题管理器
     this.themeManager = new ThemeManager();
     this.themeManager.register(CLASSIC_THEME);
+    this.themeManager.register(SHUOSHUO_CRYSTAL_THEME);
     this.themeManager.restoreTheme();
+    // 默认使用说说Crystal主题
+    if (!localStorage.getItem('goldminer_theme')) {
+      this.themeManager.setTheme('shuoshuo_crystal');
+    }
   }
 
   /** 注册场景到指定状态 */

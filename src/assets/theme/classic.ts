@@ -1,16 +1,25 @@
 /**
  * 经典主题 - 黄金矿工原味配色
- * 精灵数据引用 sprites.ts，背景颜色提取自 background.ts
+ * 精灵数据引用 sprites.ts，矿工精灵放大至 32x32 统一尺寸
  */
 
 import type { ThemeDefinition } from './types';
-import { ALL_SPRITES } from '../sprites';
+import { ALL_SPRITES, MINER_IDLE, MINER_PULL, MINER_HAPPY, MINER_SAD } from '../sprites';
+import { scalePixelMap } from '../../utils/pixel';
+
+/** 经典矿工精灵放大到 32x32（统一尺寸） */
+const SCALED_CLASSIC_SPRITES: Record<string, ReturnType<typeof scalePixelMap>> = {
+  MINER_IDLE: scalePixelMap(MINER_IDLE, 2),
+  MINER_PULL: scalePixelMap(MINER_PULL, 2),
+  MINER_HAPPY: scalePixelMap(MINER_HAPPY, 2),
+  MINER_SAD: scalePixelMap(MINER_SAD, 2),
+};
 
 export const CLASSIC_THEME: ThemeDefinition = {
   id: 'classic',
   name: '经典',
   description: '黄金矿工原味配色',
-  sprites: ALL_SPRITES,
+  sprites: { ...ALL_SPRITES, ...SCALED_CLASSIC_SPRITES },
   backgroundColors: {
     skyTop: '#87CEEB',
     skyBottom: '#B0E0FF',

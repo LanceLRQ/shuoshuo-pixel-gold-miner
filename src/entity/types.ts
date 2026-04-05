@@ -91,7 +91,7 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
   },
 };
 
-/** 游戏数值配置常量（横屏 800x480 布局） */
+/** 游戏数值配置常量（横屏 800x540 布局） */
 export const GAME_CONFIG = {
   // 钩爪参数
   HOOK_SWING_SPEED: 2,
@@ -105,13 +105,13 @@ export const GAME_CONFIG = {
   // 关卡
   LEVEL_TIME_LIMIT: 60,
 
-  // 矿工（顶部居中）
+  // 矿工（顶部居中，32x32 精灵底部对齐草地）
   MINER_X: 400,
-  MINER_Y: 60,
+  MINER_Y: 92,
 
   // 矿物生成区域（横屏，地下大面积区域）
-  MINERAL_AREA_TOP: 140,
-  MINERAL_AREA_BOTTOM: 450,
+  MINERAL_AREA_TOP: 225,
+  MINERAL_AREA_BOTTOM: 500,
   MINERAL_AREA_LEFT: 60,
   MINERAL_AREA_RIGHT: 740,
 } as const;

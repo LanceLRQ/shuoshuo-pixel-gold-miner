@@ -50,8 +50,8 @@ export class ShopScene extends SceneBase {
     // 复制道具列表
     this.items = SHOP_ITEMS.map(item => ({ ...item }));
 
-    // 下一关按钮（横屏 800x480 居中底部）
-    this.nextButton = new Button(330, 410, 140, 44, '下一关');
+    // 下一关按钮（横屏 800x540 居中底部）
+    this.nextButton = new Button(330, 470, 140, 44, '下一关');
   }
 
   enter(): void {
