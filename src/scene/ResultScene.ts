@@ -26,9 +26,9 @@ export class ResultScene extends SceneBase {
     this.targetMoney = targetMoney;
     this.isPassed = earnedMoney >= targetMoney;
 
-    // 继续按钮
+    // 继续按钮（横屏 800x480 居中）
     const btnLabel = this.isPassed ? '进入商店' : '重新开始';
-    this.continueButton = new Button(190, 400, 100, 40, btnLabel);
+    this.continueButton = new Button(330, 350, 140, 44, btnLabel);
   }
 
   enter(): void {
@@ -63,16 +63,16 @@ export class ResultScene extends SceneBase {
     renderer.clear('#1a1a2e');
 
     // 标题
-    drawTextCentered(renderer, '关卡结算', 100, '#FFFFFF', 'LARGE');
+    drawTextCentered(renderer, '关卡结算', 70, '#FFFFFF', 'LARGE');
 
     // 结果
     const resultText = this.isPassed ? '恭喜达标！' : '未达标...';
     const resultColor = this.isPassed ? '#00FF00' : '#FF4444';
-    drawTextCentered(renderer, resultText, 180, resultColor, 'LARGE');
+    drawTextCentered(renderer, resultText, 140, resultColor, 'LARGE');
 
     // 金额信息
-    drawTextCentered(renderer, `获得金额: $${this.earnedMoney}`, 260, '#FFD700', 'MEDIUM');
-    drawTextCentered(renderer, `目标金额: $${this.targetMoney}`, 300, '#AAAAAA', 'MEDIUM');
+    drawTextCentered(renderer, `获得金额: $${this.earnedMoney}`, 220, '#FFD700', 'MEDIUM');
+    drawTextCentered(renderer, `目标金额: $${this.targetMoney}`, 260, '#AAAAAA', 'MEDIUM');
 
     // 继续/重试按钮
     this.continueButton.render(renderer);

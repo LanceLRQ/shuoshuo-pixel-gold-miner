@@ -11,6 +11,8 @@ import { GameScene } from '../scene/GameScene';
 import { ResultScene } from '../scene/ResultScene';
 import { ShopScene } from '../scene/ShopScene';
 import { Storage } from './Storage';
+import { ThemeManager } from '../assets/theme/ThemeManager';
+import { CLASSIC_THEME } from '../assets/theme/classic';
 
 /** 游戏全局状态枚举 */
 export enum GameState {
@@ -33,6 +35,7 @@ export class Game {
   private renderer: Renderer;
   private input: Input;
   private storage: Storage;
+  private themeManager: ThemeManager;
 
   /** 当前游戏状态 */
   private state: GameState = GameState.MENU;
@@ -67,6 +70,11 @@ export class Game {
       renderer.width,
       renderer.height
     );
+
+    // 初始化主题管理器
+    this.themeManager = new ThemeManager();
+    this.themeManager.register(CLASSIC_THEME);
+    this.themeManager.restoreTheme();
   }
 
   /** 注册场景到指定状态 */
@@ -138,6 +146,11 @@ export class Game {
   /** 获取渲染器实例 */
   getRenderer(): Renderer {
     return this.renderer;
+  }
+
+  /** 获取主题管理器 */
+  getThemeManager(): ThemeManager {
+    return this.themeManager;
   }
 
   /** 启动游戏主循环 */

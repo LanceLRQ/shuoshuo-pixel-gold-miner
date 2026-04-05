@@ -134,10 +134,11 @@ export class Hook {
 
     this.ropeLength -= reelSpeed * dt;
 
-    // 如果抓着矿物，更新矿物位置跟随钩爪
+    // 如果抓着矿物，更新矿物位置跟随钩爪（沿绳索方向偏移，让矿物"挂"在钩爪下方）
     if (this.grabbedMineral) {
-      this.grabbedMineral.x = this.tipX;
-      this.grabbedMineral.y = this.tipY;
+      const offsetDist = this.grabbedMineral.radius * 0.8;
+      this.grabbedMineral.x = this.tipX + Math.sin(this.angle) * offsetDist;
+      this.grabbedMineral.y = this.tipY + Math.cos(this.angle) * offsetDist;
     }
 
     // 收回到矿工位置
@@ -182,11 +183,11 @@ export class Hook {
     // 绘制钩爪精灵
     const sprite = this.spriteCache.get('HOOK_SPRITE');
     if (sprite) {
-      // 钩爪以尖端为中心，旋转绘制
+      // 以绳索连接点（精灵顶部）为旋转中心，角度取反使爪子跟随绳索方向
       ctx.save();
       ctx.translate(this.tipX, this.tipY);
-      ctx.rotate(this.angle);
-      renderer.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
+      ctx.rotate(-this.angle);
+      renderer.drawImage(sprite, -sprite.width / 2, 0);
       ctx.restore();
     }
 

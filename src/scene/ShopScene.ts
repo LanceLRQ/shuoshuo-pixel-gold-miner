@@ -50,8 +50,8 @@ export class ShopScene extends SceneBase {
     // 复制道具列表
     this.items = SHOP_ITEMS.map(item => ({ ...item }));
 
-    // 下一关按钮
-    this.nextButton = new Button(190, 530, 100, 40, '下一关');
+    // 下一关按钮（横屏 800x480 居中底部）
+    this.nextButton = new Button(330, 410, 140, 44, '下一关');
   }
 
   enter(): void {
@@ -96,34 +96,44 @@ export class ShopScene extends SceneBase {
     renderer.clear('#1a1a2e');
 
     // 标题
-    drawTextCentered(renderer, '道具商店', 30, '#FFD700', 'LARGE');
+    drawTextCentered(renderer, '道具商店', 25, '#FFD700', 'LARGE');
 
     // 当前金额
-    drawTextCentered(renderer, `持有金额: $${this.money}`, 80, '#FFD700', 'MEDIUM');
+    drawTextCentered(renderer, `持有金额: $${this.money}`, 60, '#FFD700', 'MEDIUM');
 
-    // 道具列表
+    // 道具列表（2x2 网格布局适配横屏）
+    const cardW = 350;
+    const cardH = 80;
+    const gapX = 20;
+    const gapY = 15;
+    const startX = (800 - cardW * 2 - gapX) / 2;
+    const startY = 100;
+
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i]!;
-      const y = 120 + i * 90;
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const x = startX + col * (cardW + gapX);
+      const y = startY + row * (cardH + gapY);
 
       // 道具卡片背景
       const bgColor = item.owned ? '#2a4a2a' : '#2a2a4a';
-      renderer.fillRect(60, y, 360, 75, bgColor);
-      renderer.fillRect(60, y, 360, 2, '#444466');
-      renderer.fillRect(60, y + 73, 360, 2, '#444466');
+      renderer.fillRect(x, y, cardW, cardH, bgColor);
+      renderer.fillRect(x, y, cardW, 2, '#444466');
+      renderer.fillRect(x, y + cardH - 2, cardW, 2, '#444466');
 
       // 道具信息
       const textColor = item.owned ? '#888888' : '#FFFFFF';
-      drawText(renderer, item.name, 80, y + 10, textColor, 'MEDIUM');
-      drawText(renderer, item.description, 80, y + 35, '#AAAAAA', 'SMALL');
+      drawText(renderer, item.name, x + 20, y + 12, textColor, 'MEDIUM');
+      drawText(renderer, item.description, x + 20, y + 38, '#AAAAAA', 'SMALL');
 
       // 价格/已购买
       if (item.owned) {
-        drawText(renderer, '已购买', 340, y + 15, '#00FF00', 'SMALL');
+        drawText(renderer, '已购买', x + cardW - 70, y + 18, '#00FF00', 'SMALL');
       } else if (this.money < item.price) {
-        drawText(renderer, `$${item.price}`, 350, y + 15, '#FF4444', 'SMALL');
+        drawText(renderer, `$${item.price}`, x + cardW - 60, y + 18, '#FF4444', 'SMALL');
       } else {
-        drawText(renderer, `$${item.price}`, 350, y + 15, '#FFD700', 'SMALL');
+        drawText(renderer, `$${item.price}`, x + cardW - 60, y + 18, '#FFD700', 'SMALL');
       }
     }
 
@@ -131,10 +141,25 @@ export class ShopScene extends SceneBase {
     this.nextButton.render(renderer);
   }
 
-  /** 获取道具按钮区域列表 */
+  /** 获取道具按钮区域列表（与渲染布局一致 2x2 网格） */
   private getItemButtons(): Button[] {
+    const cardW = 350;
+    const cardH = 80;
+    const gapX = 20;
+    const gapY = 15;
+    const startX = (800 - cardW * 2 - gapX) / 2;
+    const startY = 100;
+
     return this.items.map((_, i) => {
-      return new Button(60, 120 + i * 90, 360, 75, '');
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      return new Button(
+        startX + col * (cardW + gapX),
+        startY + row * (cardH + gapY),
+        cardW,
+        cardH,
+        ''
+      );
     });
   }
 

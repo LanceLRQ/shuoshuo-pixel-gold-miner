@@ -128,16 +128,20 @@ export const MINER_SAD: PixelMap = [
 
 // ==================== 钩爪精灵 ====================
 
-/** 钩爪 (8x8) - 三叉钩造型 */
+/** 钩爪 (10x12) - 三叉钩造型 */
 export const HOOK_SPRITE: PixelMap = [
-  [0, 0, ROPE, ROPE, ROPE, ROPE, 0, 0],
-  [0, 0, 0, HOOK, HOOK, 0, 0, 0],
-  [0, HOOK, 0, HOOK, HOOK, 0, HOOK, 0],
-  [0, HOOK_DARK, 0, HOOK, HOOK, 0, HOOK_DARK, 0],
-  [HOOK_DARK, 0, 0, HOOK, HOOK, 0, 0, HOOK_DARK],
-  [0, 0, 0, HOOK, HOOK, 0, 0, 0],
-  [0, 0, HOOK, HOOK, HOOK, HOOK, 0, 0],
-  [0, 0, HOOK_DARK, HOOK_DARK, HOOK_DARK, HOOK_DARK, 0, 0],
+  [0, 0, 0, 0, ROPE, ROPE, 0, 0, 0, 0],
+  [0, 0, 0, 0, HOOK, HOOK, 0, 0, 0, 0],
+  [0, 0, 0, 0, HOOK, HOOK, 0, 0, 0, 0],
+  [0, 0, 0, 0, HOOK, HOOK, 0, 0, 0, 0],
+  [0, 0, 0, HOOK, HOOK, HOOK, HOOK, 0, 0, 0],
+  [0, 0, HOOK, HOOK, HOOK, HOOK, HOOK, HOOK, 0, 0],
+  [0, HOOK, HOOK_DARK, 0, HOOK, HOOK, 0, HOOK_DARK, HOOK, 0],
+  [HOOK, HOOK_DARK, 0, 0, HOOK, HOOK, 0, 0, HOOK_DARK, HOOK],
+  [HOOK, 0, 0, 0, 0, 0, 0, 0, 0, HOOK],
+  [0, HOOK, 0, 0, 0, 0, 0, 0, 0, HOOK, 0],
+  [0, 0, HOOK, 0, 0, 0, 0, 0, HOOK, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 ];
 
 // ==================== 矿物精灵 ====================

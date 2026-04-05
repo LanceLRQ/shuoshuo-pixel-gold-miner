@@ -15,8 +15,6 @@ import { Mineral } from '../entity/Mineral';
 import { HUD } from '../ui/HUD';
 import { Audio, SoundType } from '../core/Audio';
 import { renderBackground } from '../assets/background';
-import { ALL_SPRITES } from '../assets/sprites';
-import { createSpriteCacheMap } from '../assets/types';
 import type { SpriteCacheMap } from '../assets/types';
 import { randomInt, weightedRandom } from '../utils/random';
 
@@ -65,8 +63,8 @@ export class GameScene extends SceneBase {
     this.game = game;
     this.targetMoney = targetMoney;
 
-    // 预渲染所有精灵到缓存
-    this.spriteCache = createSpriteCacheMap(ALL_SPRITES);
+    // 从主题管理器获取精灵缓存
+    this.spriteCache = game.getThemeManager().getSpriteCache();
 
     // 初始化矿工和钩爪
     this.miner = new Miner(GAME_CONFIG.MINER_X, GAME_CONFIG.MINER_Y, this.spriteCache);
@@ -140,8 +138,8 @@ export class GameScene extends SceneBase {
     // 清空画面
     renderer.clear('#000000');
 
-    // 绘制背景
-    renderBackground(renderer, renderer.width, renderer.height);
+    // 绘制背景（使用当前主题颜色）
+    renderBackground(renderer, renderer.width, renderer.height, this.game.getThemeManager().getBackgroundColors());
 
     // 绘制矿物
     for (const mineral of this.minerals) {

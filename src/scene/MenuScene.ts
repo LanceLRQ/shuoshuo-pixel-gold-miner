@@ -28,8 +28,8 @@ export class MenuScene extends SceneBase {
     this.storage = new Storage();
     this.highScore = this.storage.getHighScore();
 
-    // 开始按钮（居中）
-    this.startButton = new Button(165, 400, 150, 48, '开始游戏');
+    // 开始按钮（横屏 800x480 居中）
+    this.startButton = new Button(320, 320, 160, 48, '开始游戏');
   }
 
   enter(): void {
@@ -58,24 +58,24 @@ export class MenuScene extends SceneBase {
   }
 
   render(renderer: Renderer): void {
-    // 绘制背景
-    renderBackground(renderer, renderer.width, renderer.height);
+    // 绘制背景（使用当前主题颜色）
+    renderBackground(renderer, renderer.width, renderer.height, this.game.getThemeManager().getBackgroundColors());
 
     // 半透明遮罩
     renderer.fillRect(0, 0, renderer.width, renderer.height, 'rgba(0, 0, 0, 0.3)');
 
     // 标题（带动画浮动效果）
-    const titleY = 150 + Math.sin(this.animTime * 2) * 8;
+    const titleY = 120 + Math.sin(this.animTime * 2) * 8;
     drawTextCentered(renderer, '黄金矿工', titleY, '#FFD700', 'TITLE');
     drawTextCentered(renderer, 'H5', titleY + 45, '#FFA500', 'LARGE');
 
     // 最高分
     if (this.highScore > 0) {
-      drawTextCentered(renderer, `最高分: $${this.highScore}`, 340, '#FFFFFF', 'MEDIUM');
+      drawTextCentered(renderer, `最高分: $${this.highScore}`, 240, '#FFFFFF', 'MEDIUM');
     }
 
     // 操作提示
-    drawTextCentered(renderer, '按空格或点击开始', 480, '#AAAAAA', 'SMALL');
+    drawTextCentered(renderer, '按空格或点击开始', 400, '#AAAAAA', 'SMALL');
 
     // 开始按钮
     this.startButton.render(renderer);
