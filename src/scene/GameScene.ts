@@ -18,7 +18,11 @@ import { renderBackground, GROUND_Y } from '../assets/background';
 import type { SpriteCacheMap } from '../assets/types';
 import type { LevelConfig } from '../level/levels';
 import { ItemType } from '../scene/ShopScene';
+import { drawTextCentered } from '../ui/PixelText';
 import { randomInt, weightedRandom } from '../utils/random';
+
+/** 暂停按钮点击区域（HUD 右上角） */
+const PAUSE_BTN = { x: 756, y: 4, w: 36, h: 28 };
 
 /** 矿物生成权重（决定各矿物出现概率） */
 const MINERAL_WEIGHTS: number[] = [
@@ -55,6 +59,9 @@ export class GameScene extends SceneBase {
 
   /** 关卡目标金额 */
   private targetMoney: number;
+
+  /** 暂停状态 */
+  private isPaused: boolean = false;
 
   constructor(game: Game, levelConfig: LevelConfig) {
     super();
@@ -97,6 +104,8 @@ export class GameScene extends SceneBase {
   }
 
   update(dt: number): void {
+    if (this.isPaused) return;
+
     // 更新 HUD（倒计时）
     this.hud.update(dt);
 
@@ -124,11 +133,41 @@ export class GameScene extends SceneBase {
   }
 
   handleInput(input: Input): void {
-    // 空格键或点击发射钩爪
-    if (
-      this.hook.state === HookState.SWINGING &&
-      (input.isJustPressed('Space') || input.wasTapped())
-    ) {
+    // ESC 暂停/恢复
+    if (input.isJustPressed('Escape')) {
+      this.isPaused = !this.isPaused;
+      return;
+    }
+
+    // 暂停状态：点击任意位置恢复
+    if (this.isPaused) {
+      if (input.wasTapped()) {
+        this.isPaused = false;
+      }
+      return;
+    }
+
+    // 点击事件
+    if (input.wasTapped()) {
+      const pos = input.getTapPosition();
+
+      // 暂停按钮优先检测
+      if (this.isInPauseBtn(pos.x, pos.y)) {
+        this.isPaused = true;
+        return;
+      }
+
+      // 发射钩爪
+      if (this.hook.state === HookState.SWINGING) {
+        this.hook.fire();
+        this.miner.setState(MinerState.PULL);
+        this.game.getAudio().play(SoundType.HOOK_FIRE);
+      }
+      return;
+    }
+
+    // 空格键发射钩爪
+    if (this.hook.state === HookState.SWINGING && input.isJustPressed('Space')) {
       this.hook.fire();
       this.miner.setState(MinerState.PULL);
       this.game.getAudio().play(SoundType.HOOK_FIRE);
@@ -155,6 +194,28 @@ export class GameScene extends SceneBase {
 
     // 绘制 HUD
     this.hud.render(renderer);
+
+    // 暂停按钮（HUD 右上角两条竖线）
+    this.renderPauseBtn(renderer);
+
+    // 暂停遮罩
+    if (this.isPaused) {
+      const ctx = renderer.getContext();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(0, 0, renderer.width, renderer.height);
+      drawTextCentered(renderer, '暂停', 230, '#FFFFFF', 'TITLE');
+      drawTextCentered(renderer, '点击或按 ESC 继续', 310, '#AAAAAA', 'SMALL');
+    }
+  }
+
+  /** 绘制暂停按钮（两条竖线图标） */
+  private renderPauseBtn(renderer: Renderer): void {
+    const ctx = renderer.getContext();
+    const x = renderer.width - 30;
+    const y = 10;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(x, y, 4, 18);
+    ctx.fillRect(x + 10, y, 4, 18);
   }
 
   /** 钩爪收回完成回调（含道具效果） */
@@ -269,5 +330,21 @@ export class GameScene extends SceneBase {
   /** 获取目标金额 */
   getTargetMoney(): number {
     return this.targetMoney;
+  }
+
+  /** 暂停游戏 */
+  pause(): void {
+    this.isPaused = true;
+  }
+
+  /** 恢复游戏 */
+  resume(): void {
+    this.isPaused = false;
+  }
+
+  /** 判断点是否在暂停按钮区域内 */
+  private isInPauseBtn(x: number, y: number): boolean {
+    return x >= PAUSE_BTN.x && x <= PAUSE_BTN.x + PAUSE_BTN.w &&
+           y >= PAUSE_BTN.y && y <= PAUSE_BTN.y + PAUSE_BTN.h;
   }
 }

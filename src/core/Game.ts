@@ -10,6 +10,7 @@ import { MenuScene } from '../scene/MenuScene';
 import { GameScene } from '../scene/GameScene';
 import { ResultScene } from '../scene/ResultScene';
 import { ShopScene, type ItemType } from '../scene/ShopScene';
+import { GameOverScene } from '../scene/GameOverScene';
 import { Storage } from './Storage';
 import { LevelManager } from '../level/LevelManager';
 import { Audio } from './Audio';
@@ -88,6 +89,13 @@ export class Game {
     if (!localStorage.getItem('goldminer_theme')) {
       this.themeManager.setTheme('shuoshuo_crystal');
     }
+
+    // 切后台自动暂停
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.currentScene instanceof GameScene) {
+        this.currentScene.pause();
+      }
+    });
   }
 
   /** 注册场景到指定状态 */
@@ -144,7 +152,7 @@ export class Game {
       case GameState.GAME_OVER:
         // 更新最高分
         this.storage.updateHighScore(this.currentMoney);
-        scene = new MenuScene(this);
+        scene = new GameOverScene(this, this.currentMoney, this.levelManager.currentLevel);
         break;
     }
 
