@@ -9,8 +9,10 @@ import { SceneBase } from '../scene/SceneBase';
 import { MenuScene } from '../scene/MenuScene';
 import { GameScene } from '../scene/GameScene';
 import { ResultScene } from '../scene/ResultScene';
-import { ShopScene } from '../scene/ShopScene';
+import { ShopScene, type ItemType } from '../scene/ShopScene';
 import { Storage } from './Storage';
+import { LevelManager } from '../level/LevelManager';
+import { Audio } from './Audio';
 import { ThemeManager } from '../assets/theme/ThemeManager';
 import { CLASSIC_THEME } from '../assets/theme/classic';
 import { SHUOSHUO_CRYSTAL_THEME } from '../assets/theme/shuoshuo-crystal';
@@ -37,6 +39,9 @@ export class Game {
   private input: Input;
   private storage: Storage;
   private themeManager: ThemeManager;
+  private levelManager: LevelManager;
+  private ownedItems: Set<ItemType> = new Set();
+  private audio: Audio;
 
   /** 当前游戏状态 */
   private state: GameState = GameState.MENU;
@@ -66,6 +71,8 @@ export class Game {
   constructor(renderer: Renderer) {
     this.renderer = renderer;
     this.storage = new Storage();
+    this.levelManager = new LevelManager();
+    this.audio = new Audio();
     this.input = new Input(
       renderer.getContext().canvas,
       renderer.width,
@@ -98,8 +105,15 @@ export class Game {
         this.lastTargetMoney = this.currentScene.getTargetMoney();
         this.currentMoney += this.lastEarnedMoney;
       }
+      // 如果从 ShopScene 退出，同步剩余金额
+      if (this.state === GameState.SHOP && this.currentScene instanceof ShopScene) {
+        this.currentMoney = this.currentScene.getMoney();
+      }
       this.currentScene.exit();
     }
+
+    // 记录来源状态（用于关卡流转判断）
+    const previousState = this.state;
 
     // 切换状态
     this.state = state;
@@ -110,10 +124,16 @@ export class Game {
     switch (state) {
       case GameState.MENU:
         scene = new MenuScene(this);
-        this.currentMoney = 0; // 重置金额
+        this.currentMoney = 0;
+        this.levelManager.reset();
+        this.ownedItems.clear();
         break;
       case GameState.PLAYING:
-        scene = new GameScene(this, this.lastTargetMoney);
+        // 从商店回来，进入下一关
+        if (previousState === GameState.SHOP) {
+          this.levelManager.nextLevel();
+        }
+        scene = new GameScene(this, this.levelManager.getCurrentConfig());
         break;
       case GameState.RESULT:
         scene = new ResultScene(this, this.lastEarnedMoney, this.lastTargetMoney);
@@ -157,6 +177,31 @@ export class Game {
   /** 获取主题管理器 */
   getThemeManager(): ThemeManager {
     return this.themeManager;
+  }
+
+  /** 获取关卡管理器 */
+  getLevelManager(): LevelManager {
+    return this.levelManager;
+  }
+
+  /** 获取已购买道具集合 */
+  getOwnedItems(): Set<ItemType> {
+    return this.ownedItems;
+  }
+
+  /** 添加已购买道具 */
+  addOwnedItem(item: ItemType): void {
+    this.ownedItems.add(item);
+  }
+
+  /** 清空已购买道具 */
+  clearOwnedItems(): void {
+    this.ownedItems.clear();
+  }
+
+  /** 获取全局音效实例 */
+  getAudio(): Audio {
+    return this.audio;
   }
 
   /** 启动游戏主循环 */

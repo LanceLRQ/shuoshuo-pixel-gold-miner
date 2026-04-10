@@ -13,9 +13,11 @@ import { Miner, MinerState } from '../entity/Miner';
 import { Hook, HookState } from '../entity/Hook';
 import { Mineral } from '../entity/Mineral';
 import { HUD } from '../ui/HUD';
-import { Audio, SoundType } from '../core/Audio';
+import { SoundType } from '../core/Audio';
 import { renderBackground, GROUND_Y } from '../assets/background';
 import type { SpriteCacheMap } from '../assets/types';
+import type { LevelConfig } from '../level/levels';
+import { ItemType } from '../scene/ShopScene';
 import { randomInt, weightedRandom } from '../utils/random';
 
 /** 矿物生成权重（决定各矿物出现概率） */
@@ -40,12 +42,6 @@ const MINERAL_TYPES: MineralType[] = [
   MineralType.BONE,
 ];
 
-/** 默认关卡目标金额 */
-const DEFAULT_TARGET_MONEY = 200;
-
-/** 默认矿物数量（横屏加大） */
-const DEFAULT_MINERAL_COUNT = 15;
-
 export class GameScene extends SceneBase {
   private game: Game;
   private miner: Miner;
@@ -53,15 +49,18 @@ export class GameScene extends SceneBase {
   private minerals: Mineral[] = [];
   private hud: HUD;
   private spriteCache: SpriteCacheMap;
-  private audio: Audio;
+
+  /** 关卡配置 */
+  private levelConfig: LevelConfig;
 
   /** 关卡目标金额 */
   private targetMoney: number;
 
-  constructor(game: Game, targetMoney: number = DEFAULT_TARGET_MONEY) {
+  constructor(game: Game, levelConfig: LevelConfig) {
     super();
     this.game = game;
-    this.targetMoney = targetMoney;
+    this.levelConfig = levelConfig;
+    this.targetMoney = levelConfig.targetMoney;
 
     // 从主题管理器获取精灵缓存
     this.spriteCache = game.getThemeManager().getSpriteCache();
@@ -73,18 +72,20 @@ export class GameScene extends SceneBase {
     // 初始化 HUD
     this.hud = new HUD(this.spriteCache, this.targetMoney);
 
-    // 初始化音效系统
-    this.audio = new Audio();
+    // 力量药水：收回速度 +50%
+    if (game.getOwnedItems().has(ItemType.STRENGTH_POTION)) {
+      this.hook.reelSpeedMultiplier = 1.5;
+    }
 
     // 设置钩爪收回回调
     this.hook.setOnComplete((mineral) => this.onHookComplete(mineral));
   }
 
   enter(): void {
-    // 生成矿物
-    this.generateMinerals(DEFAULT_MINERAL_COUNT);
-    // 重置 HUD
-    this.hud.timeLeft = GAME_CONFIG.LEVEL_TIME_LIMIT;
+    // 使用关卡配置生成矿物
+    this.generateMinerals(this.levelConfig.mineralCount);
+    // 使用关卡配置的时间限制
+    this.hud.timeLeft = this.levelConfig.timeLimit;
     this.hud.money = 0;
     // 重置钩爪
     this.hook.reset();
@@ -130,7 +131,7 @@ export class GameScene extends SceneBase {
     ) {
       this.hook.fire();
       this.miner.setState(MinerState.PULL);
-      this.audio.play(SoundType.HOOK_FIRE);
+      this.game.getAudio().play(SoundType.HOOK_FIRE);
     }
   }
 
@@ -156,44 +157,73 @@ export class GameScene extends SceneBase {
     this.hud.render(renderer);
   }
 
-  /** 钩爪收回完成回调 */
+  /** 钩爪收回完成回调（含道具效果） */
   private onHookComplete(mineral: Mineral | null): void {
     if (mineral) {
-      // 计分
-      this.hud.money += mineral.value;
+      const items = this.game.getOwnedItems();
+
+      // 炸药：抓到石头自动炸毁，不加钱
+      if (mineral.config.type === MineralType.STONE && items.has(ItemType.DYNAMITE)) {
+        this.game.getAudio().play(SoundType.GRAB_BOMB);
+        return;
+      }
+
+      // 计算实际价值
+      let value = mineral.value;
+
+      // 石头书：石头价值 ×3
+      if (mineral.config.type === MineralType.STONE && items.has(ItemType.STONE_BOOK)) {
+        value = mineral.value * 3;
+      }
+
+      this.hud.money += value;
+
       // 播放对应音效
       if (mineral.config.type === MineralType.DIAMOND) {
-        this.audio.play(SoundType.GRAB_DIAMOND);
+        this.game.getAudio().play(SoundType.GRAB_DIAMOND);
       } else if (mineral.config.type === MineralType.BOMB) {
-        this.audio.play(SoundType.GRAB_BOMB);
+        this.game.getAudio().play(SoundType.GRAB_BOMB);
       } else if (mineral.config.type === MineralType.STONE) {
-        this.audio.play(SoundType.GRAB_STONE);
+        this.game.getAudio().play(SoundType.GRAB_STONE);
       } else {
-        this.audio.play(SoundType.GRAB_GOLD);
+        this.game.getAudio().play(SoundType.GRAB_GOLD);
       }
+
       // 设置矿工表情
-      if (mineral.value > 0) {
+      if (value > 0) {
         this.miner.setState(MinerState.HAPPY);
       } else {
         this.miner.setState(MinerState.SAD);
       }
     } else {
-      this.audio.play(SoundType.HOOK_REEL);
+      this.game.getAudio().play(SoundType.HOOK_REEL);
     }
-    this.miner.setState(MinerState.IDLE);
   }
 
-  /** 随机生成矿物（检测重叠，最多重试 20 次后放弃） */
+  /** 随机生成矿物（使用关卡配置的权重和数量） */
   private generateMinerals(count: number): void {
     this.minerals = [];
+    // 使用关卡自定义权重或默认权重
+    const weights = this.levelConfig.mineralWeights ?? MINERAL_WEIGHTS;
+
     for (let i = 0; i < count; i++) {
-      const typeIndex = weightedRandom(MINERAL_WEIGHTS);
+      const typeIndex = weightedRandom(weights);
       const type = MINERAL_TYPES[typeIndex]!;
 
       // 随机放置，尝试避开已有矿物
       const placed = this.tryPlaceMineral(type);
       if (placed) {
         this.minerals.push(placed);
+      }
+    }
+
+    // 幸运草：神秘袋最低 $200
+    const items = this.game.getOwnedItems();
+    if (items.has(ItemType.LUCKY_CLOVER)) {
+      for (const mineral of this.minerals) {
+        if (mineral.config.type === MineralType.MYSTERY_BAG) {
+          mineral.value = Math.max(mineral.value, 200);
+        }
       }
     }
   }

@@ -81,8 +81,13 @@ export class ResultScene extends SceneBase {
   /** 处理继续操作 */
   private handleContinue(): void {
     if (this.isPassed) {
-      // 达标进入商店
-      this.game.changeScene(GameState.SHOP);
+      // 最后一关打完 → 游戏结束
+      if (!this.game.getLevelManager().hasNextLevel()) {
+        this.game.changeScene(GameState.GAME_OVER);
+      } else {
+        // 还有下一关 → 进入商店
+        this.game.changeScene(GameState.SHOP);
+      }
     } else {
       // 未达标返回菜单
       this.game.changeScene(GameState.MENU);

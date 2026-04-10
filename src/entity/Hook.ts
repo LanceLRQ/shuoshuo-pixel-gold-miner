@@ -48,6 +48,9 @@ export class Hook {
   /** 抓取的矿物 */
   grabbedMineral: Mineral | null = null;
 
+  /** 收回速度倍率（受力量药水影响） */
+  reelSpeedMultiplier: number = 1;
+
   /** 收回完成回调 */
   private onComplete: HookCallback | null = null;
 
@@ -126,8 +129,8 @@ export class Hook {
 
   /** 收回状态：绳索缩短，速度受矿物重量影响 */
   private updateReeling(dt: number): void {
-    // 收回速度: baseSpeed / (1 + weight * factor)
-    let reelSpeed = GAME_CONFIG.HOOK_BASE_REEL_SPEED;
+    // 收回速度: baseSpeed * multiplier / (1 + weight * factor)
+    let reelSpeed = GAME_CONFIG.HOOK_BASE_REEL_SPEED * this.reelSpeedMultiplier;
     if (this.grabbedMineral) {
       reelSpeed = GAME_CONFIG.HOOK_BASE_REEL_SPEED / (1 + this.grabbedMineral.config.weight * GAME_CONFIG.WEIGHT_FACTOR);
     }

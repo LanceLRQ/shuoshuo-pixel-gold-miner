@@ -17,6 +17,7 @@ interface ShopItem {
   price: number;
   description: string;
   owned: boolean;
+  type: ItemType;
 }
 
 /** 道具效果类型 */
@@ -29,10 +30,10 @@ export enum ItemType {
 
 /** 道具配置表 */
 const SHOP_ITEMS: ShopItem[] = [
-  { name: '炸药', price: 150, description: '抓到石头时自动炸毁', owned: false },
-  { name: '力量药水', price: 200, description: '收回速度 +50%', owned: false },
-  { name: '幸运草', price: 100, description: '神秘袋最低 200$', owned: false },
-  { name: '石头书', price: 80, description: '石头价值 x3', owned: false },
+  { name: '炸药', price: 150, description: '抓到石头时自动炸毁', owned: false, type: ItemType.DYNAMITE },
+  { name: '力量药水', price: 200, description: '收回速度 +50%', owned: false, type: ItemType.STRENGTH_POTION },
+  { name: '幸运草', price: 100, description: '神秘袋最低 200$', owned: false, type: ItemType.LUCKY_CLOVER },
+  { name: '石头书', price: 80, description: '石头价值 x3', owned: false, type: ItemType.STONE_BOOK },
 ];
 
 export class ShopScene extends SceneBase {
@@ -40,7 +41,6 @@ export class ShopScene extends SceneBase {
   private money: number;
   private items: ShopItem[];
   private nextButton: Button;
-  private ownedItems: Set<ItemType> = new Set();
 
   constructor(game: Game, money: number) {
     super();
@@ -57,7 +57,6 @@ export class ShopScene extends SceneBase {
   enter(): void {
     // 重置购买状态
     this.items = SHOP_ITEMS.map(item => ({ ...item, owned: false }));
-    this.ownedItems.clear();
   }
 
   exit(): void {}
@@ -171,11 +170,11 @@ export class ShopScene extends SceneBase {
 
     this.money -= item.price;
     item.owned = true;
-    this.ownedItems.add(index as unknown as ItemType);
+    this.game.addOwnedItem(item.type);
   }
 
-  /** 获取已购买的道具集合 */
-  getOwnedItems(): Set<ItemType> {
-    return this.ownedItems;
+  /** 获取当前剩余金额（供 Game 同步使用） */
+  getMoney(): number {
+    return this.money;
   }
 }
