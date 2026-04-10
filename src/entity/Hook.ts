@@ -117,9 +117,19 @@ export class Hook {
     this.ropeLength = 30;
   }
 
-  /** 发射状态：沿当前角度匀速延伸 */
+  /** 发射状态：沿当前角度匀速延伸，超出边界或最大距离时空收回 */
   private updateExtending(dt: number): void {
     this.ropeLength += GAME_CONFIG.HOOK_EXTEND_SPEED * dt;
+
+    // 计算当前尖端位置
+    const tipX = this.anchorX + Math.sin(this.angle) * this.ropeLength;
+    const tipY = this.anchorY + Math.cos(this.angle) * this.ropeLength;
+
+    // 超出画布边界，空收回
+    if (tipX < 0 || tipX > GAME_CONFIG.CANVAS_WIDTH || tipY < 0 || tipY > GAME_CONFIG.CANVAS_HEIGHT) {
+      this.state = HookState.REELING_EMPTY;
+      return;
+    }
 
     // 到达最大距离，空收回
     if (this.ropeLength >= GAME_CONFIG.HOOK_MAX_LENGTH) {

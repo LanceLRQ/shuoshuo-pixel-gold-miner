@@ -12,7 +12,7 @@ import { GAME_CONFIG, MineralType } from '../entity/types';
 import { Miner, MinerState } from '../entity/Miner';
 import { Hook, HookState } from '../entity/Hook';
 import { Mineral } from '../entity/Mineral';
-import { HUD } from '../ui/HUD';
+import { HUD, HUD_HEIGHT } from '../ui/HUD';
 import { SoundType } from '../core/Audio';
 import { renderBackground, GROUND_Y } from '../assets/background';
 import type { SpriteCacheMap } from '../assets/types';
@@ -22,7 +22,21 @@ import { drawTextCentered } from '../ui/PixelText';
 import { randomInt, weightedRandom } from '../utils/random';
 
 /** 暂停按钮点击区域（HUD 右上角） */
-const PAUSE_BTN = { x: 756, y: 4, w: 36, h: 28 };
+const PAUSE_BTN = { x: 764, y: 4, w: 28, h: 28 };
+
+/** 教程按钮点击区域（暂停按钮左边） */
+const TUTORIAL_BTN = { x: 728, y: 4, w: 28, h: 28 };
+
+/** 教程已读 localStorage 键 */
+const TUTORIAL_SHOWN_KEY = 'goldminer_tutorial_shown';
+
+/** 道具名称缩写映射 */
+const ITEM_SHORT_NAMES: Record<string, string> = {
+  [ItemType.DYNAMITE]: '炸药',
+  [ItemType.STRENGTH_POTION]: '力量',
+  [ItemType.LUCKY_CLOVER]: '幸运',
+  [ItemType.STONE_BOOK]: '石书',
+};
 
 /** 矿物生成权重（决定各矿物出现概率） */
 const MINERAL_WEIGHTS: number[] = [
@@ -63,6 +77,9 @@ export class GameScene extends SceneBase {
   /** 暂停状态 */
   private isPaused: boolean = false;
 
+  /** 教程引导状态 */
+  private showTutorial: boolean = false;
+
   constructor(game: Game, levelConfig: LevelConfig) {
     super();
     this.game = game;
@@ -89,6 +106,8 @@ export class GameScene extends SceneBase {
   }
 
   enter(): void {
+    // 检查是否首次游玩
+    this.showTutorial = !localStorage.getItem(TUTORIAL_SHOWN_KEY);
     // 使用关卡配置生成矿物
     this.generateMinerals(this.levelConfig.mineralCount);
     // 使用关卡配置的时间限制
@@ -133,6 +152,15 @@ export class GameScene extends SceneBase {
   }
 
   handleInput(input: Input): void {
+    // 教程引导：点击/空格关闭
+    if (this.showTutorial) {
+      if (input.wasTapped() || input.isJustPressed('Space')) {
+        this.showTutorial = false;
+        localStorage.setItem(TUTORIAL_SHOWN_KEY, '1');
+      }
+      return;
+    }
+
     // ESC 暂停/恢复
     if (input.isJustPressed('Escape')) {
       this.isPaused = !this.isPaused;
@@ -154,6 +182,12 @@ export class GameScene extends SceneBase {
       // 暂停按钮优先检测
       if (this.isInPauseBtn(pos.x, pos.y)) {
         this.isPaused = true;
+        return;
+      }
+
+      // 教程按钮
+      if (this.isInBtn(pos, TUTORIAL_BTN)) {
+        this.showTutorial = true;
         return;
       }
 
@@ -195,8 +229,11 @@ export class GameScene extends SceneBase {
     // 绘制 HUD
     this.hud.render(renderer);
 
-    // 暂停按钮（HUD 右上角两条竖线）
-    this.renderPauseBtn(renderer);
+    // 暂停按钮和教程按钮
+    this.renderTopButtons(renderer);
+
+    // 当前生效道具显示
+    this.renderActiveItems(renderer);
 
     // 暂停遮罩
     if (this.isPaused) {
@@ -206,16 +243,68 @@ export class GameScene extends SceneBase {
       drawTextCentered(renderer, '暂停', 230, '#FFFFFF', 'TITLE');
       drawTextCentered(renderer, '点击或按 ESC 继续', 310, '#AAAAAA', 'SMALL');
     }
+
+    // 教程引导覆盖层
+    if (this.showTutorial) {
+      const ctx = renderer.getContext();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+      ctx.fillRect(0, 0, renderer.width, renderer.height);
+      drawTextCentered(renderer, '操作说明', 100, '#FFD700', 'TITLE');
+      drawTextCentered(renderer, '空格 / 点击画面 - 发射钩爪', 190, '#FFFFFF', 'MEDIUM');
+      drawTextCentered(renderer, 'ESC / 右上角按钮 - 暂停', 240, '#FFFFFF', 'MEDIUM');
+      drawTextCentered(renderer, '抓取矿物达到目标金额即可过关', 300, '#AAAAAA', 'SMALL');
+      drawTextCentered(renderer, '点击任意位置开始', 380, '#FFD700', 'MEDIUM');
+    }
   }
 
-  /** 绘制暂停按钮（两条竖线图标） */
-  private renderPauseBtn(renderer: Renderer): void {
+  /** 绘制右上角按钮组（暂停 + 教程） */
+  private renderTopButtons(renderer: Renderer): void {
     const ctx = renderer.getContext();
-    const x = renderer.width - 30;
-    const y = 10;
+
+    // 暂停按钮（两条竖线）
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(x, y, 4, 18);
-    ctx.fillRect(x + 10, y, 4, 18);
+    ctx.fillRect(renderer.width - 26, 10, 4, 18);
+    ctx.fillRect(renderer.width - 16, 10, 4, 18);
+
+    // 教程按钮（问号）
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '18px monospace';
+    ctx.fillText('?', renderer.width - 60, 27);
+  }
+
+  /** 绘制当前生效道具列表 */
+  private renderActiveItems(renderer: Renderer): void {
+    const items = this.game.getOwnedItems();
+    if (items.size === 0) return;
+
+    const ctx = renderer.getContext();
+    const itemArray = Array.from(items);
+    const startX = renderer.width - 10;
+    const startY = HUD_HEIGHT + 8;
+
+    for (let i = 0; i < itemArray.length; i++) {
+      const itemType = itemArray[i]!;
+      const name = ITEM_SHORT_NAMES[itemType];
+      if (!name) continue;
+      const text = name;
+      const y = startY + i * 20;
+      // 道具背景条
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      const textWidth = name.length * 10 + 8;
+      ctx.fillRect(startX - textWidth, y - 12, textWidth, 18);
+      // 道具文字（右对齐）
+      ctx.fillStyle = '#FFD700';
+      ctx.font = '12px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(text, startX - 4, y);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  /** 判断点是否在指定按钮区域内 */
+  private isInBtn(pos: { x: number; y: number }, btn: { x: number; y: number; w: number; h: number }): boolean {
+    return pos.x >= btn.x && pos.x <= btn.x + btn.w &&
+           pos.y >= btn.y && pos.y <= btn.y + btn.h;
   }
 
   /** 钩爪收回完成回调（含道具效果） */

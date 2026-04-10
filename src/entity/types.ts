@@ -93,6 +93,10 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
 
 /** 游戏数值配置常量（横屏 800x540 布局） */
 export const GAME_CONFIG = {
+  // 画布逻辑尺寸
+  CANVAS_WIDTH: 800,
+  CANVAS_HEIGHT: 540,
+
   // 钩爪参数
   HOOK_SWING_SPEED: 2,
   HOOK_MAX_ANGLE: Math.PI * 4 / 9,
