@@ -18,7 +18,7 @@ import { renderBackground, GROUND_Y } from '../assets/background';
 import type { SpriteCacheMap } from '../assets/types';
 import type { LevelConfig } from '../level/levels';
 import { ItemType } from '../scene/ShopScene';
-import { drawTextCentered } from '../ui/PixelText';
+import { drawText, drawTextCentered } from '../ui/PixelText';
 import { randomInt, weightedRandom } from '../utils/random';
 
 /** 暂停按钮点击区域（HUD 右上角） */
@@ -266,10 +266,8 @@ export class GameScene extends SceneBase {
     ctx.fillRect(renderer.width - 26, 10, 4, 18);
     ctx.fillRect(renderer.width - 16, 10, 4, 18);
 
-    // 教程按钮（问号）
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = '18px monospace';
-    ctx.fillText('?', renderer.width - 60, 27);
+    // 教程按钮（问号，使用像素字体）
+    drawText(renderer, '?', renderer.width - 56, 8, '#FFFFFF', 'MEDIUM');
   }
 
   /** 绘制当前生效道具列表 */
@@ -279,25 +277,38 @@ export class GameScene extends SceneBase {
 
     const ctx = renderer.getContext();
     const itemArray = Array.from(items);
-    const startX = renderer.width - 10;
-    const startY = HUD_HEIGHT + 8;
+    // 计算道具文字最大宽度
+    ctx.font = 'bold 12px monospace';
+    let maxW = 0;
+    for (const type of itemArray) {
+      const name = ITEM_SHORT_NAMES[type];
+      if (name) {
+        maxW = Math.max(maxW, ctx.measureText(name).width);
+      }
+    }
+
+    const padX = 6;
+    const padY = 2;
+    const itemH = 14;
+    const gap = 4;
+    const boxW = maxW + padX * 2;
+    const startX = renderer.width - boxW - 4;
+    const startY = HUD_HEIGHT + 6;
 
     for (let i = 0; i < itemArray.length; i++) {
       const itemType = itemArray[i]!;
       const name = ITEM_SHORT_NAMES[itemType];
       if (!name) continue;
-      const text = name;
-      const y = startY + i * 20;
+      const y = startY + i * (itemH + gap);
+
       // 道具背景条
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      const textWidth = name.length * 10 + 8;
-      ctx.fillRect(startX - textWidth, y - 12, textWidth, 18);
-      // 道具文字（右对齐）
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillRect(startX, y, boxW, itemH);
+      // 左侧金色边线
       ctx.fillStyle = '#FFD700';
-      ctx.font = '12px monospace';
-      ctx.textAlign = 'right';
-      ctx.fillText(text, startX - 4, y);
-      ctx.textAlign = 'left';
+      ctx.fillRect(startX, y, 2, itemH);
+      // 道具文字
+      drawText(renderer, name, startX + padX + 2, y + padY, '#FFD700', 'SMALL');
     }
   }
 
