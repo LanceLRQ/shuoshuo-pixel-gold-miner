@@ -41,11 +41,6 @@ export class Mineral {
     }
   }
 
-  /** 更新（矿物静止不动，暂无逻辑） */
-  update(_dt: number): void {
-    // 矿物不需要主动更新
-  }
-
   /** 渲染矿物（正常场景渲染，被抓时跳过） */
   render(renderer: Renderer): void {
     if (this.grabbed) return;

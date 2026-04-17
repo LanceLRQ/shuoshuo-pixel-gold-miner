@@ -14,6 +14,7 @@ interface SaveData {
 }
 
 const STORAGE_KEY = 'goldminer_h5_save';
+const TUTORIAL_KEY = 'goldminer_tutorial_shown';
 
 export class Storage {
   /** 保存游戏数据 */
@@ -59,5 +60,15 @@ export class Storage {
   /** 清除存档 */
   clear(): void {
     localStorage.removeItem(STORAGE_KEY);
+  }
+
+  /** 是否已显示过教程 */
+  loadTutorialShown(): boolean {
+    return !!localStorage.getItem(TUTORIAL_KEY);
+  }
+
+  /** 标记教程已显示 */
+  saveTutorialShown(): void {
+    localStorage.setItem(TUTORIAL_KEY, '1');
   }
 }

@@ -8,14 +8,12 @@ import type { Renderer } from '../core/Renderer';
 import type { Input } from '../core/Input';
 import type { Game } from '../core/Game';
 import { GameState } from '../core/Game';
-import { Storage } from '../core/Storage';
 import { drawTextCentered } from '../ui/PixelText';
 import { Button } from '../ui/Button';
 import { renderBackground } from '../assets/background';
 
 export class MenuScene extends SceneBase {
   private game: Game;
-  private storage: Storage;
   private startButton: Button;
   private highScore: number;
 
@@ -25,8 +23,7 @@ export class MenuScene extends SceneBase {
   constructor(game: Game) {
     super();
     this.game = game;
-    this.storage = new Storage();
-    this.highScore = this.storage.getHighScore();
+    this.highScore = this.game.getStorage().getHighScore();
 
     // 开始按钮（横屏 800x480 居中）
     this.startButton = new Button(320, 320, 160, 48, '开始游戏');
@@ -34,7 +31,7 @@ export class MenuScene extends SceneBase {
 
   enter(): void {
     this.animTime = 0;
-    this.highScore = this.storage.getHighScore();
+    this.highScore = this.game.getStorage().getHighScore();
   }
 
   exit(): void {}

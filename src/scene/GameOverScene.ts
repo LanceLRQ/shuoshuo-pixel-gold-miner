@@ -8,7 +8,6 @@ import type { Renderer } from '../core/Renderer';
 import type { Input } from '../core/Input';
 import type { Game } from '../core/Game';
 import { GameState } from '../core/Game';
-import { Storage } from '../core/Storage';
 import { drawTextCentered } from '../ui/PixelText';
 import { Button } from '../ui/Button';
 
@@ -16,7 +15,6 @@ export class GameOverScene extends SceneBase {
   private game: Game;
   private score: number;
   private level: number;
-  private storage: Storage;
   private button: Button;
 
   constructor(game: Game, score: number, level: number) {
@@ -24,7 +22,6 @@ export class GameOverScene extends SceneBase {
     this.game = game;
     this.score = score;
     this.level = level;
-    this.storage = new Storage();
     this.button = new Button(330, 400, 140, 44, '重新开始');
   }
 
@@ -60,7 +57,7 @@ export class GameOverScene extends SceneBase {
     drawTextCentered(renderer, `到达关卡: 第 ${this.level} 关`, 240, '#AAAAAA', 'MEDIUM');
 
     // 最高分
-    const highScore = this.storage.getHighScore();
+    const highScore = this.game.getStorage().getHighScore();
     if (highScore > 0) {
       drawTextCentered(renderer, `最高分: $${highScore}`, 300, '#FFFFFF', 'MEDIUM');
     }

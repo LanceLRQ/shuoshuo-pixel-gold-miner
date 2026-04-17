@@ -36,11 +36,22 @@ const SHOP_ITEMS: ShopItem[] = [
   { name: '石头书', price: 80, description: '石头价值 x3', owned: false, type: ItemType.STONE_BOOK },
 ];
 
+/** 商店卡片布局参数 */
+const CARD_LAYOUT = {
+  cardW: 350,
+  cardH: 80,
+  gapX: 20,
+  gapY: 15,
+  startY: 100,
+} as const;
+
 export class ShopScene extends SceneBase {
   private game: Game;
   private money: number;
   private items: ShopItem[];
   private nextButton: Button;
+  /** 缓存道具按钮区域（避免每次点击重建） */
+  private itemButtons: Button[] = [];
 
   constructor(game: Game, money: number) {
     super();
@@ -52,11 +63,14 @@ export class ShopScene extends SceneBase {
 
     // 下一关按钮（横屏 800x540 居中底部）
     this.nextButton = new Button(330, 470, 140, 44, '下一关');
+
+    this.rebuildItemButtons();
   }
 
   enter(): void {
     // 重置购买状态
     this.items = SHOP_ITEMS.map(item => ({ ...item, owned: false }));
+    this.rebuildItemButtons();
   }
 
   exit(): void {}
@@ -67,10 +81,9 @@ export class ShopScene extends SceneBase {
     if (input.wasTapped()) {
       const pos = input.getTapPosition();
 
-      // 检测道具购买（每个道具卡片区域）
-      const itemButtons = this.getItemButtons();
-      for (let i = 0; i < itemButtons.length; i++) {
-        const btn = itemButtons[i]!;
+      // 检测道具购买
+      for (let i = 0; i < this.itemButtons.length; i++) {
+        const btn = this.itemButtons[i]!;
         if (btn.containsPoint(pos.x, pos.y)) {
           this.buyItem(i);
           return;
@@ -101,25 +114,20 @@ export class ShopScene extends SceneBase {
     drawTextCentered(renderer, `持有金额: $${this.money}`, 60, '#FFD700', 'MEDIUM');
 
     // 道具列表（2x2 网格布局适配横屏）
-    const cardW = 350;
-    const cardH = 80;
-    const gapX = 20;
-    const gapY = 15;
-    const startX = (800 - cardW * 2 - gapX) / 2;
-    const startY = 100;
+    const startX = (800 - CARD_LAYOUT.cardW * 2 - CARD_LAYOUT.gapX) / 2;
 
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i]!;
       const col = i % 2;
       const row = Math.floor(i / 2);
-      const x = startX + col * (cardW + gapX);
-      const y = startY + row * (cardH + gapY);
+      const x = startX + col * (CARD_LAYOUT.cardW + CARD_LAYOUT.gapX);
+      const y = CARD_LAYOUT.startY + row * (CARD_LAYOUT.cardH + CARD_LAYOUT.gapY);
 
       // 道具卡片背景
       const bgColor = item.owned ? '#2a4a2a' : '#2a2a4a';
-      renderer.fillRect(x, y, cardW, cardH, bgColor);
-      renderer.fillRect(x, y, cardW, 2, '#444466');
-      renderer.fillRect(x, y + cardH - 2, cardW, 2, '#444466');
+      renderer.fillRect(x, y, CARD_LAYOUT.cardW, CARD_LAYOUT.cardH, bgColor);
+      renderer.fillRect(x, y, CARD_LAYOUT.cardW, 2, '#444466');
+      renderer.fillRect(x, y + CARD_LAYOUT.cardH - 2, CARD_LAYOUT.cardW, 2, '#444466');
 
       // 道具信息
       const textColor = item.owned ? '#888888' : '#FFFFFF';
@@ -128,11 +136,11 @@ export class ShopScene extends SceneBase {
 
       // 价格/已购买
       if (item.owned) {
-        drawText(renderer, '已购买', x + cardW - 70, y + 18, '#00FF00', 'SMALL');
+        drawText(renderer, '已购买', x + CARD_LAYOUT.cardW - 70, y + 18, '#00FF00', 'SMALL');
       } else if (this.money < item.price) {
-        drawText(renderer, `$${item.price}`, x + cardW - 60, y + 18, '#FF4444', 'SMALL');
+        drawText(renderer, `$${item.price}`, x + CARD_LAYOUT.cardW - 60, y + 18, '#FF4444', 'SMALL');
       } else {
-        drawText(renderer, `$${item.price}`, x + cardW - 60, y + 18, '#FFD700', 'SMALL');
+        drawText(renderer, `$${item.price}`, x + CARD_LAYOUT.cardW - 60, y + 18, '#FFD700', 'SMALL');
       }
     }
 
@@ -140,23 +148,17 @@ export class ShopScene extends SceneBase {
     this.nextButton.render(renderer);
   }
 
-  /** 获取道具按钮区域列表（与渲染布局一致 2x2 网格） */
-  private getItemButtons(): Button[] {
-    const cardW = 350;
-    const cardH = 80;
-    const gapX = 20;
-    const gapY = 15;
-    const startX = (800 - cardW * 2 - gapX) / 2;
-    const startY = 100;
-
-    return this.items.map((_, i) => {
+  /** 重建道具按钮区域缓存 */
+  private rebuildItemButtons(): void {
+    const startX = (800 - CARD_LAYOUT.cardW * 2 - CARD_LAYOUT.gapX) / 2;
+    this.itemButtons = this.items.map((_, i) => {
       const col = i % 2;
       const row = Math.floor(i / 2);
       return new Button(
-        startX + col * (cardW + gapX),
-        startY + row * (cardH + gapY),
-        cardW,
-        cardH,
+        startX + col * (CARD_LAYOUT.cardW + CARD_LAYOUT.gapX),
+        CARD_LAYOUT.startY + row * (CARD_LAYOUT.cardH + CARD_LAYOUT.gapY),
+        CARD_LAYOUT.cardW,
+        CARD_LAYOUT.cardH,
         ''
       );
     });

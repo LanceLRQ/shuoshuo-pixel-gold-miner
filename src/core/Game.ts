@@ -212,6 +212,11 @@ export class Game {
     return this.audio;
   }
 
+  /** 获取存档系统实例 */
+  getStorage(): Storage {
+    return this.storage;
+  }
+
   /** 启动游戏主循环 */
   start(): void {
     this.changeScene(GameState.MENU);

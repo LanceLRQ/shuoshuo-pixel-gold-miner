@@ -20,15 +20,13 @@ import type { LevelConfig } from '../level/levels';
 import { ItemType } from '../scene/ShopScene';
 import { drawText, drawTextCentered } from '../ui/PixelText';
 import { randomInt, weightedRandom } from '../utils/random';
+import { pointInRect } from '../utils/collision';
 
 /** 暂停按钮点击区域（HUD 右上角） */
 const PAUSE_BTN = { x: 764, y: 4, w: 28, h: 28 };
 
 /** 教程按钮点击区域（暂停按钮左边） */
 const TUTORIAL_BTN = { x: 728, y: 4, w: 28, h: 28 };
-
-/** 教程已读 localStorage 键 */
-const TUTORIAL_SHOWN_KEY = 'goldminer_tutorial_shown';
 
 /** 道具名称缩写映射 */
 const ITEM_SHORT_NAMES: Record<string, string> = {
@@ -107,7 +105,7 @@ export class GameScene extends SceneBase {
 
   enter(): void {
     // 检查是否首次游玩
-    this.showTutorial = !localStorage.getItem(TUTORIAL_SHOWN_KEY);
+    this.showTutorial = !this.game.getStorage().loadTutorialShown();
     // 使用关卡配置生成矿物
     this.generateMinerals(this.levelConfig.mineralCount);
     // 使用关卡配置的时间限制
@@ -145,10 +143,7 @@ export class GameScene extends SceneBase {
       this.hook.checkCollision(this.minerals);
     }
 
-    // 更新矿物（虽然静止，但保持接口一致）
-    for (const mineral of this.minerals) {
-      mineral.update(dt);
-    }
+    // 更新矿物（矿物静止不动，无需更新）
   }
 
   handleInput(input: Input): void {
@@ -156,7 +151,7 @@ export class GameScene extends SceneBase {
     if (this.showTutorial) {
       if (input.wasTapped() || input.isJustPressed('Space')) {
         this.showTutorial = false;
-        localStorage.setItem(TUTORIAL_SHOWN_KEY, '1');
+        this.game.getStorage().saveTutorialShown();
       }
       return;
     }
@@ -312,10 +307,9 @@ export class GameScene extends SceneBase {
     }
   }
 
-  /** 判断点是否在指定按钮区域内 */
+  /** 判断点是否在指定矩形区域内 */
   private isInBtn(pos: { x: number; y: number }, btn: { x: number; y: number; w: number; h: number }): boolean {
-    return pos.x >= btn.x && pos.x <= btn.x + btn.w &&
-           pos.y >= btn.y && pos.y <= btn.y + btn.h;
+    return pointInRect(pos.x, pos.y, btn);
   }
 
   /** 钩爪收回完成回调（含道具效果） */
@@ -444,7 +438,6 @@ export class GameScene extends SceneBase {
 
   /** 判断点是否在暂停按钮区域内 */
   private isInPauseBtn(x: number, y: number): boolean {
-    return x >= PAUSE_BTN.x && x <= PAUSE_BTN.x + PAUSE_BTN.w &&
-           y >= PAUSE_BTN.y && y <= PAUSE_BTN.y + PAUSE_BTN.h;
+    return pointInRect(x, y, PAUSE_BTN);
   }
 }
