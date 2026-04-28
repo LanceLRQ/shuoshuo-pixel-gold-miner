@@ -6,7 +6,7 @@
 import type { Renderer } from '../core/Renderer';
 import type { SpriteCacheMap } from '../assets/types';
 import type { Mineral } from './Mineral';
-import { GAME_CONFIG } from './types';
+import { GAME_CONFIG, MineralType } from './types';
 import { pointInCircle } from '../utils/collision';
 
 /** 钩爪状态 */
@@ -23,6 +23,9 @@ export enum HookState {
 
 /** 钩爪收回事件回调 */
 export type HookCallback = (mineral: Mineral | null) => void;
+
+/** 炸药桶爆炸事件回调 */
+export type BombExplodeCallback = (x: number, y: number) => void;
 
 export class Hook {
   /** 锚点（矿工位置） */
@@ -54,6 +57,9 @@ export class Hook {
   /** 收回完成回调 */
   private onComplete: HookCallback | null = null;
 
+  /** 炸药桶爆炸回调 */
+  private onBombExplode: BombExplodeCallback | null = null;
+
   /** 精灵缓存 */
   private spriteCache: SpriteCacheMap;
 
@@ -71,6 +77,11 @@ export class Hook {
   /** 设置收回完成回调 */
   setOnComplete(cb: HookCallback): void {
     this.onComplete = cb;
+  }
+
+  /** 设置炸药桶爆炸回调 */
+  setOnBombExplode(cb: BombExplodeCallback): void {
+    this.onBombExplode = cb;
   }
 
   /** 玩家操作：发射钩爪 */
@@ -173,6 +184,16 @@ export class Hook {
       if (mineral.grabbed) continue;
       // 碰撞判定: 钩爪尖端到矿物中心距离 < 矿物碰撞半径
       if (pointInCircle(this.tipX, this.tipY, mineral.x, mineral.y, mineral.radius)) {
+        // 炸药桶：碰到立即爆炸，不拉回
+        if (mineral.config.type === MineralType.BOMB) {
+          mineral.grabbed = true;
+          this.state = HookState.REELING_EMPTY;
+          if (this.onBombExplode) {
+            this.onBombExplode(mineral.x, mineral.y);
+          }
+          return;
+        }
+
         this.grabbedMineral = mineral;
         mineral.grabbed = true;
         this.state = HookState.REELING_WITH_MINERAL;

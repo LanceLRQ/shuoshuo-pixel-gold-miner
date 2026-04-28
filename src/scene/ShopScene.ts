@@ -26,6 +26,8 @@ export enum ItemType {
   STRENGTH_POTION = 'STRENGTH_POTION',
   LUCKY_CLOVER = 'LUCKY_CLOVER',
   STONE_BOOK = 'STONE_BOOK',
+  MOUSE_POISON = 'MOUSE_POISON',
+  DIAMOND_OIL = 'DIAMOND_OIL',
 }
 
 /** 道具配置表 */
@@ -34,15 +36,18 @@ const SHOP_ITEMS: ShopItem[] = [
   { name: '力量药水', price: 200, description: '收回速度 +50%', owned: false, type: ItemType.STRENGTH_POTION },
   { name: '幸运草', price: 100, description: '神秘袋最低 200$', owned: false, type: ItemType.LUCKY_CLOVER },
   { name: '石头书', price: 80, description: '石头价值 x3', owned: false, type: ItemType.STONE_BOOK },
+  { name: '老鼠药', price: 120, description: '老鼠价值 x5', owned: false, type: ItemType.MOUSE_POISON },
+  { name: '钻石变色油', price: 250, description: '钻石价值 x2', owned: false, type: ItemType.DIAMOND_OIL },
 ];
 
-/** 商店卡片布局参数 */
+/** 商店卡片布局参数（3列 x 2行） */
 const CARD_LAYOUT = {
-  cardW: 350,
+  cardW: 230,
   cardH: 80,
-  gapX: 20,
-  gapY: 15,
+  gapX: 15,
+  gapY: 12,
   startY: 100,
+  cols: 3,
 } as const;
 
 export class ShopScene extends SceneBase {
@@ -113,8 +118,8 @@ export class ShopScene extends SceneBase {
     // 当前金额
     drawTextCentered(renderer, `持有金额: $${this.money}`, 60, '#FFD700', 'MEDIUM');
 
-    // 道具列表（2x2 网格布局适配横屏）
-    const startX = (800 - CARD_LAYOUT.cardW * 2 - CARD_LAYOUT.gapX) / 2;
+    // 道具列表（3列网格布局适配横屏）
+    const startX = (800 - CARD_LAYOUT.cardW * CARD_LAYOUT.cols - CARD_LAYOUT.gapX * (CARD_LAYOUT.cols - 1)) / 2;
 
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i]!;
@@ -150,10 +155,10 @@ export class ShopScene extends SceneBase {
 
   /** 重建道具按钮区域缓存 */
   private rebuildItemButtons(): void {
-    const startX = (800 - CARD_LAYOUT.cardW * 2 - CARD_LAYOUT.gapX) / 2;
+    const startX = (800 - CARD_LAYOUT.cardW * CARD_LAYOUT.cols - CARD_LAYOUT.gapX * (CARD_LAYOUT.cols - 1)) / 2;
     this.itemButtons = this.items.map((_, i) => {
-      const col = i % 2;
-      const row = Math.floor(i / 2);
+      const col = i % CARD_LAYOUT.cols;
+      const row = Math.floor(i / CARD_LAYOUT.cols);
       return new Button(
         startX + col * (CARD_LAYOUT.cardW + CARD_LAYOUT.gapX),
         CARD_LAYOUT.startY + row * (CARD_LAYOUT.cardH + CARD_LAYOUT.gapY),

@@ -5,12 +5,15 @@
 /** 矿物类型 */
 export enum MineralType {
   GOLD_SMALL = 'GOLD_SMALL',
+  GOLD_MEDIUM = 'GOLD_MEDIUM',
   GOLD_LARGE = 'GOLD_LARGE',
   DIAMOND = 'DIAMOND',
   STONE = 'STONE',
   BOMB = 'BOMB',
   MYSTERY_BAG = 'MYSTERY_BAG',
   BONE = 'BONE',
+  MOUSE = 'MOUSE',
+  MOLE = 'MOLE',
 }
 
 /** 矿物配置接口 */
@@ -35,10 +38,19 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
     width: 8,
     height: 8,
   },
+  [MineralType.GOLD_MEDIUM]: {
+    type: MineralType.GOLD_MEDIUM,
+    value: 250,
+    weight: 0.6,
+    radius: 26,
+    spriteName: 'GOLD_MEDIUM',
+    width: 12,
+    height: 12,
+  },
   [MineralType.GOLD_LARGE]: {
     type: MineralType.GOLD_LARGE,
-    value: 200,
-    weight: 0.8,
+    value: 500,
+    weight: 1.0,
     radius: 32,
     spriteName: 'GOLD_LARGE',
     width: 16,
@@ -82,12 +94,30 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
   },
   [MineralType.BONE]: {
     type: MineralType.BONE,
-    value: 5,
-    weight: 0.1,
+    value: 11,
+    weight: 1.2,
     radius: 24,
     spriteName: 'BONE_SPRITE',
     width: 12,
     height: 6,
+  },
+  [MineralType.MOUSE]: {
+    type: MineralType.MOUSE,
+    value: 20,
+    weight: 0.3,
+    radius: 16,
+    spriteName: 'MOUSE_SPRITE',
+    width: 12,
+    height: 8,
+  },
+  [MineralType.MOLE]: {
+    type: MineralType.MOLE,
+    value: 50,
+    weight: 0.5,
+    radius: 20,
+    spriteName: 'MOLE_SPRITE',
+    width: 12,
+    height: 10,
   },
 };
 

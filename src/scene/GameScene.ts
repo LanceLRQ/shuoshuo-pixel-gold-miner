@@ -11,7 +11,7 @@ import type { Game } from '../core/Game';
 import { GAME_CONFIG, MineralType } from '../entity/types';
 import { Miner, MinerState } from '../entity/Miner';
 import { Hook, HookState } from '../entity/Hook';
-import { Mineral } from '../entity/Mineral';
+import { Mineral, MysteryContent } from '../entity/Mineral';
 import { HUD, HUD_HEIGHT } from '../ui/HUD';
 import { SoundType } from '../core/Audio';
 import { renderBackground, GROUND_Y } from '../assets/background';
@@ -21,6 +21,15 @@ import { ItemType } from '../scene/ShopScene';
 import { drawText, drawTextCentered } from '../ui/PixelText';
 import { randomInt, weightedRandom } from '../utils/random';
 import { pointInRect } from '../utils/collision';
+
+/** 炸药桶爆炸半径 */
+const BOMB_BLAST_RADIUS = 100;
+
+/** 爆炸闪烁持续时间（秒） */
+const EXPLOSION_FLASH_DURATION = 0.4;
+
+/** 通知显示持续时间（秒） */
+const NOTIFICATION_DURATION = 1.5;
 
 /** 暂停按钮点击区域（HUD 右上角） */
 const PAUSE_BTN = { x: 764, y: 4, w: 28, h: 28 };
@@ -34,28 +43,36 @@ const ITEM_SHORT_NAMES: Record<string, string> = {
   [ItemType.STRENGTH_POTION]: '力量',
   [ItemType.LUCKY_CLOVER]: '幸运',
   [ItemType.STONE_BOOK]: '石书',
+  [ItemType.MOUSE_POISON]: '鼠药',
+  [ItemType.DIAMOND_OIL]: '钻油',
 };
 
 /** 矿物生成权重（决定各矿物出现概率） */
 const MINERAL_WEIGHTS: number[] = [
-  30, // GOLD_SMALL
-  15, // GOLD_LARGE
+  26, // GOLD_SMALL
+  10, // GOLD_MEDIUM
+  8,  // GOLD_LARGE
   5,  // DIAMOND
-  25, // STONE
-  8,  // BOMB
+  20, // STONE
+  6,  // BOMB
   7,  // MYSTERY_BAG
-  10, // BONE
+  8,  // BONE
+  5,  // MOUSE
+  5,  // MOLE
 ];
 
 /** 矿物类型列表（与权重一一对应） */
 const MINERAL_TYPES: MineralType[] = [
   MineralType.GOLD_SMALL,
+  MineralType.GOLD_MEDIUM,
   MineralType.GOLD_LARGE,
   MineralType.DIAMOND,
   MineralType.STONE,
   MineralType.BOMB,
   MineralType.MYSTERY_BAG,
   MineralType.BONE,
+  MineralType.MOUSE,
+  MineralType.MOLE,
 ];
 
 export class GameScene extends SceneBase {
@@ -77,6 +94,18 @@ export class GameScene extends SceneBase {
 
   /** 教程引导状态 */
   private showTutorial: boolean = false;
+
+  /** 爆炸效果：位置X */
+  private explosionX: number = 0;
+  /** 爆炸效果：位置Y */
+  private explosionY: number = 0;
+  /** 爆炸效果：剩余时间 */
+  private explosionTimer: number = 0;
+
+  /** 通知文字 */
+  private notificationText: string = '';
+  /** 通知剩余时间 */
+  private notificationTimer: number = 0;
 
   constructor(game: Game, levelConfig: LevelConfig) {
     super();
@@ -101,6 +130,9 @@ export class GameScene extends SceneBase {
 
     // 设置钩爪收回回调
     this.hook.setOnComplete((mineral) => this.onHookComplete(mineral));
+
+    // 设置炸药桶爆炸回调
+    this.hook.setOnBombExplode((x, y) => this.onBombExplode(x, y));
   }
 
   enter(): void {
@@ -138,12 +170,25 @@ export class GameScene extends SceneBase {
     // 更新钩爪
     this.hook.update(dt);
 
+    // 更新爆炸效果计时器
+    if (this.explosionTimer > 0) {
+      this.explosionTimer -= dt;
+    }
+
+    // 更新通知计时器
+    if (this.notificationTimer > 0) {
+      this.notificationTimer -= dt;
+    }
+
     // 钩爪延伸状态下检测碰撞
     if (this.hook.state === HookState.EXTENDING) {
       this.hook.checkCollision(this.minerals);
     }
 
-    // 更新矿物（矿物静止不动，无需更新）
+    // 更新移动矿物
+    for (const mineral of this.minerals) {
+      mineral.update(dt);
+    }
   }
 
   handleInput(input: Input): void {
@@ -223,6 +268,21 @@ export class GameScene extends SceneBase {
 
     // 绘制 HUD
     this.hud.render(renderer);
+
+    // 绘制爆炸效果
+    if (this.explosionTimer > 0) {
+      this.renderExplosion(renderer);
+    }
+
+    // 绘制通知
+    if (this.notificationTimer > 0) {
+      const alpha = Math.min(1, this.notificationTimer / 0.3);
+      const ctx = renderer.getContext();
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      drawTextCentered(renderer, this.notificationText, 200, '#FFD700', 'LARGE');
+      ctx.restore();
+    }
 
     // 暂停按钮和教程按钮
     this.renderTopButtons(renderer);
@@ -317,9 +377,16 @@ export class GameScene extends SceneBase {
     if (mineral) {
       const items = this.game.getOwnedItems();
 
-      // 炸药：抓到石头自动炸毁，不加钱
+      // 炸药道具：抓到石头自动炸毁，不加钱
       if (mineral.config.type === MineralType.STONE && items.has(ItemType.DYNAMITE)) {
         this.game.getAudio().play(SoundType.GRAB_BOMB);
+        this.showNotification('炸药摧毁石头');
+        return;
+      }
+
+      // 神秘袋特殊处理
+      if (mineral.config.type === MineralType.MYSTERY_BAG && mineral.mysteryContent) {
+        this.handleMysteryBag(mineral);
         return;
       }
 
@@ -331,13 +398,26 @@ export class GameScene extends SceneBase {
         value = mineral.value * 3;
       }
 
+      // 老鼠药：老鼠价值 ×5
+      if (mineral.config.type === MineralType.MOUSE && items.has(ItemType.MOUSE_POISON)) {
+        value = mineral.value * 5;
+      }
+
+      // 鼹鼠带钻石额外加钱
+      if (mineral.config.type === MineralType.MOLE && mineral.hasDiamond) {
+        value += 600;
+      }
+
+      // 钻石变色油：钻石价值 ×2
+      if (mineral.config.type === MineralType.DIAMOND && items.has(ItemType.DIAMOND_OIL)) {
+        value = mineral.value * 2;
+      }
+
       this.hud.money += value;
 
       // 播放对应音效
       if (mineral.config.type === MineralType.DIAMOND) {
         this.game.getAudio().play(SoundType.GRAB_DIAMOND);
-      } else if (mineral.config.type === MineralType.BOMB) {
-        this.game.getAudio().play(SoundType.GRAB_BOMB);
       } else if (mineral.config.type === MineralType.STONE) {
         this.game.getAudio().play(SoundType.GRAB_STONE);
       } else {
@@ -353,6 +433,45 @@ export class GameScene extends SceneBase {
     } else {
       this.game.getAudio().play(SoundType.HOOK_REEL);
     }
+  }
+
+  /** 处理神秘袋内容 */
+  private handleMysteryBag(mineral: Mineral): void {
+    const content = mineral.mysteryContent!;
+
+    if (content === MysteryContent.CASH_SMALL || content === MysteryContent.CASH_LARGE) {
+      let value = mineral.value;
+      this.hud.money += value;
+      this.showNotification(`${mineral.mysteryLabel}: +$${value}`);
+      this.game.getAudio().play(SoundType.GRAB_GOLD);
+      this.miner.setState(MinerState.HAPPY);
+    } else if (content === MysteryContent.STRENGTH_POTION) {
+      // 大力药剂：本关收回速度永久 +80%
+      this.hook.reelSpeedMultiplier = Math.max(this.hook.reelSpeedMultiplier, 1.8);
+      this.showNotification('大力药剂: 收回加速!');
+      this.game.getAudio().play(SoundType.COIN);
+      this.miner.setState(MinerState.HAPPY);
+    } else if (content === MysteryContent.DYNAMITE) {
+      // 炸药：直接炸毁场上随机一个矿物（优先炸石头）
+      const stones = this.minerals.filter(m => !m.grabbed && m.config.type === MineralType.STONE);
+      const targets = stones.length > 0 ? stones : this.minerals.filter(m => !m.grabbed);
+      if (targets.length > 0) {
+        const target = targets[Math.floor(Math.random() * targets.length)]!;
+        target.grabbed = true;
+        this.minerals = this.minerals.filter(m => m !== target);
+        this.showNotification('炸药: 摧毁了一个矿物!');
+      } else {
+        this.showNotification('炸药: 场上没有可炸的...');
+      }
+      this.game.getAudio().play(SoundType.GRAB_BOMB);
+      this.miner.setState(MinerState.SAD);
+    }
+  }
+
+  /** 显示通知文字 */
+  private showNotification(text: string): void {
+    this.notificationText = text;
+    this.notificationTimer = NOTIFICATION_DURATION;
   }
 
   /** 随机生成矿物（使用关卡配置的权重和数量） */
@@ -390,6 +509,14 @@ export class GameScene extends SceneBase {
       const y = randomInt(GAME_CONFIG.MINERAL_AREA_TOP, GAME_CONFIG.MINERAL_AREA_BOTTOM);
       const mineral = new Mineral(x, y, type, this.spriteCache);
 
+      // 移动矿物设置速度和边界
+      if (type === MineralType.MOUSE || type === MineralType.MOLE) {
+        const speed = type === MineralType.MOUSE ? 120 : 60;
+        mineral.vx = Math.random() > 0.5 ? speed : -speed;
+        mineral.moveLeft = GAME_CONFIG.MINERAL_AREA_LEFT;
+        mineral.moveRight = GAME_CONFIG.MINERAL_AREA_RIGHT;
+      }
+
       if (!this.isOverlapping(mineral)) {
         return mineral;
       }
@@ -408,6 +535,52 @@ export class GameScene extends SceneBase {
       }
     }
     return false;
+  }
+
+  /** 炸药桶爆炸处理：清除范围内矿物 */
+  private onBombExplode(x: number, y: number): void {
+    this.explosionX = x;
+    this.explosionY = y;
+    this.explosionTimer = EXPLOSION_FLASH_DURATION;
+
+    // 清除爆炸范围内的矿物
+    this.minerals = this.minerals.filter(mineral => {
+      if (mineral.grabbed) return true;
+      const dx = mineral.x - x;
+      const dy = mineral.y - y;
+      return dx * dx + dy * dy > BOMB_BLAST_RADIUS * BOMB_BLAST_RADIUS;
+    });
+
+    this.game.getAudio().play(SoundType.GRAB_BOMB);
+    this.miner.setState(MinerState.SAD);
+  }
+
+  /** 渲染爆炸效果（橙色扩散圆 + 白色闪光） */
+  private renderExplosion(renderer: Renderer): void {
+    const ctx = renderer.getContext();
+    const progress = 1 - this.explosionTimer / EXPLOSION_FLASH_DURATION;
+    const radius = BOMB_BLAST_RADIUS * Math.min(progress * 2, 1);
+    const alpha = Math.max(0, 1 - progress);
+
+    // 橙色扩散圆
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.6;
+    ctx.fillStyle = '#FF6600';
+    ctx.beginPath();
+    ctx.arc(this.explosionX, this.explosionY, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 白色闪光核心
+    if (progress < 0.3) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(this.explosionX, this.explosionY, radius * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
   /** 跳转到结算场景 */

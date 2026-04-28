@@ -24,66 +24,71 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 150,
     mineralCount: 10,
     timeLimit: 60,
-    mineralWeights: [35, 15, 3, 25, 5, 7, 10], // 友好：多小金块少炸弹
+    // 小金/中金/大金/钻/石/炸/袋/骨/鼠/鼹
+    mineralWeights: [28, 10, 8, 2, 22, 4, 6, 8, 6, 6], // 友好：多小金块少炸弹
   },
   {
     level: 2,
-    targetMoney: 250,
+    targetMoney: 300,
     mineralCount: 12,
     timeLimit: 60,
-    mineralWeights: [30, 15, 4, 25, 6, 10, 10],
+    mineralWeights: [26, 10, 8, 3, 22, 5, 7, 7, 6, 6],
   },
   {
     level: 3,
-    targetMoney: 400,
+    targetMoney: 450,
     mineralCount: 13,
     timeLimit: 60,
-    mineralWeights: [28, 14, 5, 25, 8, 10, 10],
+    mineralWeights: [24, 10, 8, 4, 24, 6, 7, 6, 6, 5],
   },
   {
     level: 4,
-    targetMoney: 550,
+    targetMoney: 650,
     mineralCount: 14,
     timeLimit: 55,
+    mineralWeights: [22, 10, 8, 5, 26, 7, 7, 5, 5, 5],
   },
   {
     level: 5,
-    targetMoney: 700,
+    targetMoney: 850,
     mineralCount: 15,
     timeLimit: 55,
+    mineralWeights: [20, 10, 8, 5, 28, 8, 7, 5, 5, 4],
   },
   {
     level: 6,
-    targetMoney: 900,
+    targetMoney: 1100,
     mineralCount: 16,
     timeLimit: 55,
-    mineralWeights: [25, 12, 6, 25, 10, 12, 10], // 增加难度
+    mineralWeights: [18, 8, 8, 6, 30, 9, 6, 5, 5, 5], // 增加难度
   },
   {
     level: 7,
-    targetMoney: 1100,
+    targetMoney: 1350,
     mineralCount: 17,
     timeLimit: 50,
+    mineralWeights: [16, 8, 8, 6, 32, 10, 6, 5, 5, 4],
   },
   {
     level: 8,
-    targetMoney: 1350,
+    targetMoney: 1600,
     mineralCount: 18,
     timeLimit: 50,
+    mineralWeights: [14, 8, 8, 7, 32, 11, 6, 5, 5, 4],
   },
   {
     level: 9,
-    targetMoney: 1600,
+    targetMoney: 1900,
     mineralCount: 19,
     timeLimit: 50,
-    mineralWeights: [22, 10, 7, 28, 12, 11, 10], // 更难
+    mineralWeights: [12, 6, 6, 8, 34, 12, 7, 5, 5, 5], // 更难
   },
   {
     level: 10,
-    targetMoney: 2000,
+    targetMoney: 2300,
     mineralCount: 20,
     timeLimit: 45,
-    mineralWeights: [20, 10, 8, 30, 12, 10, 10], // 最终关
+    mineralWeights: [10, 6, 6, 8, 36, 14, 6, 5, 5, 4], // 最终关
   },
 ];
 
