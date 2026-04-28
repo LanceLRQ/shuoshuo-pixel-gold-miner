@@ -123,8 +123,8 @@ export class ShopScene extends SceneBase {
 
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i]!;
-      const col = i % 2;
-      const row = Math.floor(i / 2);
+      const col = i % CARD_LAYOUT.cols;
+      const row = Math.floor(i / CARD_LAYOUT.cols);
       const x = startX + col * (CARD_LAYOUT.cardW + CARD_LAYOUT.gapX);
       const y = CARD_LAYOUT.startY + row * (CARD_LAYOUT.cardH + CARD_LAYOUT.gapY);
 

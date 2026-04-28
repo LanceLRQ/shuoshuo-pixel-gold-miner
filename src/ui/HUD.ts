@@ -45,11 +45,11 @@ export class HUD {
     // 金币图标
     const coinSprite = this.spriteCache.get('COIN_ICON');
     if (coinSprite) {
-      renderer.drawImage(coinSprite, 80, 6);
+      renderer.drawImage(coinSprite, 80, 7);
     }
 
     // 当前金额
-    drawText(renderer, `$${this.money}`, 100, 8, '#FFD700', 'MEDIUM');
+    drawText(renderer, `$${this.money}`, 108, 8, '#FFD700', 'MEDIUM');
 
     // 目标金额
     drawText(renderer, `/ $${this.targetMoney}`, 200, 8, '#AAAAAA', 'MEDIUM');

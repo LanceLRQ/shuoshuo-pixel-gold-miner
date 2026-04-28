@@ -32,10 +32,10 @@ const EXPLOSION_FLASH_DURATION = 0.4;
 const NOTIFICATION_DURATION = 1.5;
 
 /** 暂停按钮点击区域（HUD 右上角） */
-const PAUSE_BTN = { x: 764, y: 4, w: 28, h: 28 };
+const PAUSE_BTN = { x: 770, y: 4, w: 22, h: 28 };
 
 /** 教程按钮点击区域（暂停按钮左边） */
-const TUTORIAL_BTN = { x: 728, y: 4, w: 28, h: 28 };
+const TUTORIAL_BTN = { x: 740, y: 4, w: 26, h: 28 };
 
 /** 道具名称缩写映射 */
 const ITEM_SHORT_NAMES: Record<string, string> = {
@@ -315,14 +315,32 @@ export class GameScene extends SceneBase {
   /** 绘制右上角按钮组（暂停 + 教程） */
   private renderTopButtons(renderer: Renderer): void {
     const ctx = renderer.getContext();
+    const rw = renderer.width;
 
     // 暂停按钮（两条竖线）
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(renderer.width - 26, 10, 4, 18);
-    ctx.fillRect(renderer.width - 16, 10, 4, 18);
+    ctx.fillRect(rw - 22, 13, 3, 10);
+    ctx.fillRect(rw - 15, 13, 3, 10);
 
-    // 教程按钮（问号，使用像素字体）
-    drawText(renderer, '?', renderer.width - 56, 8, '#FFFFFF', 'MEDIUM');
+    // 教程按钮（问号像素画 6x9）
+    const qx = rw - 50;
+    const qy = 12;
+    const QM = [
+      [0,1,1,1,1,0],
+      [1,0,0,0,0,1],
+      [0,0,0,0,0,1],
+      [0,0,0,0,1,0],
+      [0,0,0,1,0,0],
+      [0,0,1,0,0,0],
+      [0,1,1,0,0,0],
+      [0,0,0,0,0,0],
+      [0,1,1,0,0,0],
+    ];
+    for (let r = 0; r < QM.length; r++) {
+      for (let c = 0; c < QM[r]!.length; c++) {
+        if (QM[r]![c]) ctx.fillRect(qx + c, qy + r, 1, 1);
+      }
+    }
   }
 
   /** 绘制当前生效道具列表 */
@@ -342,13 +360,22 @@ export class GameScene extends SceneBase {
       }
     }
 
-    const padX = 6;
-    const padY = 2;
-    const itemH = 14;
-    const gap = 4;
-    const boxW = maxW + padX * 2;
-    const startX = renderer.width - boxW - 4;
-    const startY = HUD_HEIGHT + 6;
+    const padX = 8;
+    const padY = 3;
+    const itemH = 16;
+    const gap = 3;
+    const marginR = 8;
+    const boxW = maxW + padX * 2 + 4; // +4 给左侧金线留位
+    const panelH = itemArray.length * itemH + (itemArray.length - 1) * gap + padY * 2;
+    const startX = renderer.width - boxW - marginR;
+    const startY = HUD_HEIGHT + 10;
+    const panelY = startY - padY;
+
+    // 整体半透明背景面板
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.beginPath();
+    ctx.roundRect(startX - 4, panelY, boxW + 8, panelH, 4);
+    ctx.fill();
 
     for (let i = 0; i < itemArray.length; i++) {
       const itemType = itemArray[i]!;
@@ -357,7 +384,7 @@ export class GameScene extends SceneBase {
       const y = startY + i * (itemH + gap);
 
       // 道具背景条
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
       ctx.fillRect(startX, y, boxW, itemH);
       // 左侧金色边线
       ctx.fillStyle = '#FFD700';
@@ -381,6 +408,7 @@ export class GameScene extends SceneBase {
       if (mineral.config.type === MineralType.STONE && items.has(ItemType.DYNAMITE)) {
         this.game.getAudio().play(SoundType.GRAB_BOMB);
         this.showNotification('炸药摧毁石头');
+        items.delete(ItemType.DYNAMITE);
         return;
       }
 

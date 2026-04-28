@@ -9,7 +9,7 @@ import { SceneBase } from '../scene/SceneBase';
 import { MenuScene } from '../scene/MenuScene';
 import { GameScene } from '../scene/GameScene';
 import { ResultScene } from '../scene/ResultScene';
-import { ShopScene, type ItemType } from '../scene/ShopScene';
+import { ShopScene, ItemType } from '../scene/ShopScene';
 import { GameOverScene } from '../scene/GameOverScene';
 import { Storage } from './Storage';
 import { LevelManager } from '../level/LevelManager';
@@ -28,6 +28,15 @@ export enum GameState {
   SHOP = 'SHOP',
   GAME_OVER = 'GAME_OVER',
 }
+
+/** 当局有效道具（关卡结束时清除） */
+const LEVEL_BUFF_ITEMS: ItemType[] = [
+  ItemType.STRENGTH_POTION,
+  ItemType.LUCKY_CLOVER,
+  ItemType.STONE_BOOK,
+  ItemType.MOUSE_POISON,
+  ItemType.DIAMOND_OIL,
+];
 
 /** FPS 统计更新间隔（毫秒） */
 const FPS_UPDATE_INTERVAL = 1000;
@@ -112,6 +121,10 @@ export class Game {
         this.lastEarnedMoney = this.currentScene.getMoney();
         this.lastTargetMoney = this.currentScene.getTargetMoney();
         this.currentMoney += this.lastEarnedMoney;
+        // 当局有效道具，关卡结束即失效
+        for (const item of LEVEL_BUFF_ITEMS) {
+          this.ownedItems.delete(item);
+        }
       }
       // 如果从 ShopScene 退出，同步剩余金额
       if (this.state === GameState.SHOP && this.currentScene instanceof ShopScene) {
