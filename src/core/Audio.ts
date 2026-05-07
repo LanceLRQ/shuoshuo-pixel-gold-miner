@@ -23,6 +23,14 @@ export class Audio {
   private audioCtx: AudioContext | null = null;
   private volume: number = 0.5;
   private muted: boolean = false;
+  /** BGM 总开关 */
+  private bgmEnabled: boolean = true;
+  /** 当前 BGM 调度器（停止时清除） */
+  private bgmScheduler: number | null = null;
+  /** BGM 循环时累计的下一个音符播放时间（AudioContext 时钟） */
+  private bgmNextNoteTime: number = 0;
+  /** BGM 序列指针 */
+  private bgmIndex: number = 0;
 
   /** 懒初始化 AudioContext（需要用户交互后才能创建） */
   private ensureContext(): AudioContext {
@@ -109,17 +117,32 @@ export class Audio {
     osc.stop(ctx.currentTime + duration);
   }
 
-  /** 金币音效（短促上升音） */
+  /** 金币音效（短促上升音，使用精确调度） */
   private playCoinSound(ctx: AudioContext): void {
-    this.playBeep(ctx, 880, 0.08, 0.2);
-    setTimeout(() => this.playBeep(ctx, 1100, 0.1, 0.2), 80);
+    this.scheduleBeep(ctx, 880, 0.08, 0.2, 0);
+    this.scheduleBeep(ctx, 1100, 0.1, 0.2, 0.08);
   }
 
-  /** 钻石音效（清脆高音） */
+  /** 钻石音效（清脆高音，使用精确调度） */
   private playDiamondSound(ctx: AudioContext): void {
-    this.playBeep(ctx, 1200, 0.05, 0.2);
-    setTimeout(() => this.playBeep(ctx, 1500, 0.05, 0.2), 50);
-    setTimeout(() => this.playBeep(ctx, 1800, 0.1, 0.15), 100);
+    this.scheduleBeep(ctx, 1200, 0.05, 0.2, 0);
+    this.scheduleBeep(ctx, 1500, 0.05, 0.2, 0.05);
+    this.scheduleBeep(ctx, 1800, 0.1, 0.15, 0.1);
+  }
+
+  /** 精确调度的蜂鸣音（替代 setTimeout，避免标签页失焦时跑调） */
+  private scheduleBeep(ctx: AudioContext, freq: number, duration: number, vol: number, delay: number): void {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const start = ctx.currentTime + delay;
+    osc.type = 'square';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol * this.volume, start);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(start);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+    osc.stop(start + duration);
   }
 
   /** 炸弹音效（低频爆炸） */
@@ -140,11 +163,11 @@ export class Audio {
     osc.stop(ctx.currentTime + 0.3);
   }
 
-  /** 胜利号角音效 */
+  /** 胜利号角音效（精确调度） */
   private playFanfare(ctx: AudioContext): void {
     const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
     notes.forEach((freq, i) => {
-      setTimeout(() => this.playBeep(ctx, freq, 0.15, 0.2), i * 120);
+      this.scheduleBeep(ctx, freq, 0.15, 0.2, i * 0.12);
     });
   }
 
@@ -153,14 +176,118 @@ export class Audio {
     this.volume = Math.max(0, Math.min(1, vol));
   }
 
+  /** 获取当前音量 */
+  getVolume(): number {
+    return this.volume;
+  }
+
   /** 静音/取消静音 */
   toggleMute(): boolean {
     this.muted = !this.muted;
+    if (this.muted) this.stopBgm();
     return this.muted;
   }
 
   /** 是否静音 */
   isMuted(): boolean {
     return this.muted;
+  }
+
+  /** 设置静音状态 */
+  setMuted(muted: boolean): void {
+    this.muted = muted;
+    if (muted) this.stopBgm();
+  }
+
+  /** BGM 是否启用 */
+  isBgmEnabled(): boolean {
+    return this.bgmEnabled;
+  }
+
+  /** 设置 BGM 启用状态 */
+  setBgmEnabled(enabled: boolean): void {
+    this.bgmEnabled = enabled;
+    if (!enabled) this.stopBgm();
+  }
+
+  // ====== BGM 8-bit 风格背景音乐 ======
+
+  /** 8-bit 风格主旋律（C 大调循环，频率 Hz + 时长秒） */
+  private readonly BGM_MELODY: Array<{ freq: number; dur: number }> = [
+    // 第一小节
+    { freq: 523, dur: 0.2 }, // C5
+    { freq: 659, dur: 0.2 }, // E5
+    { freq: 784, dur: 0.2 }, // G5
+    { freq: 659, dur: 0.2 }, // E5
+    // 第二小节
+    { freq: 440, dur: 0.2 }, // A4
+    { freq: 523, dur: 0.2 }, // C5
+    { freq: 659, dur: 0.2 }, // E5
+    { freq: 523, dur: 0.2 }, // C5
+    // 第三小节
+    { freq: 349, dur: 0.2 }, // F4
+    { freq: 440, dur: 0.2 }, // A4
+    { freq: 523, dur: 0.2 }, // C5
+    { freq: 440, dur: 0.2 }, // A4
+    // 第四小节
+    { freq: 392, dur: 0.2 }, // G4
+    { freq: 494, dur: 0.2 }, // B4
+    { freq: 587, dur: 0.4 }, // D5（长音收尾）
+  ];
+
+  /** 启动 BGM 循环播放 */
+  startBgm(): void {
+    if (!this.bgmEnabled || this.muted) return;
+    if (this.bgmScheduler !== null) return; // 已在播放
+
+    const ctx = this.ensureContext();
+    this.bgmIndex = 0;
+    this.bgmNextNoteTime = ctx.currentTime + 0.05;
+
+    // 调度器：每 100ms 检查并排入未来 0.3s 内的音符
+    const lookAhead = 0.3;
+    const interval = 100;
+    this.bgmScheduler = window.setInterval(() => {
+      const now = this.audioCtx!.currentTime;
+      while (this.bgmNextNoteTime < now + lookAhead) {
+        const note = this.BGM_MELODY[this.bgmIndex]!;
+        this.scheduleBgmNote(note.freq, this.bgmNextNoteTime, note.dur);
+        this.bgmNextNoteTime += note.dur;
+        this.bgmIndex = (this.bgmIndex + 1) % this.BGM_MELODY.length;
+      }
+    }, interval);
+  }
+
+  /** 停止 BGM 播放 */
+  stopBgm(): void {
+    if (this.bgmScheduler !== null) {
+      clearInterval(this.bgmScheduler);
+      this.bgmScheduler = null;
+    }
+  }
+
+  /** 排入单个 BGM 音符（精确时间调度） */
+  private scheduleBgmNote(freq: number, startTime: number, duration: number): void {
+    const ctx = this.audioCtx;
+    if (!ctx) return;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    // 8-bit 风格用方波
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(freq, startTime);
+
+    // ADSR 简化：快速起音 + 衰减
+    const peakVol = 0.06 * this.volume; // BGM 音量低于音效
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(peakVol, startTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration * 0.95);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(startTime);
+    osc.stop(startTime + duration);
   }
 }

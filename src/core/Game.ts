@@ -11,7 +11,7 @@ import { GameScene } from '../scene/GameScene';
 import { ResultScene } from '../scene/ResultScene';
 import { ShopScene, ItemType } from '../scene/ShopScene';
 import { GameOverScene } from '../scene/GameOverScene';
-import { Storage } from './Storage';
+import { Storage, type GameProgress } from './Storage';
 import { LevelManager } from '../level/LevelManager';
 import { Audio } from './Audio';
 import { ThemeManager } from '../assets/theme/ThemeManager';
@@ -99,6 +99,12 @@ export class Game {
       this.themeManager.setTheme('shuoshuo_crystal');
     }
 
+    // 加载用户音频设置
+    const settings = this.storage.loadSettings();
+    this.audio.setVolume(settings.volume);
+    this.audio.setMuted(settings.muted);
+    this.audio.setBgmEnabled(settings.bgmEnabled);
+
     // 切后台自动暂停
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && this.currentScene instanceof GameScene) {
@@ -116,11 +122,10 @@ export class Game {
   changeScene(state: GameState): void {
     // 退出当前场景
     if (this.currentScene) {
-      // 如果从 GameScene 退出，保存金额数据
+      // 如果从 GameScene 退出，记录本关金额（不在此处累加，等进入商店/通关时才算）
       if (this.state === GameState.PLAYING && this.currentScene instanceof GameScene) {
         this.lastEarnedMoney = this.currentScene.getMoney();
         this.lastTargetMoney = this.currentScene.getTargetMoney();
-        this.currentMoney += this.lastEarnedMoney;
         // 当局有效道具，关卡结束即失效
         for (const item of LEVEL_BUFF_ITEMS) {
           this.ownedItems.delete(item);
@@ -139,6 +144,11 @@ export class Game {
     // 切换状态
     this.state = state;
 
+    // 进入 PLAYING 时停 BGM（避免干扰），其他场景由场景自身决定是否启动
+    if (state === GameState.PLAYING) {
+      this.audio.stopBgm();
+    }
+
     // 根据状态创建对应场景（动态创建，传递数据）
     let scene: SceneBase | null = null;
 
@@ -153,6 +163,8 @@ export class Game {
         // 从商店回来，进入下一关
         if (previousState === GameState.SHOP) {
           this.levelManager.nextLevel();
+          // 关卡切换时持久化进度
+          this.persistProgress();
         }
         scene = new GameScene(this, this.levelManager.getCurrentConfig());
         break;
@@ -160,11 +172,17 @@ export class Game {
         scene = new ResultScene(this, this.lastEarnedMoney, this.lastTargetMoney);
         break;
       case GameState.SHOP:
+        // 通关进商店，累加本关金额
+        this.currentMoney += this.lastEarnedMoney;
         scene = new ShopScene(this, this.currentMoney);
+        // 进入商店时持久化进度
+        this.persistProgress();
         break;
       case GameState.GAME_OVER:
-        // 更新最高分
+        // 最后一关通关，累加金额、更新最高分、清除进度
+        this.currentMoney += this.lastEarnedMoney;
         this.storage.updateHighScore(this.currentMoney);
+        this.storage.clearProgress();
         scene = new GameOverScene(this, this.currentMoney, this.levelManager.currentLevel);
         break;
     }
@@ -218,6 +236,44 @@ export class Game {
   /** 清空已购买道具 */
   clearOwnedItems(): void {
     this.ownedItems.clear();
+  }
+
+  /** 持久化当前游戏进度（金额 + 关卡 + 道具） */
+  private persistProgress(): void {
+    const progress: GameProgress = {
+      currentMoney: this.currentMoney,
+      currentLevel: this.levelManager.currentLevel,
+      ownedItems: Array.from(this.ownedItems).map(item => item as string),
+    };
+    this.storage.saveProgress(progress);
+  }
+
+  /** 从存档恢复进度并直接进入游戏 */
+  restoreProgress(): boolean {
+    const progress = this.storage.loadProgress();
+    if (!progress) return false;
+    this.currentMoney = progress.currentMoney;
+    this.levelManager.setLevel(progress.currentLevel);
+    this.ownedItems.clear();
+    for (const itemStr of progress.ownedItems) {
+      this.ownedItems.add(itemStr as ItemType);
+    }
+    // 直接进入 PLAYING 状态（不走 SHOP 流转，避免 nextLevel 误调用）
+    this.state = GameState.MENU; // 临时设回 MENU，让 changeScene 内部 previousState 为 MENU 不触发 nextLevel
+    this.changeScene(GameState.PLAYING);
+    return true;
+  }
+
+  /** 清除进度存档（用于"清除存档"按钮） */
+  clearProgress(): void {
+    this.storage.clearProgress();
+  }
+
+  /** 失败重试当前关卡（保留累计金额和已购道具） */
+  retryCurrentLevel(): void {
+    // 重置本关金额记录，避免污染
+    this.lastEarnedMoney = 0;
+    this.changeScene(GameState.PLAYING);
   }
 
   /** 获取全局音效实例 */

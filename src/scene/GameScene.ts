@@ -21,6 +21,13 @@ import { ItemType } from '../scene/ShopScene';
 import { drawText, drawTextCentered } from '../ui/PixelText';
 import { randomInt, weightedRandom } from '../utils/random';
 import { pointInRect } from '../utils/collision';
+import {
+  ParticleSystem,
+  PRESET_GOLD_SPARKLE,
+  PRESET_DIAMOND_SPARKLE,
+  PRESET_STONE_DUST,
+  PRESET_BOMB_SPARK,
+} from '../effects/Particle';
 
 /** 炸药桶爆炸半径 */
 const BOMB_BLAST_RADIUS = 100;
@@ -31,11 +38,17 @@ const EXPLOSION_FLASH_DURATION = 0.4;
 /** 通知显示持续时间（秒） */
 const NOTIFICATION_DURATION = 1.5;
 
-/** 暂停按钮点击区域（HUD 右上角） */
-const PAUSE_BTN = { x: 770, y: 4, w: 22, h: 28 };
+/** 暂停按钮尺寸常量（位置在运行时根据 renderer.width 动态计算） */
+const PAUSE_BTN_W = 22;
+const PAUSE_BTN_H = 28;
+const PAUSE_BTN_Y = 4;
+const PAUSE_BTN_RIGHT_OFFSET = 30; // 距右边距：22 + 8
 
-/** 教程按钮点击区域（暂停按钮左边） */
-const TUTORIAL_BTN = { x: 740, y: 4, w: 26, h: 28 };
+/** 教程按钮尺寸常量（暂停按钮左侧） */
+const TUTORIAL_BTN_W = 26;
+const TUTORIAL_BTN_H = 28;
+const TUTORIAL_BTN_Y = 4;
+const TUTORIAL_BTN_RIGHT_OFFSET = 60; // 距右边距：暂停 + 间距 + 自身宽
 
 /** 道具名称缩写映射 */
 const ITEM_SHORT_NAMES: Record<string, string> = {
@@ -107,6 +120,9 @@ export class GameScene extends SceneBase {
   /** 通知剩余时间 */
   private notificationTimer: number = 0;
 
+  /** 粒子系统 */
+  private particles: ParticleSystem = new ParticleSystem();
+
   constructor(game: Game, levelConfig: LevelConfig) {
     super();
     this.game = game;
@@ -120,8 +136,8 @@ export class GameScene extends SceneBase {
     this.miner = new Miner(GAME_CONFIG.MINER_X, GAME_CONFIG.MINER_Y, this.spriteCache);
     this.hook = new Hook(GAME_CONFIG.MINER_X, GROUND_Y, this.spriteCache);
 
-    // 初始化 HUD
-    this.hud = new HUD(this.spriteCache, this.targetMoney);
+    // 初始化 HUD（直接传入关卡时长）
+    this.hud = new HUD(this.spriteCache, this.targetMoney, this.levelConfig.timeLimit);
 
     // 力量药水：收回速度 +50%
     if (game.getOwnedItems().has(ItemType.STRENGTH_POTION)) {
@@ -150,6 +166,7 @@ export class GameScene extends SceneBase {
   exit(): void {
     // 清理
     this.minerals = [];
+    this.particles.clear();
   }
 
   update(dt: number): void {
@@ -189,6 +206,9 @@ export class GameScene extends SceneBase {
     for (const mineral of this.minerals) {
       mineral.update(dt);
     }
+
+    // 更新粒子
+    this.particles.update(dt);
   }
 
   handleInput(input: Input): void {
@@ -219,33 +239,39 @@ export class GameScene extends SceneBase {
     if (input.wasTapped()) {
       const pos = input.getTapPosition();
 
+      const rw = this.game.getRenderer().width;
+      const pauseRect = { x: rw - PAUSE_BTN_RIGHT_OFFSET, y: PAUSE_BTN_Y, w: PAUSE_BTN_W, h: PAUSE_BTN_H };
+      const tutorialRect = { x: rw - TUTORIAL_BTN_RIGHT_OFFSET, y: TUTORIAL_BTN_Y, w: TUTORIAL_BTN_W, h: TUTORIAL_BTN_H };
+
       // 暂停按钮优先检测
-      if (this.isInPauseBtn(pos.x, pos.y)) {
+      if (pointInRect(pos.x, pos.y, pauseRect)) {
         this.isPaused = true;
         return;
       }
 
       // 教程按钮
-      if (this.isInBtn(pos, TUTORIAL_BTN)) {
+      if (pointInRect(pos.x, pos.y, tutorialRect)) {
         this.showTutorial = true;
         return;
       }
 
-      // 发射钩爪
-      if (this.hook.state === HookState.SWINGING) {
-        this.hook.fire();
-        this.miner.setState(MinerState.PULL);
-        this.game.getAudio().play(SoundType.HOOK_FIRE);
-      }
+      // 发射钩爪（Hook.fire() 内部已检查 SWINGING 状态）
+      this.tryFireHook();
       return;
     }
 
     // 空格键发射钩爪
-    if (this.hook.state === HookState.SWINGING && input.isJustPressed('Space')) {
-      this.hook.fire();
-      this.miner.setState(MinerState.PULL);
-      this.game.getAudio().play(SoundType.HOOK_FIRE);
+    if (input.isJustPressed('Space')) {
+      this.tryFireHook();
     }
+  }
+
+  /** 尝试发射钩爪（仅当摆动状态生效） */
+  private tryFireHook(): void {
+    if (this.hook.state !== HookState.SWINGING) return;
+    this.hook.fire();
+    this.miner.setState(MinerState.PULL);
+    this.game.getAudio().play(SoundType.HOOK_FIRE);
   }
 
   render(renderer: Renderer): void {
@@ -268,6 +294,9 @@ export class GameScene extends SceneBase {
 
     // 绘制 HUD
     this.hud.render(renderer);
+
+    // 绘制粒子（在矿工/钩爪之上）
+    this.particles.render(renderer);
 
     // 绘制爆炸效果
     if (this.explosionTimer > 0) {
@@ -394,19 +423,18 @@ export class GameScene extends SceneBase {
     }
   }
 
-  /** 判断点是否在指定矩形区域内 */
-  private isInBtn(pos: { x: number; y: number }, btn: { x: number; y: number; w: number; h: number }): boolean {
-    return pointInRect(pos.x, pos.y, btn);
-  }
-
   /** 钩爪收回完成回调（含道具效果） */
   private onHookComplete(mineral: Mineral | null): void {
     if (mineral) {
       const items = this.game.getOwnedItems();
+      // 矿物收回点（用于粒子特效定位，约在矿工头顶）
+      const px = GAME_CONFIG.MINER_X;
+      const py = GAME_CONFIG.MINER_Y + 10;
 
       // 炸药道具：抓到石头自动炸毁，不加钱
       if (mineral.config.type === MineralType.STONE && items.has(ItemType.DYNAMITE)) {
         this.game.getAudio().play(SoundType.GRAB_BOMB);
+        this.particles.emit({ ...PRESET_BOMB_SPARK, x: px, y: py });
         this.showNotification('炸药摧毁石头');
         items.delete(ItemType.DYNAMITE);
         return;
@@ -443,13 +471,16 @@ export class GameScene extends SceneBase {
 
       this.hud.money += value;
 
-      // 播放对应音效
+      // 播放对应音效 + 粒子特效
       if (mineral.config.type === MineralType.DIAMOND) {
         this.game.getAudio().play(SoundType.GRAB_DIAMOND);
+        this.particles.emit({ ...PRESET_DIAMOND_SPARKLE, x: px, y: py });
       } else if (mineral.config.type === MineralType.STONE) {
         this.game.getAudio().play(SoundType.GRAB_STONE);
+        this.particles.emit({ ...PRESET_STONE_DUST, x: px, y: py });
       } else {
         this.game.getAudio().play(SoundType.GRAB_GOLD);
+        this.particles.emit({ ...PRESET_GOLD_SPARKLE, x: px, y: py });
       }
 
       // 设置矿工表情
@@ -485,8 +516,22 @@ export class GameScene extends SceneBase {
       const targets = stones.length > 0 ? stones : this.minerals.filter(m => !m.grabbed);
       if (targets.length > 0) {
         const target = targets[Math.floor(Math.random() * targets.length)]!;
-        target.grabbed = true;
+        // 直接从列表中移除即可，无需额外设置 grabbed
         this.minerals = this.minerals.filter(m => m !== target);
+        // 顺手撒点炸药粒子，反馈更明显
+        this.particles.emit({
+          x: target.x,
+          y: target.y,
+          count: 12,
+          colors: ['#FF6600', '#FFAA00', '#FFFFFF'],
+          speedMin: 60,
+          speedMax: 150,
+          lifeMin: 0.3,
+          lifeMax: 0.6,
+          sizeMin: 2,
+          sizeMax: 3,
+          gravity: 80,
+        });
         this.showNotification('炸药: 摧毁了一个矿物!');
       } else {
         this.showNotification('炸药: 场上没有可炸的...');
@@ -579,6 +624,9 @@ export class GameScene extends SceneBase {
       return dx * dx + dy * dy > BOMB_BLAST_RADIUS * BOMB_BLAST_RADIUS;
     });
 
+    // 爆炸火花粒子
+    this.particles.emit({ ...PRESET_BOMB_SPARK, x, y });
+
     this.game.getAudio().play(SoundType.GRAB_BOMB);
     this.miner.setState(MinerState.SAD);
   }
@@ -635,10 +683,5 @@ export class GameScene extends SceneBase {
   /** 恢复游戏 */
   resume(): void {
     this.isPaused = false;
-  }
-
-  /** 判断点是否在暂停按钮区域内 */
-  private isInPauseBtn(x: number, y: number): boolean {
-    return pointInRect(x, y, PAUSE_BTN);
   }
 }

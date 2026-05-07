@@ -21,9 +21,9 @@ export class HUD {
   /** 精灵缓存 */
   private spriteCache: SpriteCacheMap;
 
-  constructor(spriteCache: SpriteCacheMap, targetMoney: number) {
+  constructor(spriteCache: SpriteCacheMap, targetMoney: number, initialTime: number = 0) {
     this.spriteCache = spriteCache;
-    this.timeLeft = 60;
+    this.timeLeft = initialTime;
     this.money = 0;
     this.targetMoney = targetMoney;
   }

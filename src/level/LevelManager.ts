@@ -28,4 +28,9 @@ export class LevelManager {
   reset(): void {
     this.currentLevel = 1;
   }
+
+  /** 跳转到指定关卡（用于进度恢复） */
+  setLevel(level: number): void {
+    this.currentLevel = Math.max(1, Math.min(level, TOTAL_LEVELS));
+  }
 }

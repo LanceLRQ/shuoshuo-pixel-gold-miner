@@ -63,8 +63,8 @@ export class ShopScene extends SceneBase {
     this.game = game;
     this.money = money;
 
-    // 复制道具列表
-    this.items = SHOP_ITEMS.map(item => ({ ...item }));
+    // 复制道具列表（owned 状态从 Game 同步，避免重复购买）
+    this.items = this.buildItemsFromOwned();
 
     // 下一关按钮（横屏 800x540 居中底部）
     this.nextButton = new Button(330, 470, 140, 44, '下一关');
@@ -73,9 +73,15 @@ export class ShopScene extends SceneBase {
   }
 
   enter(): void {
-    // 重置购买状态
-    this.items = SHOP_ITEMS.map(item => ({ ...item, owned: false }));
+    // 从 Game 同步已购买状态，防止重复购买扣钱
+    this.items = this.buildItemsFromOwned();
     this.rebuildItemButtons();
+  }
+
+  /** 根据 Game.ownedItems 构建 items，已购道具 owned=true */
+  private buildItemsFromOwned(): ShopItem[] {
+    const ownedSet = this.game.getOwnedItems();
+    return SHOP_ITEMS.map(item => ({ ...item, owned: ownedSet.has(item.type) }));
   }
 
   exit(): void {}
