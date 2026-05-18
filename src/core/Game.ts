@@ -11,16 +11,19 @@ import { GameScene } from '../scene/GameScene';
 import { ResultScene } from '../scene/ResultScene';
 import { ShopScene, ItemType } from '../scene/ShopScene';
 import { GameOverScene } from '../scene/GameOverScene';
-import { Storage, type GameProgress } from './Storage';
+import { Storage, type GameProgress, AUTO_SLOT_ID } from './Storage';
 import { LevelManager } from '../level/LevelManager';
 import { Audio } from './Audio';
 import { ThemeManager } from '../assets/theme/ThemeManager';
 import { CLASSIC_THEME } from '../assets/theme/classic';
 import { SHUOSHUO_CRYSTAL_THEME } from '../assets/theme/shuoshuo-crystal';
+import { Difficulty, DEFAULT_DIFFICULTY, getDifficultyConfig, type DifficultyConfig } from '../level/difficulty';
 
 /** 游戏全局状态枚举 */
 export enum GameState {
   MENU = 'MENU',
+  SLOT_SELECT = 'SLOT_SELECT',           // 槽位选择（Phase C 实现场景）
+  DIFFICULTY_SELECT = 'DIFFICULTY_SELECT', // 难度选择（Phase C 实现场景）
   READY = 'READY',
   PLAYING = 'PLAYING',
   REELING = 'REELING',
@@ -60,6 +63,12 @@ export class Game {
   /** 当前游戏状态 */
   private state: GameState = GameState.MENU;
 
+  /** 当前难度（影响金额/时间/重量/商店/道具等所有玩法参数） */
+  private currentDifficulty: Difficulty = DEFAULT_DIFFICULTY;
+
+  /** 当前活跃槽位（始终是自动槽位 AUTO_SLOT_ID；手动槽位被加载时会复制到自动槽位） */
+  private activeSlot: number = AUTO_SLOT_ID;
+
   /** 已注册的场景映射 */
   private scenes: Map<GameState, SceneBase> = new Map();
 
@@ -78,6 +87,9 @@ export class Game {
   private currentMoney: number = 0;
   /** 上局剩余时间（用于 ResultScene 计算时间奖励） */
   private lastRemainingTime: number = 0;
+
+  /** 标记 Bonus 是否已通过 commitLevelResult 累加，避免 SHOP 进入时重复加 */
+  private bonusAlreadyCommitted: boolean = false;
 
   // FPS 统计
   private frameCount: number = 0;
@@ -183,17 +195,21 @@ export class Game {
         scene = new ResultScene(this, this.lastEarnedMoney, this.lastTargetMoney, this.lastRemainingTime);
         break;
       case GameState.SHOP:
-        // 通关进商店，累加本关金额
-        this.currentMoney += this.lastEarnedMoney;
+        // 通关进商店：若 Bonus 已在 ResultScene 即时提交则不重复累加
+        if (!this.bonusAlreadyCommitted) {
+          this.currentMoney += this.lastEarnedMoney;
+        }
+        this.bonusAlreadyCommitted = false;
         scene = new ShopScene(this, this.currentMoney);
-        // 进入商店时持久化进度
         this.persistProgress();
         break;
       case GameState.GAME_OVER:
-        // 最后一关通关，累加金额、更新最高分、清除进度
-        this.currentMoney += this.lastEarnedMoney;
-        this.storage.updateHighScore(this.currentMoney);
-        this.storage.clearProgress();
+        if (!this.bonusAlreadyCommitted) {
+          this.currentMoney += this.lastEarnedMoney;
+        }
+        this.bonusAlreadyCommitted = false;
+        this.storage.updateAllHighScores(this.currentDifficulty, this.currentMoney);
+        this.storage.resetAutoSlot();
         scene = new GameOverScene(this, this.currentMoney, this.levelManager.currentLevel);
         break;
     }
@@ -249,35 +265,116 @@ export class Game {
     this.ownedItems.clear();
   }
 
-  /** 持久化当前游戏进度（金额 + 关卡 + 道具） */
-  private persistProgress(): void {
-    const progress: GameProgress = {
+  /** 构造当前进度快照 */
+  private buildProgress(): GameProgress {
+    return {
       currentMoney: this.currentMoney,
       currentLevel: this.levelManager.currentLevel,
       ownedItems: Array.from(this.ownedItems).map(item => item as string),
     };
-    this.storage.saveProgress(progress);
   }
 
-  /** 从存档恢复进度并直接进入游戏 */
+  /** 自动存档到自动槽位（关键事件触发） */
+  private persistProgress(): void {
+    this.storage.autoSave(this.buildProgress(), this.currentDifficulty);
+  }
+
+  /**
+   * 关卡通过即时存档（确保 Bonus 不丢失）
+   * 由 ResultScene.enter() 在动画开始前调用
+   */
+  commitLevelResult(totalEarned: number): void {
+    this.currentMoney += totalEarned;
+    this.persistProgress();
+    this.storage.updateAllHighScores(this.currentDifficulty, this.currentMoney);
+    // 记录给后续场景使用（避免 SHOP 进入时再次累加）
+    this.lastEarnedMoney = totalEarned;
+    this.bonusAlreadyCommitted = true;
+  }
+
+  /** 从自动槽位恢复进度并直接进入游戏 */
   restoreProgress(): boolean {
-    const progress = this.storage.loadProgress();
-    if (!progress) return false;
-    this.currentMoney = progress.currentMoney;
-    this.levelManager.setLevel(progress.currentLevel);
+    const save = this.storage.loadAutoSlot();
+    if (!save) return false;
+    this.currentMoney = save.progress.currentMoney;
+    this.currentDifficulty = save.meta.difficulty;
+    this.levelManager.setLevel(save.progress.currentLevel);
     this.ownedItems.clear();
-    for (const itemStr of progress.ownedItems) {
+    for (const itemStr of save.progress.ownedItems) {
       this.ownedItems.add(itemStr as ItemType);
     }
-    // 直接进入 PLAYING 状态（不走 SHOP 流转，避免 nextLevel 误调用）
+    this.activeSlot = AUTO_SLOT_ID;
     this.state = GameState.MENU; // 临时设回 MENU，让 changeScene 内部 previousState 为 MENU 不触发 nextLevel
     this.changeScene(GameState.PLAYING);
     return true;
   }
 
-  /** 清除进度存档（用于"清除存档"按钮） */
+  /**
+   * 开新游戏（选定难度后调用）
+   * 重置自动槽位 + 设置难度 + 进入 PLAYING
+   */
+  startNewGame(difficulty: Difficulty): void {
+    this.storage.resetAutoSlot();
+    this.currentDifficulty = difficulty;
+    this.currentMoney = 0;
+    this.levelManager.reset();
+    this.ownedItems.clear();
+    this.activeSlot = AUTO_SLOT_ID;
+    this.state = GameState.MENU;
+    this.changeScene(GameState.PLAYING);
+  }
+
+  /**
+   * 玩家"另存为"：把自动槽位当前内容复制到指定手动槽位
+   * 返回是否成功
+   */
+  saveAsManualSlot(slotId: number): boolean {
+    return this.storage.saveToManualSlot(slotId) !== null;
+  }
+
+  /**
+   * 玩家加载手动槽位：复制到自动槽位 + 恢复内存状态 + 进入游戏
+   * 返回是否成功
+   */
+  loadFromManualSlot(slotId: number): boolean {
+    const save = this.storage.loadManualSlot(slotId);
+    if (!save) return false;
+    this.currentMoney = save.progress.currentMoney;
+    this.currentDifficulty = save.meta.difficulty;
+    this.levelManager.setLevel(save.progress.currentLevel);
+    this.ownedItems.clear();
+    for (const itemStr of save.progress.ownedItems) {
+      this.ownedItems.add(itemStr as ItemType);
+    }
+    this.activeSlot = AUTO_SLOT_ID;
+    this.state = GameState.MENU;
+    this.changeScene(GameState.PLAYING);
+    return true;
+  }
+
+  /** 清除进度存档（用于"清除存档"按钮，清自动槽位） */
   clearProgress(): void {
-    this.storage.clearProgress();
+    this.storage.resetAutoSlot();
+  }
+
+  /** 获取当前难度 */
+  getDifficulty(): Difficulty {
+    return this.currentDifficulty;
+  }
+
+  /** 获取当前难度配置 */
+  getDifficultyConfig(): DifficultyConfig {
+    return getDifficultyConfig(this.currentDifficulty);
+  }
+
+  /** 设置难度（在 DifficultyScene 选择后调用） */
+  setDifficulty(d: Difficulty): void {
+    this.currentDifficulty = d;
+  }
+
+  /** 获取当前活跃槽位 */
+  getActiveSlot(): number {
+    return this.activeSlot;
   }
 
   /** 失败重试当前关卡（保留累计金额和已购道具） */
