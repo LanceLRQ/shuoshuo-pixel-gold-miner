@@ -17,6 +17,26 @@ export enum SoundType {
   LEVEL_FAIL = 'LEVEL_FAIL',     // 关卡失败
   TICK = 'TICK',                 // 倒计时滴答
   CLICK = 'CLICK',               // UI 点击
+  MINER_HAPPY = 'MINER_HAPPY',   // 矿工语音：高兴（抓到值钱物）"Oooh~"
+  MINER_NORMAL = 'MINER_NORMAL', // 矿工语音：平淡（普通物）"Hmm"
+  MINER_SAD = 'MINER_SAD',       // 矿工语音：失望（石头/炸弹）"Aaah..."
+}
+
+/** 矿工语音参数（供 playVoice 使用） */
+interface VoiceEnvelope {
+  waveType: OscillatorType;
+  /** 频率包络：t=相对开始秒数，hz=目标频率 */
+  freqs: Array<{ t: number; hz: number }>;
+  /** 总时长（秒） */
+  duration: number;
+  /** 峰值音量（0-1，会再乘 this.volume） */
+  peak: number;
+  /** 起音时间（默认 0.05） */
+  attackTime?: number;
+  /** 持续段起点（达到此时刻仍保持 peak），不传则起音后立即衰减 */
+  sustainStart?: number;
+  /** 可选颤音：rate=频率Hz，depth=频偏Hz */
+  lfo?: { rate: number; depth: number };
 }
 
 export class Audio {
@@ -79,7 +99,108 @@ export class Audio {
       case SoundType.CLICK:
         this.playBeep(ctx, 600, 0.05, 0.2);
         break;
+      case SoundType.MINER_HAPPY:
+        this.playMinerHappy(ctx);
+        break;
+      case SoundType.MINER_NORMAL:
+        this.playMinerNormal(ctx);
+        break;
+      case SoundType.MINER_SAD:
+        this.playMinerSad(ctx);
+        break;
     }
+  }
+
+  /** 矿工拟人语音：高兴 "Oooh~"（三角波 + 颤音上扬） */
+  private playMinerHappy(ctx: AudioContext): void {
+    this.playVoice(ctx, {
+      waveType: 'triangle',
+      freqs: [{ t: 0, hz: 280 }, { t: 0.15, hz: 420 }, { t: 0.45, hz: 380 }],
+      duration: 0.45,
+      peak: 0.22,
+      attackTime: 0.05,
+      sustainStart: 0.35,
+      lfo: { rate: 5, depth: 15 },
+    });
+  }
+
+  /** 矿工拟人语音：平淡 "Hmm"（鼻音短促） */
+  private playMinerNormal(ctx: AudioContext): void {
+    this.playVoice(ctx, {
+      waveType: 'triangle',
+      freqs: [{ t: 0, hz: 220 }, { t: 0.18, hz: 200 }],
+      duration: 0.18,
+      peak: 0.18,
+      attackTime: 0.03,
+    });
+  }
+
+  /** 矿工拟人语音：失望 "Aaah..."（锯齿波下降） */
+  private playMinerSad(ctx: AudioContext): void {
+    this.playVoice(ctx, {
+      waveType: 'sawtooth',
+      freqs: [{ t: 0, hz: 320 }, { t: 0.55, hz: 160 }],
+      duration: 0.55,
+      peak: 0.18,
+      attackTime: 0.05,
+      sustainStart: 0.3,
+    });
+  }
+
+  /**
+   * 通用拟人语音合成
+   * 抽取自三种 playMiner* 的公共 osc+gain+ADSR 样板
+   * 节点在 osc.onended 时统一 disconnect，防止 LFO/lfoGain 在低端设备累积引用
+   */
+  private playVoice(ctx: AudioContext, env: VoiceEnvelope): void {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const start = ctx.currentTime;
+    const peakVol = env.peak * this.volume;
+
+    osc.type = env.waveType;
+    for (const point of env.freqs) {
+      if (point.t === 0) {
+        osc.frequency.setValueAtTime(point.hz, start);
+      } else {
+        osc.frequency.linearRampToValueAtTime(point.hz, start + point.t);
+      }
+    }
+
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(peakVol, start + (env.attackTime ?? 0.05));
+    if (env.sustainStart !== undefined) {
+      gain.gain.setValueAtTime(peakVol, start + env.sustainStart);
+    }
+    gain.gain.exponentialRampToValueAtTime(0.001, start + env.duration);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    // 可选 LFO 颤音（modulates osc.frequency）
+    let lfo: OscillatorNode | null = null;
+    let lfoGain: GainNode | null = null;
+    if (env.lfo) {
+      lfo = ctx.createOscillator();
+      lfoGain = ctx.createGain();
+      lfo.type = 'sine';
+      lfo.frequency.value = env.lfo.rate;
+      lfoGain.gain.value = env.lfo.depth;
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      lfo.start(start);
+      lfo.stop(start + env.duration);
+    }
+
+    osc.start(start);
+    osc.stop(start + env.duration);
+
+    osc.onended = () => {
+      osc.disconnect();
+      gain.disconnect();
+      lfo?.disconnect();
+      lfoGain?.disconnect();
+    };
   }
 
   /** 播放蜂鸣音 */

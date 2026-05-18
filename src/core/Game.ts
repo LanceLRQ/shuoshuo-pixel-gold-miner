@@ -41,6 +41,9 @@ const LEVEL_BUFF_ITEMS: ItemType[] = [
 /** FPS 统计更新间隔（毫秒） */
 const FPS_UPDATE_INTERVAL = 1000;
 
+/** 时间奖励：每剩余 1 秒折算的金币数（用于 ResultScene Bonus 计算） */
+export const TIME_BONUS_PER_SECOND = 5;
+
 /** 是否显示 FPS */
 let showFps = true;
 
@@ -72,6 +75,8 @@ export class Game {
   private lastEarnedMoney: number = 0;
   private lastTargetMoney: number = 200;
   private currentMoney: number = 0;
+  /** 上局剩余时间（用于 ResultScene 计算时间奖励） */
+  private lastRemainingTime: number = 0;
 
   // FPS 统计
   private frameCount: number = 0;
@@ -126,6 +131,7 @@ export class Game {
       if (this.state === GameState.PLAYING && this.currentScene instanceof GameScene) {
         this.lastEarnedMoney = this.currentScene.getMoney();
         this.lastTargetMoney = this.currentScene.getTargetMoney();
+        this.lastRemainingTime = this.currentScene.getRemainingTime();
         // 当局有效道具，关卡结束即失效
         for (const item of LEVEL_BUFF_ITEMS) {
           this.ownedItems.delete(item);
@@ -134,6 +140,10 @@ export class Game {
       // 如果从 ShopScene 退出，同步剩余金额
       if (this.state === GameState.SHOP && this.currentScene instanceof ShopScene) {
         this.currentMoney = this.currentScene.getMoney();
+      }
+      // 如果从 ResultScene 退出（达标后进入 SHOP/GAME_OVER），用含 Bonus 的最终金额覆盖
+      if (this.state === GameState.RESULT && this.currentScene instanceof ResultScene) {
+        this.lastEarnedMoney = this.currentScene.getTotalEarned();
       }
       this.currentScene.exit();
     }
@@ -169,7 +179,7 @@ export class Game {
         scene = new GameScene(this, this.levelManager.getCurrentConfig());
         break;
       case GameState.RESULT:
-        scene = new ResultScene(this, this.lastEarnedMoney, this.lastTargetMoney);
+        scene = new ResultScene(this, this.lastEarnedMoney, this.lastTargetMoney, this.lastRemainingTime);
         break;
       case GameState.SHOP:
         // 通关进商店，累加本关金额

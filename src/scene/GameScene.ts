@@ -28,6 +28,8 @@ import {
   PRESET_STONE_DUST,
   PRESET_BOMB_SPARK,
 } from '../effects/Particle';
+import { FloatingTextSystem } from '../effects/FloatingText';
+import { Button } from '../ui/Button';
 
 /** 炸药桶爆炸半径 */
 const BOMB_BLAST_RADIUS = 100;
@@ -49,6 +51,30 @@ const TUTORIAL_BTN_W = 26;
 const TUTORIAL_BTN_H = 28;
 const TUTORIAL_BTN_Y = 4;
 const TUTORIAL_BTN_RIGHT_OFFSET = 60; // 距右边距：暂停 + 间距 + 自身宽
+
+/** 矿物抓取反馈分档（按价值决定语音/颜色/飘字大小） */
+const VALUE_TIER = {
+  /** 高价值阈值：触发 Happy 语音 + LARGE 飘字 */
+  HIGH: 300,
+  /** 顶级阈值：青色高亮飘字 */
+  PREMIUM: 500,
+  /** 中等阈值：金色飘字（低于则白色） */
+  MEDIUM: 100,
+} as const;
+
+/** 矿物价值飘字配色 */
+const VALUE_COLOR = {
+  PREMIUM: '#00FFFF',
+  MEDIUM: '#FFD700',
+  LOW: '#FFFFFF',
+} as const;
+
+/** 按价值返回飘字颜色 */
+function pickValueColor(value: number): string {
+  if (value >= VALUE_TIER.PREMIUM) return VALUE_COLOR.PREMIUM;
+  if (value >= VALUE_TIER.MEDIUM) return VALUE_COLOR.MEDIUM;
+  return VALUE_COLOR.LOW;
+}
 
 /** 道具名称缩写映射 */
 const ITEM_SHORT_NAMES: Record<string, string> = {
@@ -123,6 +149,12 @@ export class GameScene extends SceneBase {
   /** 粒子系统 */
   private particles: ParticleSystem = new ParticleSystem();
 
+  /** 飘字系统 */
+  private floatingTexts: FloatingTextSystem = new FloatingTextSystem();
+
+  /** 提前结算按钮（仅在达标后显示） */
+  private finishButton: Button;
+
   constructor(game: Game, levelConfig: LevelConfig) {
     super();
     this.game = game;
@@ -149,6 +181,15 @@ export class GameScene extends SceneBase {
 
     // 设置炸药桶爆炸回调
     this.hook.setOnBombExplode((x, y) => this.onBombExplode(x, y));
+
+    // 提前结算按钮（右下角，仅达标时点亮）
+    this.finishButton = new Button(
+      GAME_CONFIG.CANVAS_WIDTH - 130,
+      GAME_CONFIG.CANVAS_HEIGHT - 50,
+      120,
+      36,
+      '提前结算 ▶'
+    );
   }
 
   enter(): void {
@@ -167,6 +208,7 @@ export class GameScene extends SceneBase {
     // 清理
     this.minerals = [];
     this.particles.clear();
+    this.floatingTexts.clear();
   }
 
   update(dt: number): void {
@@ -207,8 +249,11 @@ export class GameScene extends SceneBase {
       mineral.update(dt);
     }
 
-    // 更新粒子
     this.particles.update(dt);
+    this.floatingTexts.update(dt);
+
+    // 同步提前结算按钮禁用状态：钩爪不在摆动时禁用（避免抓取中途结算的歧义）
+    this.finishButton.disabled = this.hook.state !== HookState.SWINGING;
   }
 
   handleInput(input: Input): void {
@@ -255,9 +300,23 @@ export class GameScene extends SceneBase {
         return;
       }
 
+      // 提前结算按钮（仅达标时响应；Button.disabled 在钩爪非摆动时拦截点击）
+      if (this.hud.isTargetReached()) {
+        if (this.finishButton.update(pos.x, pos.y, true)) {
+          this.goToResult();
+          return;
+        }
+      }
+
       // 发射钩爪（Hook.fire() 内部已检查 SWINGING 状态）
       this.tryFireHook();
       return;
+    } else {
+      // 非点击时更新按钮 hover 状态
+      if (this.hud.isTargetReached()) {
+        const pos = input.getTapPosition();
+        this.finishButton.update(pos.x, pos.y, false);
+      }
     }
 
     // 空格键发射钩爪
@@ -298,9 +357,17 @@ export class GameScene extends SceneBase {
     // 绘制粒子（在矿工/钩爪之上）
     this.particles.render(renderer);
 
+    // 绘制飘字（在粒子之上）
+    this.floatingTexts.render(renderer);
+
     // 绘制爆炸效果
     if (this.explosionTimer > 0) {
       this.renderExplosion(renderer);
+    }
+
+    // 提前结算按钮（仅达标时显示）
+    if (this.hud.isTargetReached() && !this.isPaused && !this.showTutorial) {
+      this.finishButton.render(renderer);
     }
 
     // 绘制通知
@@ -435,6 +502,7 @@ export class GameScene extends SceneBase {
       if (mineral.config.type === MineralType.STONE && items.has(ItemType.DYNAMITE)) {
         this.game.getAudio().play(SoundType.GRAB_BOMB);
         this.particles.emit({ ...PRESET_BOMB_SPARK, x: px, y: py });
+        this.floatingTexts.emit(px, py - 20, '炸药摧毁!', '#FF8800', 'MEDIUM');
         this.showNotification('炸药摧毁石头');
         items.delete(ItemType.DYNAMITE);
         return;
@@ -471,7 +539,7 @@ export class GameScene extends SceneBase {
 
       this.hud.money += value;
 
-      // 播放对应音效 + 粒子特效
+      const isHighValue = value >= VALUE_TIER.HIGH;
       if (mineral.config.type === MineralType.DIAMOND) {
         this.game.getAudio().play(SoundType.GRAB_DIAMOND);
         this.particles.emit({ ...PRESET_DIAMOND_SPARKLE, x: px, y: py });
@@ -483,10 +551,21 @@ export class GameScene extends SceneBase {
         this.particles.emit({ ...PRESET_GOLD_SPARKLE, x: px, y: py });
       }
 
-      // 设置矿工表情
-      if (value > 0) {
+      this.floatingTexts.emit(
+        px, py - 20,
+        `+$${value}`,
+        pickValueColor(value),
+        isHighValue ? 'LARGE' : 'MEDIUM'
+      );
+
+      if (isHighValue) {
+        this.game.getAudio().play(SoundType.MINER_HAPPY);
+        this.miner.setState(MinerState.HAPPY);
+      } else if (value > 0) {
+        this.game.getAudio().play(SoundType.MINER_NORMAL);
         this.miner.setState(MinerState.HAPPY);
       } else {
+        this.game.getAudio().play(SoundType.MINER_SAD);
         this.miner.setState(MinerState.SAD);
       }
     } else {
@@ -497,18 +576,30 @@ export class GameScene extends SceneBase {
   /** 处理神秘袋内容 */
   private handleMysteryBag(mineral: Mineral): void {
     const content = mineral.mysteryContent!;
+    const px = GAME_CONFIG.MINER_X;
+    const py = GAME_CONFIG.MINER_Y + 10;
 
     if (content === MysteryContent.CASH_SMALL || content === MysteryContent.CASH_LARGE) {
       let value = mineral.value;
       this.hud.money += value;
       this.showNotification(`${mineral.mysteryLabel}: +$${value}`);
+      const isHigh = value >= VALUE_TIER.HIGH;
+      this.floatingTexts.emit(
+        px, py - 20,
+        `+$${value}`,
+        pickValueColor(value),
+        isHigh ? 'LARGE' : 'MEDIUM'
+      );
       this.game.getAudio().play(SoundType.GRAB_GOLD);
+      this.game.getAudio().play(isHigh ? SoundType.MINER_HAPPY : SoundType.MINER_NORMAL);
       this.miner.setState(MinerState.HAPPY);
     } else if (content === MysteryContent.STRENGTH_POTION) {
       // 大力药剂：本关收回速度永久 +80%
       this.hook.reelSpeedMultiplier = Math.max(this.hook.reelSpeedMultiplier, 1.8);
       this.showNotification('大力药剂: 收回加速!');
+      this.floatingTexts.emit(px, py - 20, '大力药剂!', '#88FF88', 'MEDIUM');
       this.game.getAudio().play(SoundType.COIN);
+      this.game.getAudio().play(SoundType.MINER_HAPPY);
       this.miner.setState(MinerState.HAPPY);
     } else if (content === MysteryContent.DYNAMITE) {
       // 炸药：直接炸毁场上随机一个矿物（优先炸石头）
@@ -533,10 +624,13 @@ export class GameScene extends SceneBase {
           gravity: 80,
         });
         this.showNotification('炸药: 摧毁了一个矿物!');
+        this.floatingTexts.emit(px, py - 20, '炸药! BOOM', '#FF6600', 'MEDIUM');
       } else {
         this.showNotification('炸药: 场上没有可炸的...');
+        this.floatingTexts.emit(px, py - 20, '空炸药', '#888888', 'MEDIUM');
       }
       this.game.getAudio().play(SoundType.GRAB_BOMB);
+      this.game.getAudio().play(SoundType.MINER_SAD);
       this.miner.setState(MinerState.SAD);
     }
   }
@@ -673,6 +767,11 @@ export class GameScene extends SceneBase {
   /** 获取目标金额 */
   getTargetMoney(): number {
     return this.targetMoney;
+  }
+
+  /** 获取剩余时间（秒，用于 Bonus 计算） */
+  getRemainingTime(): number {
+    return Math.max(0, this.hud.timeLeft);
   }
 
   /** 暂停游戏 */

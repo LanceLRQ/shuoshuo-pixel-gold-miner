@@ -28,9 +28,17 @@ export class HUD {
     this.targetMoney = targetMoney;
   }
 
+  /** 达标高亮闪烁累计时间（用于颜色循环） */
+  private highlightTime: number = 0;
+
   /** 更新 HUD */
   update(dt: number): void {
     this.timeLeft = Math.max(0, this.timeLeft - dt);
+    if (this.isTargetReached()) {
+      this.highlightTime += dt;
+    } else {
+      this.highlightTime = 0;
+    }
   }
 
   /** 渲染 HUD */
@@ -48,11 +56,16 @@ export class HUD {
       renderer.drawImage(coinSprite, 80, 7);
     }
 
-    // 当前金额
-    drawText(renderer, `$${this.money}`, 108, 8, '#FFD700', 'MEDIUM');
+    // 当前金额（达标后金色高亮 + 闪烁）
+    const reached = this.isTargetReached();
+    const moneyColor = reached
+      ? (Math.floor(this.highlightTime * 4) % 2 === 0 ? '#FFFF00' : '#FFD700')
+      : '#FFD700';
+    drawText(renderer, `$${this.money}`, 108, 8, moneyColor, 'MEDIUM');
 
-    // 目标金额
-    drawText(renderer, `/ $${this.targetMoney}`, 200, 8, '#AAAAAA', 'MEDIUM');
+    // 目标金额（达标后变绿色对勾色）
+    const targetColor = reached ? '#88FF88' : '#AAAAAA';
+    drawText(renderer, `/ $${this.targetMoney}`, 200, 8, targetColor, 'MEDIUM');
   }
 
   /** 时间是否用尽 */
