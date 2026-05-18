@@ -18,14 +18,16 @@
 | 类别 | 已完成 | 待完成 | 总数 |
 |------|--------|--------|------|
 | 灵魂三件套（#1-#4） | 4 | 0 | 4 |
-| 玩法机制补齐（#5-#8） | 2 | 2 | 4 |
+| 玩法机制补齐（#5-#8） | 4 | 0 | 4 |
 | 关卡 & 内容扩充（#9-#14） | 0 | 6 | 6 |
 | 视听细节（#15-#18） | 0 | 4 | 4 |
 | 元系统（#19-#21） | 0 | 3 | 3 |
-| **新增：难度系统（D1-D5）** | 0 | 5 | 5 |
-| **新增：存档系统（S1-S5）** | 0 | 5 | 5 |
-| **新增：Bug 修复（B1-B2）** | 0 | 2 | 2 |
-| **总计** | **6** | **22** | **33** |
+| **新增：难度系统（D1-D5）** | 5 | 0 | 5 |
+| **新增：存档系统（S1-S5）** | 5 | 0 | 5 |
+| **新增：Bug 修复（B1-B2）** | 2 | 0 | 2 |
+| **总计** | **20** | **13** | **33** |
+
+**Phase 完成度**：Phase A ✅ · Phase B ✅ · Phase C ✅ · Phase D ✅ · Phase E ⏳ · Phase F ⏳ · Phase G ⏳
 
 ---
 
@@ -58,130 +60,50 @@
 
 ---
 
-## 一、Phase A：核心基础设施 🔥🔥🔥
+## 一、Phase A：核心基础设施 🔥🔥🔥 ✅ 已完成
 
 > 难度系统 + 存档槽位是后续所有功能的地基，必须先做。
+> **提交记录**：`4229475 feat(phase-A): 核心基础设施（难度系统 + 11 槽位存档 + Game 状态机）`
 
-- [ ] **A1. Difficulty 模块定义**
-  - 文件：新建 `src/level/difficulty.ts`
-  - 内容：`Difficulty` 枚举（NOVICE/NORMAL/HARD/EXPERT/INFINITE）+ `DIFFICULTY_CONFIGS` 配置表
-  - 参数：valueScale / timeScale / weightFactorScale / shopEnabled / infiniteItems / mineralBudgetRatio
-  - 详见：[`difficulty-system.md`](./difficulty-system.md) §二
-  - 工作量：小
-
-- [ ] **A2. Storage 11 槽位重构**
-  - 文件：`src/core/Storage.ts` 大改
-  - 新增：自动槽位（0）+ 手动槽位（1-10）API
-  - 方法：autoSave / loadAutoSlot / resetAutoSlot / saveToManualSlot / loadManualSlot / deleteManualSlot / listAllSlots
-  - 兼容：旧 PROGRESS_KEY/STORAGE_KEY 迁移到自动槽位
-  - 详见：[`save-slot-system.md`](./save-slot-system.md) §五
-  - 工作量：中
-
-- [ ] **A3. Game 状态管理改造**
-  - 文件：`src/core/Game.ts`
-  - 新增字段：`currentDifficulty: Difficulty` / `activeSlot: number | null`
-  - 新增方法：`commitLevelResult()` / `saveAsManualSlot()` / `loadFromManualSlot()` / `startNewGame(difficulty)`
-  - 新增 GameState：`SLOT_SELECT` / `DIFFICULTY_SELECT`
-  - 工作量：中
-
-- [ ] **A4. 旧存档迁移逻辑**
-  - 文件：`Storage.ts` 启动时检测
-  - 行为：检测旧 key 存在 + 自动槽位为空 → 复制到自动槽位 + 清除旧 key
-  - 难度默认填 NORMAL
-  - 工作量：小
-
-- [ ] **A5. 难度独立高分系统**
-  - 文件：`Storage.ts` GlobalData 结构
-  - 新增：`highScoresByDifficulty: Record<Difficulty, number>` + `getGlobalHighScore()` + `updateAllHighScores()`
-  - 工作量：小
+- [x] **A1. Difficulty 模块定义** —— `src/level/difficulty.ts:1-127`（5 档配置 + isHardcore）
+- [x] **A2. Storage 11 槽位重构** —— `src/core/Storage.ts`（autoSave/manualSlot 全套 API + @deprecated 兼容层）
+- [x] **A3. Game 状态管理改造** —— `src/core/Game.ts`（currentDifficulty/activeSlot + commitLevelResult/startNewGame/saveAsManualSlot）
+- [x] **A4. 旧存档迁移逻辑** —— `Storage.ts` migrateLegacyIfNeeded（自动迁移到槽位 0）
+- [x] **A5. 难度独立高分系统** —— GlobalData.highScoresByDifficulty + 难度分项排行
 
 ---
 
-## 二、Phase B：游戏机制改造 🔥🔥🔥
+## 二、Phase B：游戏机制改造 🔥🔥🔥 ✅ 已完成
 
 > 重量 Bug 是当前实际存在的隐患（力量药水对抓矿物不生效），优先修复。
 > 矿物预算生成器解决"抽到全石头无法通关"的极端情况。
+> **提交记录**：`db6652c feat(phase-B): 游戏机制改造（重量 Bug 修复 + 矿物预算 + 难度缩放）`
 
-- [ ] **B1. 重量机制 Bug 修复 + 难度联动**
-  - 文件：`src/entity/Hook.ts:152-157` + `src/entity/types.ts`
-  - **修复 Bug**：抓矿物时收回速度公式补乘 `reelSpeedMultiplier`（让力量药水生效）
-  - **调整基准**：`GAME_CONFIG.WEIGHT_FACTOR: 0.5 → 1.0`（重量差距更明显）
-  - **难度联动**：注入 `difficulty.weightFactorScale`（新手 0 / 一般 1.0 / 困难 1.5 / 高手 2.0 / 无限 0）
-  - 详见：[`difficulty-system.md`](./difficulty-system.md) §2.4
-  - 工作量：小
-
-- [ ] **B2. 矿物预算驱动生成器**
-  - 文件：`src/scene/GameScene.ts` `generateMinerals()` 重构
-  - 替换：纯加权随机 → 预算驱动（生成后总价值 ≥ `target × budgetRatio / valueScale`）
-  - 新增：VALUE_UPGRADE_CHAIN 升级链（BONE → STONE → MOUSE → GOLD_SMALL → ... → GOLD_LARGE）
-  - 算法：基础加权生成 → 总价值不足时替换低价值矿物为高价值 → 仍不足则追加大金块
-  - 详见：[`difficulty-system.md`](./difficulty-system.md) §七
-  - 工作量：中
-
-- [ ] **B3. 矿物金额按难度缩放**
-  - 文件：`src/scene/GameScene.ts` `onHookComplete()` + Mineral.value 引用处
-  - 行为：`finalValue = mineral.value × difficulty.valueScale`
-  - 范围：含主路径矿物 + 神秘袋内容 + 鼹鼠带钻石
-  - **不缩放**：Bonus 时间奖励（独立于矿物经济）
-  - 工作量：小
-
-- [ ] **B4. 关卡时间按难度缩放**
-  - 文件：`src/scene/GameScene.ts` `enter()`
-  - 行为：`timeLimit = levelConfig.timeLimit × difficulty.timeScale + EXTRA_TIME_BONUS（如有）`
-  - 工作量：极小
+- [x] **B1. 重量机制 Bug 修复 + 难度联动** —— Hook.updateReeling 补乘 reelSpeedMultiplier + WEIGHT_FACTOR 0.5→1.0 + weightFactorScale 注入
+- [x] **B2. 矿物预算驱动生成器** —— GameScene.upgradeMineralsToReachBudget + appendMineralsToReachBudget（升级链 BONE→...→GOLD_LARGE）
+- [x] **B3. 矿物金额按难度缩放** —— GameScene.onHookComplete 应用 valueScale（含神秘袋/鼹鼠钻石）
+- [x] **B4. 关卡时间按难度缩放** —— GameScene.enter() timeLimit × timeScale + EXTRA_TIME_BONUS
 
 ---
 
-## 三、Phase C：UI 场景层 🔥🔥
+## 三、Phase C：UI 场景层 🔥🔥 ✅ 已完成
 
 > 玩家可视化的入口，做完后整套难度+存档系统才能玩起来。
+> **提交记录**：`e7a5e65 feat(phase-C): UI 场景层（难度/槽位/主菜单/暂停另存为 + simplify 修复）`
 
-- [ ] **C1. DifficultyScene（难度选择）**
-  - 文件：新建 `src/scene/DifficultyScene.ts`
-  - 布局：5 张难度卡片（新手/一般/困难/高手/无限火力）
-  - 显示：每档的金额×、时间×、重量×、商店、道具机制 4 行简介
-  - 触发：MenuScene "新游戏" 按钮 → DifficultyScene → 重置自动槽位 → PLAYING
-  - 工作量：中
-
-- [ ] **C2. SlotSelectScene（11 槽位列表）**
-  - 文件：新建 `src/scene/SlotSelectScene.ts`
-  - 布局：自动槽位独占第一行（宽卡） + 10 手动槽位 2×5 网格
-  - 自动槽位按钮：[继续] / [覆盖（新游戏）]
-  - 手动槽位按钮：[载入] / [删除]（二次确认）
-  - 详见：[`save-slot-system.md`](./save-slot-system.md) §6.2-6.4
-  - 工作量：中
-
-- [ ] **C3. MenuScene 主菜单流程重构**
-  - 文件：`src/scene/MenuScene.ts`
-  - 按钮调整：[继续游戏] / [新游戏] / [读取存档] / [设置]
-  - "继续游戏"：自动加载自动槽位（为空则禁用）
-  - "新游戏"：进 DifficultyScene
-  - "读取存档"：进 SlotSelectScene
-  - 工作量：小
-
-- [ ] **C4. 暂停菜单"另存为..." + SaveAsDialog**
-  - 文件：`src/scene/GameScene.ts` 暂停层 + 新建 `src/scene/SaveAsDialog.ts`
-  - 行为：玩家 ESC 暂停 → 点"💾 另存为..." → 弹出 10 手动槽位选择对话框
-  - 覆盖警告：非空槽位选择时二次确认
-  - 工作量：中
-
-- [ ] **C5. ResultScene 即时存档（修复 Bonus 丢失隐患）**
-  - 文件：`src/scene/ResultScene.ts` `enter()`
-  - 行为：动画初始化前调用 `game.commitLevelResult(earned + bonus)`
-  - 效果：玩家看到结算页 = 自动槽位已固化（关浏览器 Bonus 不丢）
-  - 详见：[`save-slot-system.md`](./save-slot-system.md) §9.3
-  - 工作量：极小
-
-- [ ] **C6. HUD 显示难度 + 槽位标识**
-  - 文件：`src/ui/HUD.ts`
-  - 显示：右下角小字 "难度: 高手 · 自动存档（来自槽位 3）"
-  - 工作量：极小
+- [x] **C1. DifficultyScene** —— `src/scene/DifficultyScene.ts:1-190`（5 张卡片 + hover 高亮 + 难度色边框）
+- [x] **C2. SlotSelectScene** —— `src/scene/SlotSelectScene.ts:1-290`（自动槽宽卡 + 10 手动槽 2×5 + 删除二次确认 + formatTime）
+- [x] **C3. MenuScene 主菜单流程重构** —— [继续游戏]/[新游戏]/[读取存档]（无进度时 continueButton.disabled=true）
+- [x] **C4. 暂停菜单"另存为..."** —— GameScene 暂停层 3 按钮 + SaveAs 子层 + 覆盖确认 + cachedManualSlots 性能优化
+- [x] **C5. ResultScene 即时存档** —— enter() 通过时调用 game.commitLevelResult(totalMoney)，Bonus 不再丢
+- [x] **C6. HUD 难度标识** —— `src/ui/HUD.ts` difficultyLabel 字段 + 达标闪烁
 
 ---
 
-## 四、Phase D：难度门控功能（#7 #8 + INFINITE）🔥🔥
+## 四、Phase D：难度门控功能（#7 #8 + INFINITE）🔥🔥 ✅ 已完成
 
 > 玩法机制补齐的剩余两项，配合难度门控规则实施。
+> **提交记录**：`62e61dc feat(phase-D): 难度门控功能（#7 摇晃饮料 + #8 跨关道具 + INFINITE 模式 + simplify 修复）`
 
 - [x] **#7. 摇晃饮料 / 震动器** ⚠️ 仅新手/一般可用
   - 实现：Hook.tryAdjustAngle(direction, step=0.05) 仅 EXTENDING 生效
@@ -366,4 +288,23 @@
 ---
 
 > 文档创建日期：2026-05-18
+> 最近更新：2026-05-18（Phase A-D 全部完成，下一步开 Phase E 内容扩充）
 > 维护：每个 Phase 完成后更新进度并标记 `[x]`
+
+---
+
+## 十二、下一步：Phase E 内容扩充
+
+**推荐起步顺序**（按依赖关系）：
+1. **#13 关卡扩展至 20+ 关**（数据基础，必先做）
+   - 影响：`src/level/levels.ts` 配置扩充 + Storage progressive 加载验证
+2. **#9 章节主题包装**（依赖 #13 关卡分组）
+   - 影响：levels.ts 加 `chapter` 字段 + 新建 ChapterScene.ts 过场
+3. **#10 章节背景变化**（依赖 #9 chapter 标识）
+   - 影响：assets/background.ts + ThemeManager 按章节切色
+4. **#11 高分特殊收藏品**（独立）
+   - 影响：entity/types.ts 扩展 MineralType + 新精灵
+5. **#12 木箱抽奖**（独立，最后做）
+   - 影响：Mineral.ts WOODEN_BOX 类型 + 抽奖逻辑
+
+按规则：开干前先讨论 #13 关卡难度曲线设计（3 章节 × 7 关 = 21 关，还是 4 章节 × 5 关 = 20 关），定好骨架再写数据。
