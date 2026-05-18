@@ -9,7 +9,7 @@ import { SceneBase } from '../scene/SceneBase';
 import { MenuScene } from '../scene/MenuScene';
 import { GameScene } from '../scene/GameScene';
 import { ResultScene } from '../scene/ResultScene';
-import { ShopScene, ItemType } from '../scene/ShopScene';
+import { ShopScene, ItemType, PERSISTENT_ITEM_TYPES } from '../scene/ShopScene';
 import { GameOverScene } from '../scene/GameOverScene';
 import { DifficultyScene } from '../scene/DifficultyScene';
 import { SlotSelectScene } from '../scene/SlotSelectScene';
@@ -34,15 +34,6 @@ export enum GameState {
   GAME_OVER = 'GAME_OVER',
 }
 
-/** 当局有效道具（关卡结束时清除） */
-const LEVEL_BUFF_ITEMS: ItemType[] = [
-  ItemType.STRENGTH_POTION,
-  ItemType.LUCKY_CLOVER,
-  ItemType.STONE_BOOK,
-  ItemType.MOUSE_POISON,
-  ItemType.DIAMOND_OIL,
-  ItemType.EXTRA_TIME,
-];
 
 /** FPS 统计更新间隔（毫秒） */
 const FPS_UPDATE_INTERVAL = 1000;
@@ -147,10 +138,7 @@ export class Game {
         this.lastEarnedMoney = this.currentScene.getMoney();
         this.lastTargetMoney = this.currentScene.getTargetMoney();
         this.lastRemainingTime = this.currentScene.getRemainingTime();
-        // 当局有效道具，关卡结束即失效
-        for (const item of LEVEL_BUFF_ITEMS) {
-          this.ownedItems.delete(item);
-        }
+        this.clearLevelBuffs();
       }
       // 如果从 ShopScene 退出，同步剩余金额
       if (this.state === GameState.SHOP && this.currentScene instanceof ShopScene) {
@@ -191,10 +179,18 @@ export class Game {
         scene = new SlotSelectScene(this);
         break;
       case GameState.PLAYING:
-        // 从商店回来，进入下一关
         if (previousState === GameState.SHOP) {
+          // 商店分支：金额已在 SHOP case 累加，仅推进关卡
+          this.bonusAlreadyCommitted = false;
           this.levelManager.nextLevel();
-          // 关卡切换时持久化进度
+          this.persistProgress();
+        } else if (previousState === GameState.RESULT) {
+          // INFINITE 跳商店分支：此处补累加本关金额（若 Bonus 未即时提交）
+          if (!this.bonusAlreadyCommitted) {
+            this.currentMoney += this.lastEarnedMoney;
+          }
+          this.bonusAlreadyCommitted = false;
+          this.levelManager.nextLevel();
           this.persistProgress();
         }
         scene = new GameScene(this, this.levelManager.getCurrentConfig());
@@ -271,6 +267,24 @@ export class Game {
   /** 清空已购买道具 */
   clearOwnedItems(): void {
     this.ownedItems.clear();
+  }
+
+  /**
+   * 关卡结束清理 buff（按难度门控）
+   * - INFINITE：保留所有道具（道具永久开启）
+   * - HARD/EXPERT：清除所有 persistent 道具（每关从零开始 buff）
+   * - NOVICE/NORMAL：保留 persistent 道具（跨关投资型决策）
+   */
+  private clearLevelBuffs(): void {
+    const cfg = this.getDifficultyConfig();
+    if (cfg.infiniteItems) return; // 无限火力不清
+
+    if (cfg.isHardcore) {
+      for (const itemType of PERSISTENT_ITEM_TYPES) {
+        this.ownedItems.delete(itemType);
+      }
+    }
+    // 新手/一般：保留 persistent，消耗品在使用时已 delete
   }
 
   /** 构造当前进度快照 */

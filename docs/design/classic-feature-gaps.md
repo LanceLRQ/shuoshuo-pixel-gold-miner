@@ -183,28 +183,27 @@
 
 > 玩法机制补齐的剩余两项，配合难度门控规则实施。
 
-- [ ] **#7. 摇晃饮料 / 震动器** ⚠️ 仅新手/一般可用
-  - 价格：180$，描述"钩爪伸出中 ← / → 微调角度"
-  - 文件：`Hook.ts` 加 `tryAdjustAngle(direction)` + `ShopScene.ts` 按难度过滤
-  - 难度门控：困难/高手商店隐藏卡片，`tryAdjustAngle` 强制 return
-  - 限制：仅 EXTENDING 状态有效，角度调整步长 0.05 rad，限制在 ±HOOK_MAX_ANGLE
-  - 工作量：中
+- [x] **#7. 摇晃饮料 / 震动器** ⚠️ 仅新手/一般可用
+  - 实现：Hook.tryAdjustAngle(direction, step=0.05) 仅 EXTENDING 生效
+  - GameScene.tryShakeAdjust 监听 ←/→ 持续按住调整
+  - 商店难度过滤：buildItemsFromOwned 在困难/高手时排除 SHAKE_DRINK
+  - 角度限制：±HOOK_MAX_ANGLE × 95%
 
-- [ ] **#8. 持久道具跨关保留** ⚠️ 仅新手/一般生效
-  - 文件：`ShopScene.ts` 加 `persistent: boolean` 字段 + `Game.clearLevelBuffs()` 重构
-  - 道具分类：
-    - 持久型（6 种）：力量药水/幸运草/石头书/老鼠药/钻石变色油/摇晃饮料
-    - 消耗品（2 种）：炸药/额外时间（任何难度都用完即弃）
-  - 难度门控：困难/高手强制清除全部 persistent 道具
-  - 详见：[`difficulty-system.md`](./difficulty-system.md) §九
-  - 工作量：中
+- [x] **#8. 持久道具跨关保留** ⚠️ 仅新手/一般生效
+  - ShopScene ShopItem 加 persistent 字段 + 导出 SHOP_ITEMS_CONFIG
+  - Game.clearLevelBuffs() 重构：按 difficulty 决定是否清除 persistent 道具
+    * INFINITE：保留所有
+    * HARD/EXPERT：清除全部 persistent
+    * NOVICE/NORMAL：保留 persistent（跨关投资）
+  - 持久型（6 种）：力量药水/幸运草/石头书/老鼠药/钻石变色油/摇晃饮料
+  - 消耗品（2 种）：炸药/额外时间（使用时已 delete）
 
-- [ ] **D9. INFINITE 模式实现**
-  - 跳过商店：`Game.changeScene(SHOP)` 时 INFINITE 直接转 PLAYING
-  - 开局加全 buff：`GameScene.enter()` 中 INFINITE 自动 `addOwnedItem(全部 ItemType)`
-  - 道具不消耗：`tryDetonate()` 等检测 INFINITE 时跳过 `items.delete()`
-  - HUD 标识："🔥 无限火力"
-  - 工作量：中
+- [x] **D9. INFINITE 模式实现**
+  - 跳过商店：ResultScene.handlePrimary 检测 !shopEnabled 时直接 PLAYING
+  - Game.changeScene PLAYING 支持从 RESULT 直跳（累加金额 + nextLevel）
+  - 开局加全 buff：GameScene 构造时 INFINITE 遍历 ItemType 全部 addOwnedItem
+  - 道具不消耗：tryDetonate 检测 infiniteItems 时跳过 delete
+  - HUD 标识：🔥 难度名（替换"难度: X"前缀）
 
 ---
 

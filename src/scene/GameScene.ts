@@ -17,8 +17,9 @@ import { SoundType } from '../core/Audio';
 import { renderBackground, GROUND_Y } from '../assets/background';
 import type { SpriteCacheMap } from '../assets/types';
 import type { LevelConfig } from '../level/levels';
-import { ItemType } from '../scene/ShopScene';
+import { ItemType, PERSISTENT_ITEM_TYPES } from '../scene/ShopScene';
 import type { SlotMeta } from '../core/Storage';
+import type { DifficultyConfig } from '../level/difficulty';
 import { drawText, drawTextCentered } from '../ui/PixelText';
 import { randomInt, weightedRandom } from '../utils/random';
 import { pointInRect } from '../utils/collision';
@@ -152,6 +153,8 @@ export class GameScene extends SceneBase {
   private hook: Hook;
   private minerals: Mineral[] = [];
   private hud: HUD;
+  /** 难度配置缓存（构造时一次性读取，热路径避免每帧调 getDifficultyConfig()） */
+  private readonly difficulty: DifficultyConfig;
   private spriteCache: SpriteCacheMap;
 
   /** 关卡配置 */
@@ -215,10 +218,22 @@ export class GameScene extends SceneBase {
     // 初始化 HUD（直接传入关卡时长）
     this.hud = new HUD(this.spriteCache, this.targetMoney, this.levelConfig.timeLimit);
 
-    // 难度联动：注入重量影响系数倍率 + HUD 显示难度标签
-    const difficulty = game.getDifficultyConfig();
-    this.hook.weightFactorScale = difficulty.weightFactorScale;
-    this.hud.difficultyLabel = `难度: ${difficulty.name}`;
+    // 难度联动：缓存配置 + 注入重量影响系数倍率 + HUD 标签
+    this.difficulty = game.getDifficultyConfig();
+    this.hook.weightFactorScale = this.difficulty.weightFactorScale;
+    this.hud.difficultyLabel = this.difficulty.infiniteItems
+      ? `🔥 ${this.difficulty.name}`
+      : `难度: ${this.difficulty.name}`;
+
+    // INFINITE 模式：开局自动加全部 persistent buff
+    // 消耗品（DYNAMITE/EXTRA_TIME）由 infiniteItems flag 在使用时拦截，不自动持有
+    if (this.difficulty.infiniteItems) {
+      for (const itemType of PERSISTENT_ITEM_TYPES) {
+        game.addOwnedItem(itemType);
+      }
+      // 炸药作为常用消耗品，INFINITE 模式默认携带（不消耗）
+      game.addOwnedItem(ItemType.DYNAMITE);
+    }
 
     // 力量药水：收回速度 +50%
     if (game.getOwnedItems().has(ItemType.STRENGTH_POTION)) {
@@ -248,8 +263,7 @@ export class GameScene extends SceneBase {
     this.generateMinerals(this.levelConfig.mineralCount);
 
     // 难度联动：基础关卡时间 × 难度时间倍率，再加道具额外时间
-    const difficulty = this.game.getDifficultyConfig();
-    let timeLimit = this.levelConfig.timeLimit * difficulty.timeScale;
+    let timeLimit = this.levelConfig.timeLimit * this.difficulty.timeScale;
     if (this.game.getOwnedItems().has(ItemType.EXTRA_TIME)) {
       timeLimit += EXTRA_TIME_BONUS;
     }
@@ -346,6 +360,9 @@ export class GameScene extends SceneBase {
       this.tryDetonate();
     }
 
+    // 摇晃饮料：钩爪伸出过程中按 ←/→ 微调角度（仅持有道具且难度允许）
+    this.tryShakeAdjust(input);
+
     // 点击事件
     if (input.wasTapped()) {
       const pos = input.getTapPosition();
@@ -399,6 +416,20 @@ export class GameScene extends SceneBase {
     this.game.getAudio().play(SoundType.HOOK_FIRE);
   }
 
+  /** 摇晃饮料：钩爪伸出中持续按住 ←/→ 微调角度（难度门控 + 道具门控） */
+  private tryShakeAdjust(input: Input): void {
+    // 硬核难度强制失效（设计意图：纯硬核体验），用缓存避免每帧 getDifficultyConfig
+    if (this.difficulty.isHardcore) return;
+    if (!this.game.getOwnedItems().has(ItemType.SHAKE_DRINK)) return;
+
+    if (input.isPressed('ArrowLeft')) {
+      this.hook.tryAdjustAngle(-1);
+    }
+    if (input.isPressed('ArrowRight')) {
+      this.hook.tryAdjustAngle(1);
+    }
+  }
+
   /** 尝试主动引爆当前钩着的矿物（消耗一次 DYNAMITE 道具） */
   private tryDetonate(): void {
     const items = this.game.getOwnedItems();
@@ -410,7 +441,10 @@ export class GameScene extends SceneBase {
     this.minerals = this.minerals.filter(m => m !== mineral);
     this.particles.emit({ ...PRESET_BOMB_SPARK, x: mineral.x, y: mineral.y });
     this.floatingTexts.emit(mineral.x, mineral.y - 10, '炸毁!', '#FF6600', 'MEDIUM');
-    items.delete(ItemType.DYNAMITE);
+    // INFINITE 模式道具永久不消耗
+    if (!this.difficulty.infiniteItems) {
+      items.delete(ItemType.DYNAMITE);
+    }
 
     this.game.getAudio().play(SoundType.GRAB_BOMB);
     this.miner.setState(MinerState.HAPPY);
@@ -828,7 +862,7 @@ export class GameScene extends SceneBase {
       }
 
       // 难度联动：金额按 valueScale 缩放后入账（玩家最终看到的就是这个值）
-      value = Math.round(value * this.game.getDifficultyConfig().valueScale);
+      value = Math.round(value * this.difficulty.valueScale);
 
       this.hud.money += value;
 
@@ -874,7 +908,7 @@ export class GameScene extends SceneBase {
 
     if (content === MysteryContent.CASH_SMALL || content === MysteryContent.CASH_LARGE) {
       // 难度联动：神秘袋现金也按 valueScale 缩放
-      let value = Math.round(mineral.value * this.game.getDifficultyConfig().valueScale);
+      let value = Math.round(mineral.value * this.difficulty.valueScale);
       this.hud.money += value;
       this.showNotification(`${mineral.mysteryLabel}: +$${value}`);
       const isHigh = value >= VALUE_TIER.HIGH;
@@ -946,7 +980,6 @@ export class GameScene extends SceneBase {
   private generateMinerals(count: number): void {
     this.minerals = [];
     const weights = this.levelConfig.mineralWeights ?? MINERAL_WEIGHTS;
-    const difficulty = this.game.getDifficultyConfig();
 
     // 1) 基础加权生成
     for (let i = 0; i < count; i++) {
@@ -959,7 +992,7 @@ export class GameScene extends SceneBase {
     }
 
     // 2) 计算原始价值预算（除以 valueScale 是因为玩家最终看到的金额会再乘 valueScale）
-    const targetBudget = (this.levelConfig.targetMoney * difficulty.mineralBudgetRatio) / difficulty.valueScale;
+    const targetBudget = (this.levelConfig.targetMoney * this.difficulty.mineralBudgetRatio) / this.difficulty.valueScale;
 
     // 3) 不足时升级低价值矿物
     this.upgradeMineralsToReachBudget(targetBudget);

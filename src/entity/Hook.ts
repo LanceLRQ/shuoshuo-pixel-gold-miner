@@ -9,6 +9,12 @@ import type { Mineral } from './Mineral';
 import { GAME_CONFIG, MineralType } from './types';
 import { pointInCircle } from '../utils/collision';
 
+/** 摇晃饮料单次微调步长（弧度，约 2.86°） */
+const SHAKE_ANGLE_STEP = 0.05;
+
+/** 钩爪角度上限安全系数（避免完全水平摆动） */
+const HOOK_ANGLE_SAFE_RATIO = 0.95;
+
 /** 钩爪状态 */
 export enum HookState {
   /** 摆动中，等待玩家操作 */
@@ -91,6 +97,20 @@ export class Hook {
   fire(): void {
     if (this.state !== HookState.SWINGING) return;
     this.state = HookState.EXTENDING;
+  }
+
+  /**
+   * 玩家操作：钩爪伸出过程中微调角度（摇晃饮料道具效果）
+   * 仅在 EXTENDING 状态有效
+   * @param direction -1=向左 / +1=向右
+   * @param step 单次调整步长（弧度）
+   */
+  tryAdjustAngle(direction: -1 | 1, step: number = SHAKE_ANGLE_STEP): boolean {
+    if (this.state !== HookState.EXTENDING) return false;
+    const newAngle = this.angle + direction * step;
+    const maxAngle = GAME_CONFIG.HOOK_MAX_ANGLE * HOOK_ANGLE_SAFE_RATIO;
+    this.angle = Math.max(-maxAngle, Math.min(maxAngle, newAngle));
+    return true;
   }
 
   /**

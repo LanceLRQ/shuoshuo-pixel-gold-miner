@@ -258,12 +258,15 @@ export class ResultScene extends SceneBase {
       // 最后一关 → 通关结束
       if (!this.game.getLevelManager().hasNextLevel()) {
         this.game.changeScene(GameState.GAME_OVER);
+        return;
+      }
+      // INFINITE 模式跳过商店，直接进下一关
+      if (!this.game.getDifficultyConfig().shopEnabled) {
+        this.game.changeScene(GameState.PLAYING);
       } else {
-        // 还有下一关 → 进入商店
         this.game.changeScene(GameState.SHOP);
       }
     } else {
-      // 失败 → 重试本关（保留累计金额和已购道具）
       this.game.retryCurrentLevel();
     }
   }

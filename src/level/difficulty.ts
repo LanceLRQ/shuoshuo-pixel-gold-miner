@@ -33,6 +33,8 @@ export interface DifficultyConfig {
   shopEnabled: boolean;
   /** 道具是否永久不消耗（无限火力娱乐模式） */
   infiniteItems: boolean;
+  /** 是否硬核难度：关卡结束清除全部 persistent 道具 + 商店隐藏摇晃饮料 + 摇晃饮料效果强制 return */
+  isHardcore: boolean;
   /** UI 主色（卡片差异化展示） */
   color: string;
 }
@@ -49,6 +51,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     mineralBudgetRatio: 3.0,
     shopEnabled: true,
     infiniteItems: false,
+    isHardcore: false,
     color: '#7CFF7C',
   },
   [Difficulty.NORMAL]: {
@@ -61,6 +64,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     mineralBudgetRatio: 3.0,
     shopEnabled: true,
     infiniteItems: false,
+    isHardcore: false,
     color: '#7CC4FF',
   },
   [Difficulty.HARD]: {
@@ -73,6 +77,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     mineralBudgetRatio: 2.25,
     shopEnabled: true,
     infiniteItems: false,
+    isHardcore: true,
     color: '#FFD700',
   },
   [Difficulty.EXPERT]: {
@@ -85,6 +90,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     mineralBudgetRatio: 1.75,
     shopEnabled: true,
     infiniteItems: false,
+    isHardcore: true,
     color: '#FF6464',
   },
   [Difficulty.INFINITE]: {
@@ -97,6 +103,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     mineralBudgetRatio: 3.0,
     shopEnabled: false,
     infiniteItems: true,
+    isHardcore: false,
     color: '#C77CFF',
   },
 };

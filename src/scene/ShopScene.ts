@@ -18,6 +18,8 @@ interface ShopItem {
   description: string;
   owned: boolean;
   type: ItemType;
+  /** 是否持久型（仅新手/一般难度跨关保留；困难/高手强制当关失效） */
+  persistent: boolean;
 }
 
 /** 道具效果类型 */
@@ -29,18 +31,32 @@ export enum ItemType {
   MOUSE_POISON = 'MOUSE_POISON',
   DIAMOND_OIL = 'DIAMOND_OIL',
   EXTRA_TIME = 'EXTRA_TIME',
+  SHAKE_DRINK = 'SHAKE_DRINK',
 }
 
-/** 道具配置表 */
+/** 道具配置表
+ *  - persistent=true：buff 类道具，新手/一般可跨关保留；困难/高手每关清除
+ *  - persistent=false：消耗品，任何难度用完即弃 */
 const SHOP_ITEMS: ShopItem[] = [
-  { name: '炸药', price: 150, description: '按 F 键引爆收回物', owned: false, type: ItemType.DYNAMITE },
-  { name: '力量药水', price: 200, description: '收回速度 +50%', owned: false, type: ItemType.STRENGTH_POTION },
-  { name: '幸运草', price: 100, description: '神秘袋最低 200$', owned: false, type: ItemType.LUCKY_CLOVER },
-  { name: '石头书', price: 80, description: '石头价值 x3', owned: false, type: ItemType.STONE_BOOK },
-  { name: '老鼠药', price: 120, description: '老鼠价值 x5', owned: false, type: ItemType.MOUSE_POISON },
-  { name: '钻石变色油', price: 250, description: '钻石价值 x2', owned: false, type: ItemType.DIAMOND_OIL },
-  { name: '额外时间', price: 80, description: '开局 +10 秒', owned: false, type: ItemType.EXTRA_TIME },
+  { name: '炸药', price: 150, description: '按 F 键引爆收回物', owned: false, type: ItemType.DYNAMITE, persistent: false },
+  { name: '力量药水', price: 200, description: '收回速度 +50%', owned: false, type: ItemType.STRENGTH_POTION, persistent: true },
+  { name: '幸运草', price: 100, description: '神秘袋最低 200$', owned: false, type: ItemType.LUCKY_CLOVER, persistent: true },
+  { name: '石头书', price: 80, description: '石头价值 x3', owned: false, type: ItemType.STONE_BOOK, persistent: true },
+  { name: '老鼠药', price: 120, description: '老鼠价值 x5', owned: false, type: ItemType.MOUSE_POISON, persistent: true },
+  { name: '钻石变色油', price: 250, description: '钻石价值 x2', owned: false, type: ItemType.DIAMOND_OIL, persistent: true },
+  { name: '额外时间', price: 80, description: '开局 +10 秒', owned: false, type: ItemType.EXTRA_TIME, persistent: false },
+  { name: '摇晃饮料', price: 180, description: '钩爪伸出中←/→微调', owned: false, type: ItemType.SHAKE_DRINK, persistent: true },
 ];
+
+/**
+ * 持久道具列表（模块加载时预计算）
+ * 用途：
+ * - 关卡结束清理（硬核难度清掉，辅助难度跨关保留）
+ * - INFINITE 模式开局自动加全部持久 buff
+ */
+export const PERSISTENT_ITEM_TYPES: readonly ItemType[] = SHOP_ITEMS
+  .filter(item => item.persistent)
+  .map(item => item.type);
 
 /** 商店卡片布局参数（3列 x 2行） */
 const CARD_LAYOUT = {
@@ -80,10 +96,16 @@ export class ShopScene extends SceneBase {
     this.rebuildItemButtons();
   }
 
-  /** 根据 Game.ownedItems 构建 items，已购道具 owned=true */
+  /**
+   * 根据 Game.ownedItems 构建 items，已购道具 owned=true
+   * 难度门控：硬核难度过滤掉摇晃饮料（仅辅助难度可用）
+   */
   private buildItemsFromOwned(): ShopItem[] {
     const ownedSet = this.game.getOwnedItems();
-    return SHOP_ITEMS.map(item => ({ ...item, owned: ownedSet.has(item.type) }));
+    const isHardcore = this.game.getDifficultyConfig().isHardcore;
+    return SHOP_ITEMS
+      .filter(item => !(isHardcore && item.type === ItemType.SHAKE_DRINK))
+      .map(item => ({ ...item, owned: ownedSet.has(item.type) }));
   }
 
   exit(): void {}
