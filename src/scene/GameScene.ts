@@ -18,6 +18,7 @@ import { renderBackground, GROUND_Y } from '../assets/background';
 import type { SpriteCacheMap } from '../assets/types';
 import type { LevelConfig } from '../level/levels';
 import { ItemType } from '../scene/ShopScene';
+import type { SlotMeta } from '../core/Storage';
 import { drawText, drawTextCentered } from '../ui/PixelText';
 import { randomInt, weightedRandom } from '../utils/random';
 import { pointInRect } from '../utils/collision';
@@ -57,6 +58,9 @@ const EXTRA_TIME_BONUS = 10;
 
 /** TNT 引爆键位（F 或 ↑，任一触发） */
 const KEY_DETONATE_CODES = ['KeyF', 'ArrowUp'] as const;
+
+/** 暂停菜单按钮动作类型 */
+type PauseAction = 'resume' | 'saveAs' | 'menu';
 
 /** 矿物抓取反馈分档（按价值决定语音/颜色/飘字大小） */
 const VALUE_TIER = {
@@ -159,6 +163,18 @@ export class GameScene extends SceneBase {
   /** 暂停状态 */
   private isPaused: boolean = false;
 
+  /** 暂停层子状态：none=主菜单 / saveAs=另存为弹窗 */
+  private pauseSubState: 'none' | 'saveAs' = 'none';
+
+  /** SaveAs 子层激活时缓存的手动槽位列表（避免每帧 localStorage I/O） */
+  private cachedManualSlots: SlotMeta[] | null = null;
+
+  /** 二次确认对话框（覆盖另存为弹窗） */
+  private confirmOverwrite: { slotId: number } | null = null;
+
+  /** 保存成功 toast 剩余时间 */
+  private saveToastTimer: number = 0;
+
   /** 教程引导状态 */
   private showTutorial: boolean = false;
 
@@ -199,8 +215,10 @@ export class GameScene extends SceneBase {
     // 初始化 HUD（直接传入关卡时长）
     this.hud = new HUD(this.spriteCache, this.targetMoney, this.levelConfig.timeLimit);
 
-    // 难度联动：注入重量影响系数倍率
-    this.hook.weightFactorScale = game.getDifficultyConfig().weightFactorScale;
+    // 难度联动：注入重量影响系数倍率 + HUD 显示难度标签
+    const difficulty = game.getDifficultyConfig();
+    this.hook.weightFactorScale = difficulty.weightFactorScale;
+    this.hud.difficultyLabel = `难度: ${difficulty.name}`;
 
     // 力量药水：收回速度 +50%
     if (game.getOwnedItems().has(ItemType.STRENGTH_POTION)) {
@@ -248,6 +266,7 @@ export class GameScene extends SceneBase {
   }
 
   update(dt: number): void {
+    if (this.saveToastTimer > 0) this.saveToastTimer -= dt;
     if (this.isPaused) return;
 
     // 更新 HUD（倒计时）
@@ -302,17 +321,23 @@ export class GameScene extends SceneBase {
       return;
     }
 
-    // ESC 暂停/恢复
+    // ESC 暂停/恢复（saveAs 子层下 ESC 返回菜单层）
     if (input.isJustPressed('Escape')) {
-      this.isPaused = !this.isPaused;
+      if (this.isPaused && this.pauseSubState === 'saveAs') {
+        this.pauseSubState = 'none';
+        this.confirmOverwrite = null;
+        this.cachedManualSlots = null;
+      } else {
+        this.isPaused = !this.isPaused;
+        this.pauseSubState = 'none';
+        this.cachedManualSlots = null;
+      }
       return;
     }
 
-    // 暂停状态：点击任意位置恢复
+    // 暂停状态：交互式菜单
     if (this.isPaused) {
-      if (input.wasTapped()) {
-        this.isPaused = false;
-      }
+      this.handlePauseInput(input);
       return;
     }
 
@@ -444,13 +469,18 @@ export class GameScene extends SceneBase {
     // 当前生效道具显示
     this.renderActiveItems(renderer);
 
-    // 暂停遮罩
+    // 暂停层渲染（含主菜单层 / 另存为子层 / 覆盖确认）
     if (this.isPaused) {
+      this.renderPauseOverlay(renderer);
+    }
+
+    // 保存成功 toast
+    if (this.saveToastTimer > 0) {
       const ctx = renderer.getContext();
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.fillRect(0, 0, renderer.width, renderer.height);
-      drawTextCentered(renderer, '暂停', 230, '#FFFFFF', 'TITLE');
-      drawTextCentered(renderer, '点击或按 ESC 继续', 310, '#AAAAAA', 'SMALL');
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, this.saveToastTimer / 0.3);
+      drawTextCentered(renderer, '✓ 已保存到槽位', 100, '#88FF88', 'MEDIUM');
+      ctx.restore();
     }
 
     // 教程引导覆盖层
@@ -465,6 +495,217 @@ export class GameScene extends SceneBase {
       drawTextCentered(renderer, '抓取矿物达到目标金额即可过关', 320, '#AAAAAA', 'SMALL');
       drawTextCentered(renderer, '点击任意位置开始', 390, '#FFD700', 'MEDIUM');
     }
+  }
+
+  /** 暂停层 - 主菜单按钮区域 */
+  private getPauseMenuButtons(): { rect: { x: number; y: number; w: number; h: number }; label: string; action: PauseAction }[] {
+    const btnW = 240, btnH = 44, gap = 12;
+    const startY = 220;
+    const x = (this.game.getRenderer().width - btnW) / 2;
+    return [
+      { rect: { x, y: startY, w: btnW, h: btnH }, label: '继续游戏', action: 'resume' },
+      { rect: { x, y: startY + (btnH + gap), w: btnW, h: btnH }, label: '💾 另存为...', action: 'saveAs' },
+      { rect: { x, y: startY + (btnH + gap) * 2, w: btnW, h: btnH }, label: '返回主菜单', action: 'menu' },
+    ];
+  }
+
+  /** 暂停层 - 另存为子层的 10 个槽位卡片矩形 */
+  private getSaveAsCardRect(index: number): { x: number; y: number; w: number; h: number } {
+    const cardW = 132, cardH = 96, gapX = 8, gapY = 10;
+    const cols = 5;
+    const totalW = cardW * cols + gapX * (cols - 1);
+    const startX = (this.game.getRenderer().width - totalW) / 2;
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+    return {
+      x: startX + col * (cardW + gapX),
+      y: 200 + row * (cardH + gapY),
+      w: cardW,
+      h: cardH,
+    };
+  }
+
+  /** 暂停层 - 取消按钮（saveAs 子层） */
+  private getSaveAsCancelRect(): { x: number; y: number; w: number; h: number } {
+    return { x: (this.game.getRenderer().width - 140) / 2, y: 460, w: 140, h: 32 };
+  }
+
+  /** 覆盖确认对话框按钮坐标（0=覆盖, 1=取消） */
+  private getConfirmOverwriteButtonRect(idx: 0 | 1): { x: number; y: number; w: number; h: number } {
+    const xs = [280, 420];
+    return { x: xs[idx]!, y: 295, w: 100, h: 32 };
+  }
+
+  /** 暂停层输入处理（含 SaveAs 子层 + 覆盖确认） */
+  private handlePauseInput(input: Input): void {
+    if (!input.wasTapped()) return;
+    const pos = input.getTapPosition();
+
+    // 覆盖确认对话框置顶
+    if (this.confirmOverwrite) {
+      const yesRect = this.getConfirmOverwriteButtonRect(0);
+      const noRect = this.getConfirmOverwriteButtonRect(1);
+      if (pointInRect(pos.x, pos.y, yesRect)) {
+        const slotId = this.confirmOverwrite.slotId;
+        this.confirmOverwrite = null;
+        this.doSaveAsManualSlot(slotId);
+      } else if (pointInRect(pos.x, pos.y, noRect)) {
+        this.confirmOverwrite = null;
+      }
+      return;
+    }
+
+    if (this.pauseSubState === 'saveAs') {
+      // 取消按钮
+      if (pointInRect(pos.x, pos.y, this.getSaveAsCancelRect())) {
+        this.pauseSubState = 'none';
+        this.cachedManualSlots = null;
+        return;
+      }
+      // 槽位卡片
+      for (let i = 0; i < 10; i++) {
+        const slotId = i + 1;
+        const rect = this.getSaveAsCardRect(i);
+        if (pointInRect(pos.x, pos.y, rect)) {
+          // 非空槽位需要二次确认
+          if (this.game.getStorage().isSlotOccupied(slotId)) {
+            this.confirmOverwrite = { slotId };
+          } else {
+            this.doSaveAsManualSlot(slotId);
+          }
+          return;
+        }
+      }
+      return;
+    }
+
+    // 主菜单层
+    for (const btn of this.getPauseMenuButtons()) {
+      if (pointInRect(pos.x, pos.y, btn.rect)) {
+        if (btn.action === 'resume') {
+          this.isPaused = false;
+        } else if (btn.action === 'saveAs') {
+          this.pauseSubState = 'saveAs';
+          // 进入子层时一次性缓存槽位列表，避免每帧 I/O
+          this.cachedManualSlots = this.game.getStorage().listManualSlots();
+        } else if (btn.action === 'menu') {
+          this.game.changeScene(GameState.MENU);
+        }
+        return;
+      }
+    }
+  }
+
+  /** 执行另存为操作 */
+  private doSaveAsManualSlot(slotId: number): void {
+    const ok = this.game.saveAsManualSlot(slotId);
+    if (ok) {
+      this.saveToastTimer = 1.5;
+      this.pauseSubState = 'none';
+      this.cachedManualSlots = null;
+      this.isPaused = false; // 保存成功后自动继续游戏
+    }
+  }
+
+  /** 暂停层渲染（含主菜单层 / SaveAs 子层 / 覆盖确认） */
+  private renderPauseOverlay(renderer: Renderer): void {
+    const ctx = renderer.getContext();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+    ctx.fillRect(0, 0, renderer.width, renderer.height);
+
+    if (this.pauseSubState === 'saveAs') {
+      this.renderSaveAsLayer(renderer);
+    } else {
+      this.renderPauseMenuLayer(renderer);
+    }
+
+    if (this.confirmOverwrite) {
+      this.renderConfirmOverwriteDialog(renderer);
+    }
+  }
+
+  /** 暂停层 - 主菜单层渲染 */
+  private renderPauseMenuLayer(renderer: Renderer): void {
+    const ctx = renderer.getContext();
+    drawTextCentered(renderer, '游戏暂停', 130, '#FFFFFF', 'TITLE');
+    drawTextCentered(renderer, '点击按钮或按 ESC 继续', 180, '#888899', 'SMALL');
+
+    for (const btn of this.getPauseMenuButtons()) {
+      ctx.fillStyle = '#4169E1';
+      ctx.fillRect(btn.rect.x, btn.rect.y, btn.rect.w, btn.rect.h);
+      ctx.fillStyle = '#6688CC';
+      ctx.fillRect(btn.rect.x, btn.rect.y, btn.rect.w, 2);
+      drawText(renderer, btn.label, btn.rect.x + 60, btn.rect.y + 12, '#FFFFFF', 'MEDIUM');
+    }
+  }
+
+  /** 暂停层 - SaveAs 子层渲染（10 槽位卡片） */
+  private renderSaveAsLayer(renderer: Renderer): void {
+    const ctx = renderer.getContext();
+    drawTextCentered(renderer, '选择手动槽位保存', 140, '#FFD700', 'LARGE');
+    drawTextCentered(renderer, '非空槽位将覆盖（需二次确认）', 180, '#888899', 'SMALL');
+
+    // 用缓存（进入子层时已 listManualSlots 一次）
+    const slots = this.cachedManualSlots ?? [];
+    for (let i = 0; i < 10; i++) {
+      const meta = slots[i];
+      if (!meta) continue;
+      const rect = this.getSaveAsCardRect(i);
+      const empty = meta.empty;
+
+      ctx.fillStyle = empty ? '#1a1a2a' : '#3a2a3a';
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.strokeStyle = empty ? '#666688' : '#FFAA66';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w - 1, rect.h - 1);
+
+      drawText(renderer, `#${i + 1}`, rect.x + 8, rect.y + 8, '#FFD700', 'SMALL');
+
+      if (empty) {
+        drawText(renderer, '[空]', rect.x + 8, rect.y + 36, '#666688', 'SMALL');
+        drawText(renderer, '点击保存', rect.x + 8, rect.y + 60, '#88FF88', 'SMALL');
+      } else {
+        drawText(renderer, `第 ${meta.currentLevel} 关`, rect.x + 8, rect.y + 30, '#FFFFFF', 'SMALL');
+        drawText(renderer, `$${meta.currentMoney}`, rect.x + 8, rect.y + 50, '#FFD700', 'SMALL');
+        drawText(renderer, '⚠ 覆盖', rect.x + 8, rect.y + 72, '#FF8888', 'SMALL');
+      }
+    }
+
+    // 取消按钮
+    const cancel = this.getSaveAsCancelRect();
+    ctx.fillStyle = '#444466';
+    ctx.fillRect(cancel.x, cancel.y, cancel.w, cancel.h);
+    drawText(renderer, '取消', cancel.x + 52, cancel.y + 8, '#FFFFFF', 'MEDIUM');
+  }
+
+  /** 覆盖二次确认对话框 */
+  private renderConfirmOverwriteDialog(renderer: Renderer): void {
+    if (!this.confirmOverwrite) return;
+    const ctx = renderer.getContext();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, renderer.width, renderer.height);
+
+    const dx = 250, dy = 200, dw = 300, dh = 160;
+    ctx.fillStyle = '#22223a';
+    ctx.fillRect(dx, dy, dw, dh);
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(dx + 1, dy + 1, dw - 2, dh - 2);
+
+    drawTextCentered(renderer, '覆盖槽位？', dy + 30, '#FFFFFF', 'LARGE');
+    drawTextCentered(renderer, `槽位 #${this.confirmOverwrite.slotId} 已有存档`, dy + 70, '#FF8888', 'SMALL');
+    drawTextCentered(renderer, '此操作不可撤销', dy + 90, '#FF8888', 'SMALL');
+
+    // 是/否按钮
+    const yesRect = this.getConfirmOverwriteButtonRect(0);
+    const noRect = this.getConfirmOverwriteButtonRect(1);
+    ctx.fillStyle = '#883333';
+    ctx.fillRect(yesRect.x, yesRect.y, yesRect.w, yesRect.h);
+    drawText(renderer, '覆盖', yesRect.x + 30, yesRect.y + 8, '#FFFFFF', 'MEDIUM');
+
+    ctx.fillStyle = '#444466';
+    ctx.fillRect(noRect.x, noRect.y, noRect.w, noRect.h);
+    drawText(renderer, '取消', noRect.x + 30, noRect.y + 8, '#FFFFFF', 'MEDIUM');
   }
 
   /** 绘制右上角按钮组（暂停 + 教程） */

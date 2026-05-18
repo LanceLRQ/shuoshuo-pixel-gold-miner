@@ -83,8 +83,12 @@ export class ResultScene extends SceneBase {
     this.displayBonus = 0;
     this.displayTotal = 0;
     this.clearSoundPlayed = false;
-    // 失败时立即播放失败音效
-    if (!this.isPassed) {
+
+    // 通过即时存档：确保 Bonus 在玩家看到动画时就固化到自动槽位
+    // 即使玩家此时关浏览器，下次启动仍能从这里继续（带 Bonus）
+    if (this.isPassed) {
+      this.game.commitLevelResult(this.totalMoney);
+    } else {
       this.game.getAudio().play(SoundType.LEVEL_FAIL);
     }
   }

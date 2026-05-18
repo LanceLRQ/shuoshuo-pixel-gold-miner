@@ -11,6 +11,8 @@ import { GameScene } from '../scene/GameScene';
 import { ResultScene } from '../scene/ResultScene';
 import { ShopScene, ItemType } from '../scene/ShopScene';
 import { GameOverScene } from '../scene/GameOverScene';
+import { DifficultyScene } from '../scene/DifficultyScene';
+import { SlotSelectScene } from '../scene/SlotSelectScene';
 import { Storage, type GameProgress, AUTO_SLOT_ID } from './Storage';
 import { LevelManager } from '../level/LevelManager';
 import { Audio } from './Audio';
@@ -181,6 +183,12 @@ export class Game {
         this.currentMoney = 0;
         this.levelManager.reset();
         this.ownedItems.clear();
+        break;
+      case GameState.DIFFICULTY_SELECT:
+        scene = new DifficultyScene(this);
+        break;
+      case GameState.SLOT_SELECT:
+        scene = new SlotSelectScene(this);
         break;
       case GameState.PLAYING:
         // 从商店回来，进入下一关

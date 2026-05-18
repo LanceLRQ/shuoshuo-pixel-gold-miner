@@ -23,8 +23,9 @@ interface RectArea {
 
 export class MenuScene extends SceneBase {
   private game: Game;
-  private startButton: Button;
   private continueButton: Button;
+  private newGameButton: Button;
+  private loadGameButton: Button;
   private highScore: number;
   private hasProgress: boolean = false;
 
@@ -49,15 +50,18 @@ export class MenuScene extends SceneBase {
     this.game = game;
     this.highScore = this.game.getStorage().getHighScore();
 
-    // 主按钮（横屏 800x540 居中）
-    this.startButton = new Button(320, 320, 160, 48, '新游戏');
-    this.continueButton = new Button(320, 380, 160, 48, '继续游戏');
+    // 主按钮（横屏 800x540 居中，竖排）
+    const btnW = 200, btnH = 44, btnX = (800 - btnW) / 2;
+    this.continueButton = new Button(btnX, 280, btnW, btnH, '继续游戏');
+    this.newGameButton = new Button(btnX, 340, btnW, btnH, '新游戏');
+    this.loadGameButton = new Button(btnX, 400, btnW, btnH, '读取存档');
   }
 
   enter(): void {
     this.animTime = 0;
     this.highScore = this.game.getStorage().getHighScore();
     this.hasProgress = this.game.getStorage().hasProgress();
+    this.continueButton.disabled = !this.hasProgress;
     this.settingsOpen = false;
     // 进入主菜单时启动 BGM
     const audio = this.game.getAudio();
@@ -83,14 +87,19 @@ export class MenuScene extends SceneBase {
       }
 
       // 主按钮
-      if (this.startButton.containsPoint(pos.x, pos.y)) {
-        // 新游戏：清除已有进度
-        this.game.clearProgress();
-        this.game.changeScene(GameState.PLAYING);
+      if (this.hasProgress && this.continueButton.containsPoint(pos.x, pos.y)) {
+        // 继续游戏：加载自动槽位
+        this.game.restoreProgress();
         return;
       }
-      if (this.hasProgress && this.continueButton.containsPoint(pos.x, pos.y)) {
-        this.game.restoreProgress();
+      if (this.newGameButton.containsPoint(pos.x, pos.y)) {
+        // 新游戏：进入难度选择
+        this.game.changeScene(GameState.DIFFICULTY_SELECT);
+        return;
+      }
+      if (this.loadGameButton.containsPoint(pos.x, pos.y)) {
+        // 读取存档：进入槽位管理
+        this.game.changeScene(GameState.SLOT_SELECT);
         return;
       }
       // 设置图标
@@ -100,12 +109,12 @@ export class MenuScene extends SceneBase {
       }
     }
 
-    // 空格也可开始
+    // 空格：有进度则继续，否则进难度选择（不再直接 PLAYING）
     if (!this.settingsOpen && input.isJustPressed('Space')) {
       if (this.hasProgress) {
         this.game.restoreProgress();
       } else {
-        this.game.changeScene(GameState.PLAYING);
+        this.game.changeScene(GameState.DIFFICULTY_SELECT);
       }
     }
 
@@ -133,13 +142,12 @@ export class MenuScene extends SceneBase {
     }
 
     // 操作提示
-    drawTextCentered(renderer, '按空格或点击开始', 280, '#AAAAAA', 'SMALL');
+    drawTextCentered(renderer, this.hasProgress ? '按空格继续上次进度' : '按空格直接进入难度选择', 252, '#AAAAAA', 'SMALL');
 
-    // 主按钮
-    this.startButton.render(renderer);
-    if (this.hasProgress) {
-      this.continueButton.render(renderer);
-    }
+    // 主按钮（disabled 状态已在 enter 时设定）
+    this.continueButton.render(renderer);
+    this.newGameButton.render(renderer);
+    this.loadGameButton.render(renderer);
 
     // 右上角设置图标（齿轮简化为方框 + 文字）
     this.renderSettingsIcon(renderer);

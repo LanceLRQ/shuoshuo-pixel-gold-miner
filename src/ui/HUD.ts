@@ -21,6 +21,9 @@ export class HUD {
   /** 精灵缓存 */
   private spriteCache: SpriteCacheMap;
 
+  /** 难度显示标签（如 "一般" "高手"），由 GameScene 注入 */
+  difficultyLabel: string = '';
+
   constructor(spriteCache: SpriteCacheMap, targetMoney: number, initialTime: number = 0) {
     this.spriteCache = spriteCache;
     this.timeLeft = initialTime;
@@ -66,6 +69,11 @@ export class HUD {
     // 目标金额（达标后变绿色对勾色）
     const targetColor = reached ? '#88FF88' : '#AAAAAA';
     drawText(renderer, `/ $${this.targetMoney}`, 200, 8, targetColor, 'MEDIUM');
+
+    // 难度标签（HUD 中部偏右，小字）
+    if (this.difficultyLabel) {
+      drawText(renderer, this.difficultyLabel, 350, 12, '#AAAAFF', 'SMALL');
+    }
   }
 
   /** 时间是否用尽 */
