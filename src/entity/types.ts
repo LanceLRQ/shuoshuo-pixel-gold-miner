@@ -133,7 +133,9 @@ export const GAME_CONFIG = {
   HOOK_EXTEND_SPEED: 400,
   HOOK_BASE_REEL_SPEED: 250,
   HOOK_MAX_LENGTH: 550,
-  WEIGHT_FACTOR: 0.5,
+  // 重量影响系数基准值（最终 factor = WEIGHT_FACTOR × difficulty.weightFactorScale）
+  // 0.5 偏弱（最重最轻只差 1.6x），上调为 1.0 让重物拖拽感更明显
+  WEIGHT_FACTOR: 1.0,
   HOOK_ROPE_WIDTH: 2,
 
   // 关卡

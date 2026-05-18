@@ -54,6 +54,9 @@ export class Hook {
   /** 收回速度倍率（受力量药水影响） */
   reelSpeedMultiplier: number = 1;
 
+  /** 重量影响系数倍率（由难度配置注入，新手/无限=0 表示无重量影响） */
+  weightFactorScale: number = 1;
+
   /** 收回完成回调 */
   private onComplete: HookCallback | null = null;
 
@@ -163,10 +166,13 @@ export class Hook {
 
   /** 收回状态：绳索缩短，速度受矿物重量影响 */
   private updateReeling(dt: number): void {
-    // 收回速度: baseSpeed * multiplier / (1 + weight * factor)
+    // 公式：baseSpeed * multiplier / (1 + weight * factor)
+    // 修复点：抓矿物时也乘 multiplier，让力量药水对抓重物生效
+    // 难度联动：factor = WEIGHT_FACTOR × weightFactorScale（新手/无限=0 表示无重量影响）
     let reelSpeed = GAME_CONFIG.HOOK_BASE_REEL_SPEED * this.reelSpeedMultiplier;
     if (this.grabbedMineral) {
-      reelSpeed = GAME_CONFIG.HOOK_BASE_REEL_SPEED / (1 + this.grabbedMineral.config.weight * GAME_CONFIG.WEIGHT_FACTOR);
+      const factor = GAME_CONFIG.WEIGHT_FACTOR * this.weightFactorScale;
+      reelSpeed = reelSpeed / (1 + this.grabbedMineral.config.weight * factor);
     }
 
     this.ropeLength -= reelSpeed * dt;

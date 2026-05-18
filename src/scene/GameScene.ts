@@ -121,6 +121,27 @@ const MINERAL_TYPES: MineralType[] = [
   MineralType.MOLE,
 ];
 
+/**
+ * 价值升级链（用于矿物预算生成器）
+ * 升级时跳过 BOMB/MYSTERY_BAG/DIAMOND，避免破坏随机感
+ * 按价值升序：BONE(5) → STONE(15) → MOUSE(20) → MOLE(50) → GOLD_SMALL(50) → GOLD_MEDIUM(250) → GOLD_LARGE(500)
+ */
+const VALUE_UPGRADE_CHAIN: MineralType[] = [
+  MineralType.BONE,
+  MineralType.STONE,
+  MineralType.MOUSE,
+  MineralType.MOLE,
+  MineralType.GOLD_SMALL,
+  MineralType.GOLD_MEDIUM,
+  MineralType.GOLD_LARGE,
+];
+
+/** 矿物预算升级算法最大迭代次数（防死循环） */
+const BUDGET_UPGRADE_MAX_ATTEMPTS = 50;
+
+/** 追加矿物的数量上限（baseCount × 此系数） */
+const BUDGET_APPEND_RATIO = 0.3;
+
 export class GameScene extends SceneBase {
   private game: Game;
   private miner: Miner;
@@ -178,6 +199,9 @@ export class GameScene extends SceneBase {
     // 初始化 HUD（直接传入关卡时长）
     this.hud = new HUD(this.spriteCache, this.targetMoney, this.levelConfig.timeLimit);
 
+    // 难度联动：注入重量影响系数倍率
+    this.hook.weightFactorScale = game.getDifficultyConfig().weightFactorScale;
+
     // 力量药水：收回速度 +50%
     if (game.getOwnedItems().has(ItemType.STRENGTH_POTION)) {
       this.hook.reelSpeedMultiplier = 1.5;
@@ -205,7 +229,9 @@ export class GameScene extends SceneBase {
     // 使用关卡配置生成矿物
     this.generateMinerals(this.levelConfig.mineralCount);
 
-    let timeLimit = this.levelConfig.timeLimit;
+    // 难度联动：基础关卡时间 × 难度时间倍率，再加道具额外时间
+    const difficulty = this.game.getDifficultyConfig();
+    let timeLimit = this.levelConfig.timeLimit * difficulty.timeScale;
     if (this.game.getOwnedItems().has(ItemType.EXTRA_TIME)) {
       timeLimit += EXTRA_TIME_BONUS;
     }
@@ -560,6 +586,9 @@ export class GameScene extends SceneBase {
         value = mineral.value * 2;
       }
 
+      // 难度联动：金额按 valueScale 缩放后入账（玩家最终看到的就是这个值）
+      value = Math.round(value * this.game.getDifficultyConfig().valueScale);
+
       this.hud.money += value;
 
       const isHighValue = value >= VALUE_TIER.HIGH;
@@ -603,7 +632,8 @@ export class GameScene extends SceneBase {
     const py = GAME_CONFIG.MINER_Y + 10;
 
     if (content === MysteryContent.CASH_SMALL || content === MysteryContent.CASH_LARGE) {
-      let value = mineral.value;
+      // 难度联动：神秘袋现金也按 valueScale 缩放
+      let value = Math.round(mineral.value * this.game.getDifficultyConfig().valueScale);
       this.hud.money += value;
       this.showNotification(`${mineral.mysteryLabel}: +$${value}`);
       const isHigh = value >= VALUE_TIER.HIGH;
@@ -664,24 +694,39 @@ export class GameScene extends SceneBase {
     this.notificationTimer = NOTIFICATION_DURATION;
   }
 
-  /** 随机生成矿物（使用关卡配置的权重和数量） */
+  /**
+   * 矿物生成（预算驱动）
+   * 1. 按关卡权重生成基础矿物
+   * 2. 计算预算目标 = target × budgetRatio / valueScale
+   * 3. 总价值不足时：升级低价值矿物（沿 VALUE_UPGRADE_CHAIN）
+   * 4. 仍不足时：追加大金块（上限 baseCount × 0.3）
+   * 5. 应用幸运草等 buff
+   */
   private generateMinerals(count: number): void {
     this.minerals = [];
-    // 使用关卡自定义权重或默认权重
     const weights = this.levelConfig.mineralWeights ?? MINERAL_WEIGHTS;
+    const difficulty = this.game.getDifficultyConfig();
 
+    // 1) 基础加权生成
     for (let i = 0; i < count; i++) {
       const typeIndex = weightedRandom(weights);
       const type = MINERAL_TYPES[typeIndex]!;
-
-      // 随机放置，尝试避开已有矿物
       const placed = this.tryPlaceMineral(type);
       if (placed) {
         this.minerals.push(placed);
       }
     }
 
-    // 幸运草：神秘袋最低 $200
+    // 2) 计算原始价值预算（除以 valueScale 是因为玩家最终看到的金额会再乘 valueScale）
+    const targetBudget = (this.levelConfig.targetMoney * difficulty.mineralBudgetRatio) / difficulty.valueScale;
+
+    // 3) 不足时升级低价值矿物
+    this.upgradeMineralsToReachBudget(targetBudget);
+
+    // 4) 仍不足则追加大金块
+    this.appendMineralsToReachBudget(targetBudget, count);
+
+    // 5) 幸运草：神秘袋最低 $200
     const items = this.game.getOwnedItems();
     if (items.has(ItemType.LUCKY_CLOVER)) {
       for (const mineral of this.minerals) {
@@ -689,6 +734,57 @@ export class GameScene extends SceneBase {
           mineral.value = Math.max(mineral.value, 200);
         }
       }
+    }
+  }
+
+  /** 当前所有矿物的原始总价值（不含 valueScale 缩放） */
+  private getCurrentMineralTotal(): number {
+    return this.minerals.reduce((sum, m) => sum + m.value, 0);
+  }
+
+  /** 沿 VALUE_UPGRADE_CHAIN 升级最低价矿物，直到达到预算或无可升级 */
+  private upgradeMineralsToReachBudget(targetBudget: number): void {
+    for (let attempt = 0; attempt < BUDGET_UPGRADE_MAX_ATTEMPTS; attempt++) {
+      if (this.getCurrentMineralTotal() >= targetBudget) return;
+
+      // 找到价值最低的可升级矿物
+      let candidateIdx = -1;
+      let candidateChainIdx = -1;
+      let candidateValue = Infinity;
+      for (let i = 0; i < this.minerals.length; i++) {
+        const m = this.minerals[i]!;
+        const chainIdx = VALUE_UPGRADE_CHAIN.indexOf(m.config.type);
+        if (chainIdx < 0 || chainIdx >= VALUE_UPGRADE_CHAIN.length - 1) continue;
+        if (m.value < candidateValue) {
+          candidateValue = m.value;
+          candidateIdx = i;
+          candidateChainIdx = chainIdx;
+        }
+      }
+      if (candidateIdx < 0) return; // 无可升级矿物
+
+      // 升级为链中下一档
+      const oldMineral = this.minerals[candidateIdx]!;
+      const nextType = VALUE_UPGRADE_CHAIN[candidateChainIdx + 1]!;
+      const newMineral = new Mineral(oldMineral.x, oldMineral.y, nextType, this.spriteCache);
+      // 继承移动属性（升级前是 MOUSE/MOLE 时）
+      if (oldMineral.vx !== 0) {
+        newMineral.vx = oldMineral.vx;
+        newMineral.moveLeft = oldMineral.moveLeft;
+        newMineral.moveRight = oldMineral.moveRight;
+      }
+      this.minerals[candidateIdx] = newMineral;
+    }
+  }
+
+  /** 升级仍不够时追加大金块，上限 baseCount × BUDGET_APPEND_RATIO */
+  private appendMineralsToReachBudget(targetBudget: number, baseCount: number): void {
+    const maxAppend = Math.floor(baseCount * BUDGET_APPEND_RATIO);
+    for (let i = 0; i < maxAppend; i++) {
+      if (this.getCurrentMineralTotal() >= targetBudget) return;
+      const placed = this.tryPlaceMineral(MineralType.GOLD_LARGE);
+      if (!placed) return; // 找不到空位
+      this.minerals.push(placed);
     }
   }
 
