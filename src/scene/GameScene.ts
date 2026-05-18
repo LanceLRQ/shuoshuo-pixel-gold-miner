@@ -52,6 +52,12 @@ const TUTORIAL_BTN_H = 28;
 const TUTORIAL_BTN_Y = 4;
 const TUTORIAL_BTN_RIGHT_OFFSET = 60; // 距右边距：暂停 + 间距 + 自身宽
 
+/** 额外时间道具加成（秒） */
+const EXTRA_TIME_BONUS = 10;
+
+/** TNT 引爆键位（F 或 ↑，任一触发） */
+const KEY_DETONATE_CODES = ['KeyF', 'ArrowUp'] as const;
+
 /** 矿物抓取反馈分档（按价值决定语音/颜色/飘字大小） */
 const VALUE_TIER = {
   /** 高价值阈值：触发 Happy 语音 + LARGE 飘字 */
@@ -84,6 +90,7 @@ const ITEM_SHORT_NAMES: Record<string, string> = {
   [ItemType.STONE_BOOK]: '石书',
   [ItemType.MOUSE_POISON]: '鼠药',
   [ItemType.DIAMOND_OIL]: '钻油',
+  [ItemType.EXTRA_TIME]: '+时间',
 };
 
 /** 矿物生成权重（决定各矿物出现概率） */
@@ -197,10 +204,13 @@ export class GameScene extends SceneBase {
     this.showTutorial = !this.game.getStorage().loadTutorialShown();
     // 使用关卡配置生成矿物
     this.generateMinerals(this.levelConfig.mineralCount);
-    // 使用关卡配置的时间限制
-    this.hud.timeLeft = this.levelConfig.timeLimit;
+
+    let timeLimit = this.levelConfig.timeLimit;
+    if (this.game.getOwnedItems().has(ItemType.EXTRA_TIME)) {
+      timeLimit += EXTRA_TIME_BONUS;
+    }
+    this.hud.timeLeft = timeLimit;
     this.hud.money = 0;
-    // 重置钩爪
     this.hook.reset();
   }
 
@@ -280,6 +290,11 @@ export class GameScene extends SceneBase {
       return;
     }
 
+    // 键盘事件先于点击分支处理（点击分支末尾 return 会吞掉同帧按键）
+    if (KEY_DETONATE_CODES.some(code => input.isJustPressed(code))) {
+      this.tryDetonate();
+    }
+
     // 点击事件
     if (input.wasTapped()) {
       const pos = input.getTapPosition();
@@ -331,6 +346,23 @@ export class GameScene extends SceneBase {
     this.hook.fire();
     this.miner.setState(MinerState.PULL);
     this.game.getAudio().play(SoundType.HOOK_FIRE);
+  }
+
+  /** 尝试主动引爆当前钩着的矿物（消耗一次 DYNAMITE 道具） */
+  private tryDetonate(): void {
+    const items = this.game.getOwnedItems();
+    if (!items.has(ItemType.DYNAMITE)) return;
+
+    const mineral = this.hook.tryDetonate();
+    if (!mineral) return;
+
+    this.minerals = this.minerals.filter(m => m !== mineral);
+    this.particles.emit({ ...PRESET_BOMB_SPARK, x: mineral.x, y: mineral.y });
+    this.floatingTexts.emit(mineral.x, mineral.y - 10, '炸毁!', '#FF6600', 'MEDIUM');
+    items.delete(ItemType.DYNAMITE);
+
+    this.game.getAudio().play(SoundType.GRAB_BOMB);
+    this.miner.setState(MinerState.HAPPY);
   }
 
   render(renderer: Renderer): void {
@@ -401,10 +433,11 @@ export class GameScene extends SceneBase {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
       ctx.fillRect(0, 0, renderer.width, renderer.height);
       drawTextCentered(renderer, '操作说明', 100, '#FFD700', 'TITLE');
-      drawTextCentered(renderer, '空格 / 点击画面 - 发射钩爪', 190, '#FFFFFF', 'MEDIUM');
-      drawTextCentered(renderer, 'ESC / 右上角按钮 - 暂停', 240, '#FFFFFF', 'MEDIUM');
-      drawTextCentered(renderer, '抓取矿物达到目标金额即可过关', 300, '#AAAAAA', 'SMALL');
-      drawTextCentered(renderer, '点击任意位置开始', 380, '#FFD700', 'MEDIUM');
+      drawTextCentered(renderer, '空格 / 点击画面 - 发射钩爪', 180, '#FFFFFF', 'MEDIUM');
+      drawTextCentered(renderer, 'F / ↑ 键 - 引爆 TNT（需购买炸药）', 220, '#FFFFFF', 'MEDIUM');
+      drawTextCentered(renderer, 'ESC / 右上角按钮 - 暂停', 260, '#FFFFFF', 'MEDIUM');
+      drawTextCentered(renderer, '抓取矿物达到目标金额即可过关', 320, '#AAAAAA', 'SMALL');
+      drawTextCentered(renderer, '点击任意位置开始', 390, '#FFD700', 'MEDIUM');
     }
   }
 
@@ -497,16 +530,6 @@ export class GameScene extends SceneBase {
       // 矿物收回点（用于粒子特效定位，约在矿工头顶）
       const px = GAME_CONFIG.MINER_X;
       const py = GAME_CONFIG.MINER_Y + 10;
-
-      // 炸药道具：抓到石头自动炸毁，不加钱
-      if (mineral.config.type === MineralType.STONE && items.has(ItemType.DYNAMITE)) {
-        this.game.getAudio().play(SoundType.GRAB_BOMB);
-        this.particles.emit({ ...PRESET_BOMB_SPARK, x: px, y: py });
-        this.floatingTexts.emit(px, py - 20, '炸药摧毁!', '#FF8800', 'MEDIUM');
-        this.showNotification('炸药摧毁石头');
-        items.delete(ItemType.DYNAMITE);
-        return;
-      }
 
       // 神秘袋特殊处理
       if (mineral.config.type === MineralType.MYSTERY_BAG && mineral.mysteryContent) {

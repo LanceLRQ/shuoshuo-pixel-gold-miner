@@ -36,6 +36,7 @@ const LEVEL_BUFF_ITEMS: ItemType[] = [
   ItemType.STONE_BOOK,
   ItemType.MOUSE_POISON,
   ItemType.DIAMOND_OIL,
+  ItemType.EXTRA_TIME,
 ];
 
 /** FPS 统计更新间隔（毫秒） */

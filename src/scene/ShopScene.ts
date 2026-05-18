@@ -28,16 +28,18 @@ export enum ItemType {
   STONE_BOOK = 'STONE_BOOK',
   MOUSE_POISON = 'MOUSE_POISON',
   DIAMOND_OIL = 'DIAMOND_OIL',
+  EXTRA_TIME = 'EXTRA_TIME',
 }
 
 /** 道具配置表 */
 const SHOP_ITEMS: ShopItem[] = [
-  { name: '炸药', price: 150, description: '抓到石头时自动炸毁', owned: false, type: ItemType.DYNAMITE },
+  { name: '炸药', price: 150, description: '按 F 键引爆收回物', owned: false, type: ItemType.DYNAMITE },
   { name: '力量药水', price: 200, description: '收回速度 +50%', owned: false, type: ItemType.STRENGTH_POTION },
   { name: '幸运草', price: 100, description: '神秘袋最低 200$', owned: false, type: ItemType.LUCKY_CLOVER },
   { name: '石头书', price: 80, description: '石头价值 x3', owned: false, type: ItemType.STONE_BOOK },
   { name: '老鼠药', price: 120, description: '老鼠价值 x5', owned: false, type: ItemType.MOUSE_POISON },
   { name: '钻石变色油', price: 250, description: '钻石价值 x2', owned: false, type: ItemType.DIAMOND_OIL },
+  { name: '额外时间', price: 80, description: '开局 +10 秒', owned: false, type: ItemType.EXTRA_TIME },
 ];
 
 /** 商店卡片布局参数（3列 x 2行） */

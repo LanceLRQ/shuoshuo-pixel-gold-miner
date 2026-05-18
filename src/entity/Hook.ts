@@ -90,6 +90,19 @@ export class Hook {
     this.state = HookState.EXTENDING;
   }
 
+  /**
+   * 玩家操作：引爆当前钩着的矿物（TNT 主动模式）
+   * 仅在 REELING_WITH_MINERAL 状态有效，成功返回被引爆的矿物
+   * 引爆后状态切换为 REELING_EMPTY，绳索立即开始空收回
+   */
+  tryDetonate(): Mineral | null {
+    if (this.state !== HookState.REELING_WITH_MINERAL || !this.grabbedMineral) return null;
+    const mineral = this.grabbedMineral;
+    this.grabbedMineral = null;
+    this.state = HookState.REELING_EMPTY;
+    return mineral;
+  }
+
   /** 重置钩爪到摆动状态 */
   reset(): void {
     this.state = HookState.SWINGING;
