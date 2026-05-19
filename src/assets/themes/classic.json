@@ -1,0 +1,664 @@
+{
+  "id": "classic",
+  "name": "经典",
+  "description": "黄金矿工原味配色（矿工 5 态 + 大金块 HD）",
+  "sprites": {
+    "MINER_IDLE": {
+      "scale": 3,
+      "palette": {
+        "A": "#FFCC99",
+        "B": "#4169E1",
+        "C": "#8B4513",
+        "D": "#2B4DA0",
+        "E": "#5C2D0A",
+        "F": "#1E3A5F",
+        "G": "#3A2010",
+        "H": "#5C3317",
+        "I": "#E5A77A",
+        "J": "#A0652F",
+        "K": "#4A2500",
+        "L": "#1A0E04",
+        "M": "#000000",
+        "N": "#11233D",
+        "O": "#FF6666",
+        "P": "#FFD700",
+        "Q": "#3B1F08",
+        "R": "#6A8AE8",
+        "S": "#FFFFFF"
+      },
+      "pixels": [
+        ".............CCCCCC.............",
+        "...........CCCJJJCCCC...........",
+        ".........CCCJJJJJJJCCCC.........",
+        "........CCJJJJJCCCCCCCCE........",
+        ".......CCJJCCCCCCCCCCCCCE.......",
+        "......ECCCCCCCCCCCCCCCCCCEE.....",
+        ".......EEEEEEEEEEEEEEEEEEE......",
+        "........KKKKKKKKKKKKKKKKK.......",
+        ".........AAAAAAAAAAAAAAI........",
+        ".........AAAAAAAAAAAAAAII.......",
+        ".........AAMMAAAAAAMMAAII.......",
+        ".........AAMSMAAAAMSMAAII.......",
+        ".........AAAMAAAAAAMAAAII.......",
+        ".........AAAAAAIIAAAAAAII.......",
+        ".........AAAAAAAAAAAAAAII.......",
+        ".........AAAAOOOOOOAAAAII.......",
+        ".........AAAAAAAAAAAAAAI........",
+        "..........AAAAAAAAAAAAA.........",
+        "......BBDDBBBBDDDDBBBBDDBB......",
+        ".....BBRRBBBBBBBBBBBBBBBDDB.....",
+        "....BBRBBBBBPBBBBBBBPBBBBDDB....",
+        "....BBBBBBBBBBBBBBBBBBBBDDDB....",
+        "...BBBBBBBBBBBDDDDBBBBDDDDDDB...",
+        "....GGGGGGGGGGGPPGGGGGGGGGGG....",
+        "........FFFF........FFFF........",
+        "........FFFF........FFFF........",
+        "........FFNN........FFNN........",
+        "........FFNN........FFNN........",
+        ".......HHHHHQ......HHHHHQ.......",
+        "......HHHHHHQ.....HHHHHHQ.......",
+        "......LLLLLLL.....LLLLLLL.......",
+        "................................"
+      ]
+    },
+    "MINER_PULL": {
+      "scale": 3,
+      "palette": {
+        "A": "#FFCC99",
+        "B": "#4169E1",
+        "C": "#8B4513",
+        "D": "#2B4DA0",
+        "E": "#5C2D0A",
+        "F": "#1E3A5F",
+        "G": "#3A2010",
+        "H": "#5C3317",
+        "I": "#E5A77A",
+        "J": "#A0652F",
+        "K": "#4A2500",
+        "L": "#1A0E04",
+        "M": "#000000",
+        "N": "#11233D",
+        "O": "#FF6666",
+        "P": "#FFD700",
+        "Q": "#3B1F08",
+        "R": "#6A8AE8"
+      },
+      "pixels": [
+        ".............CCCCCC.............",
+        "...........CCCJJJCCCC...........",
+        ".........CCCJJJJJJJCCCC.........",
+        "........CCJJJJJCCCCCCCCE........",
+        ".......CCJJCCCCCCCCCCCCCE.......",
+        "......ECCCCCCCCCCCCCCCCCCEE.....",
+        ".......EEEEEEEEEEEEEEEEEEE......",
+        "........KKKKKKKKKKKKKKKKK.......",
+        ".........AAAAAAAAAAAAAAI........",
+        ".........AAAAAAAAAAAAAAII.......",
+        ".........AIMMMAAAMMMIAAII.......",
+        ".........AAMMMAAAMMMAAAII.......",
+        ".........AAAAAAAAAAAAAAII.......",
+        ".........AAAAAAIIAAAAAAII.......",
+        ".........AAAAAAAAAAAAAAII.......",
+        ".........AAAOOAAAAOOAAAII.......",
+        ".........AAAAAAAAAAAAAAI........",
+        "..........AAAAAAAAAAAAA.........",
+        ".....BBBDDBBBBDDDDBBBBDDBBB.....",
+        "....BBBRRBBBBBBBBBBBBBBBDDBB....",
+        "....BBRBBBBBPBBBBBBBPBBBBDDB....",
+        "....BBBBBBBBBBBBBBBBBBBBDDDB....",
+        "...BBBBBBBBBBBDDDDBBBBDDDDDDB...",
+        "....GGGGGGGGGGGPPGGGGGGGGGGG....",
+        "........FFFF........FFFF........",
+        "........FFFF........FFFF........",
+        "........FFNN........FFNN........",
+        "........FFNN........FFNN........",
+        ".......HHHHHQ......HHHHHQ.......",
+        "......HHHHHHQ.....HHHHHHQ.......",
+        "......LLLLLLL.....LLLLLLL.......",
+        "................................"
+      ]
+    },
+    "MINER_HAPPY": {
+      "scale": 3,
+      "palette": {
+        "A": "#FFCC99",
+        "B": "#4169E1",
+        "C": "#8B4513",
+        "D": "#2B4DA0",
+        "E": "#5C2D0A",
+        "F": "#1E3A5F",
+        "G": "#3A2010",
+        "H": "#5C3317",
+        "I": "#E5A77A",
+        "J": "#A0652F",
+        "K": "#4A2500",
+        "L": "#FF6666",
+        "M": "#1A0E04",
+        "N": "#000000",
+        "O": "#11233D",
+        "P": "#FFD700",
+        "Q": "#3B1F08",
+        "R": "#6A8AE8"
+      },
+      "pixels": [
+        ".............CCCCCC.............",
+        "...........CCCJJJCCCC...........",
+        ".........CCCJJJJJJJCCCC.........",
+        "........CCJJJJJCCCCCCCCE........",
+        ".......CCJJCCCCCCCCCCCCCE.......",
+        "......ECCCCCCCCCCCCCCCCCCEE.....",
+        ".......EEEEEEEEEEEEEEEEEEE......",
+        "........KKKKKKKKKKKKKKKKK.......",
+        ".........AAAAAAAAAAAAAAI........",
+        ".........AAAAAAAAAAAAAAII.......",
+        ".........AANNAAAAAANNAAII.......",
+        ".........AAANNAAAANNAAAII.......",
+        ".........AAAAAAAAAAAAAAII.......",
+        ".........AAAAAAIIAAAAAAII.......",
+        ".........AAALLLLLLLLAAAII.......",
+        ".........AAAALLLLLLLAAAII.......",
+        ".........AAAAAAAAAAAAAAI........",
+        "..........AAAAAAAAAAAAA.........",
+        "......BBDDBBBBDDDDBBBBDDBB......",
+        ".....BBRRBBBBBBBBBBBBBBBDDB.....",
+        "....BBRBBBBBPBBBBBBBPBBBBDDB....",
+        "....BBBBBBBBBBBBBBBBBBBBDDDB....",
+        "...BBBBBBBBBBBDDDDBBBBDDDDDDB...",
+        "....GGGGGGGGGGGPPGGGGGGGGGGG....",
+        "........FFFF........FFFF........",
+        "........FFFF........FFFF........",
+        "........FFOO........FFOO........",
+        "........FFOO........FFOO........",
+        ".......HHHHHQ......HHHHHQ.......",
+        "......HHHHHHQ.....HHHHHHQ.......",
+        "......MMMMMMM.....MMMMMMM.......",
+        "................................"
+      ]
+    },
+    "MINER_SAD": {
+      "scale": 3,
+      "palette": {
+        "A": "#FFCC99",
+        "B": "#4169E1",
+        "C": "#8B4513",
+        "D": "#2B4DA0",
+        "E": "#5C2D0A",
+        "F": "#1E3A5F",
+        "G": "#E5A77A",
+        "H": "#3A2010",
+        "I": "#5C3317",
+        "J": "#A0652F",
+        "K": "#4A2500",
+        "L": "#000000",
+        "M": "#1A0E04",
+        "N": "#FF6666",
+        "O": "#11233D",
+        "P": "#FFD700",
+        "Q": "#3B1F08",
+        "R": "#6A8AE8",
+        "S": "#FFFFFF"
+      },
+      "pixels": [
+        ".............CCCCCC.............",
+        "...........CCCJJJCCCC...........",
+        ".........CCCJJJJJJJCCCC.........",
+        "........CCJJJJJCCCCCCCCE........",
+        ".......CCJJCCCCCCCCCCCCCE.......",
+        "......ECCCCCCCCCCCCCCCCCCEE.....",
+        ".......EEEEEEEEEEEEEEEEEEE......",
+        "........KKKKKKKKKKKKKKKKK.......",
+        ".........AAAAAAAAAAAAAAG........",
+        ".........AGGAAAAAAAAGGAGG.......",
+        ".........AALLAAAAAALLAAGG.......",
+        ".........AALSLAAAALSLAAGG.......",
+        ".........AALLLAAAALLLAAGG.......",
+        ".........AAAAAAGGAAAAAAGG.......",
+        ".........AAANAAAAAAANAAGG.......",
+        ".........AAAANNNNNNNAAAGG.......",
+        ".........AAAAAAAAAAAAAAG........",
+        "..........AAAAAAAAAAAAA.........",
+        "......BBDDBBBBDDDDBBBBDDBB......",
+        ".....BBRRBBBBBBBBBBBBBBBDDB.....",
+        "....BBRBBBBBPBBBBBBBPBBBBDDB....",
+        "....BBBBBBBBBBBBBBBBBBBBDDDB....",
+        "...BBBBBBBBBBBDDDDBBBBDDDDDDB...",
+        "....HHHHHHHHHHHPPHHHHHHHHHHH....",
+        "........FFFF........FFFF........",
+        "........FFFF........FFFF........",
+        "........FFOO........FFOO........",
+        "........FFOO........FFOO........",
+        ".......IIIIIQ......IIIIIQ.......",
+        "......IIIIIIQ.....IIIIIIQ.......",
+        "......MMMMMMM.....MMMMMMM.......",
+        "................................"
+      ]
+    },
+    "MINER_STRAIN": {
+      "scale": 3,
+      "palette": {
+        "A": "#FFCC99",
+        "B": "#4169E1",
+        "C": "#8B4513",
+        "D": "#2B4DA0",
+        "E": "#5C2D0A",
+        "F": "#1E3A5F",
+        "G": "#3A2010",
+        "H": "#5C3317",
+        "I": "#E5A77A",
+        "J": "#A0652F",
+        "K": "#4A2500",
+        "L": "#1A0E04",
+        "M": "#000000",
+        "N": "#FF8888",
+        "O": "#FF6666",
+        "P": "#11233D",
+        "Q": "#FFD700",
+        "R": "#3B1F08",
+        "S": "#6A8AE8"
+      },
+      "pixels": [
+        ".............CCCCCC.............",
+        "...........CCCJJJCCCC...........",
+        ".........CCCJJJJJJJCCCC.........",
+        "........CCJJJJJCCCCCCCCE........",
+        ".......CCJJCCCCCCCCCCCCCE.......",
+        "......ECCCCCCCCCCCCCCCCCCEE.....",
+        ".......EEEEEEEEEEEEEEEEEEE......",
+        "........KKKKKKKKKKKKKKKKK.......",
+        ".........AAAAAAAAAAAAAAI........",
+        ".........AAAAAAAAAAAAAAII.......",
+        ".........NAMMMAAAMMMANAII.......",
+        ".........NAMMMAAAMMMANAII.......",
+        ".........NNAAAAAAAAANNAII.......",
+        ".........NAAAAAIIAAAAANII.......",
+        ".........AAAAAAAAAAAAAAII.......",
+        ".........AAAOOOOOOOOAAAII.......",
+        ".........AAAAAAAAAAAAAAI........",
+        "..........AAAAAAAAAAAAA.........",
+        ".....BBBDDBBBBDDDDBBBBDDBBB.....",
+        "....BBBSSBBBBBBBBBBBBBBBDDBB....",
+        "....BBSBBBBBQBBBBBBBQBBBBDDB....",
+        "....BBBBBBBBBBBBBBBBBBBBDDDB....",
+        "...BBBBBBBBBBBDDDDBBBBDDDDDDB...",
+        "....GGGGGGGGGGGQQGGGGGGGGGGG....",
+        "........FFFF........FFFF........",
+        "........FFFF........FFFF........",
+        "........FFPP........FFPP........",
+        "........FFPP........FFPP........",
+        ".......HHHHHR......HHHHHR.......",
+        "......HHHHHHR.....HHHHHHR.......",
+        "......LLLLLLL.....LLLLLLL.......",
+        "................................"
+      ]
+    },
+    "HOOK_SPRITE": {
+      "scale": 3,
+      "palette": {
+        "A": "#C0C0C0",
+        "B": "#808080",
+        "C": "#DEB887"
+      },
+      "pixels": [
+        "....CC.....",
+        "....AA.....",
+        "....AA.....",
+        "....AA.....",
+        "...AAAA....",
+        "..AAAAAA...",
+        ".AB.AA.BA..",
+        "AB..AA..BA.",
+        "A........A.",
+        ".A.......A.",
+        "..A.....A..",
+        "..........."
+      ]
+    },
+    "GOLD_SMALL": {
+      "scale": 3,
+      "palette": {
+        "A": "#FFD700",
+        "B": "#DAA520",
+        "C": "#FFF8B0"
+      },
+      "pixels": [
+        "..AAA...",
+        ".ACCAB..",
+        "ACAAABB.",
+        "AAACABB.",
+        "BAAAAAB.",
+        ".BAAABB.",
+        "..BBBB..",
+        "........"
+      ]
+    },
+    "GOLD_MEDIUM": {
+      "scale": 3,
+      "palette": {
+        "A": "#FFD700",
+        "B": "#DAA520",
+        "C": "#FFF8B0"
+      },
+      "pixels": [
+        "...AAAAA....",
+        "..ACCAABB...",
+        ".ACAACAAAB..",
+        ".AAACAAAABB.",
+        "AAACAAAAAAB.",
+        "AAAAAACAABB.",
+        "BAAAAAAAABB.",
+        ".BAAAAAABB..",
+        "..BAAAABB...",
+        "...BBABB....",
+        "....BBB.....",
+        "............"
+      ]
+    },
+    "GOLD_LARGE": {
+      "scale": 1,
+      "palette": {
+        "A": "#FFD700",
+        "B": "#DAA520",
+        "C": "#A8830C",
+        "D": "#FFE556",
+        "E": "#604808",
+        "F": "#FFF8B0",
+        "G": "#FFFEDA"
+      },
+      "pixels": [
+        "................................................",
+        "................................................",
+        "................................................",
+        "................................................",
+        "...............................EEE..............",
+        "...................EEEEEE...EECCCCEE............",
+        ".........EECCCEEEEECCCCCCEEECCAABCCE............",
+        ".........ECCDDCCCCCCGGGGCCCCFFAABBCCE...........",
+        "........ECCDDDFFFFGGGGGGGGFFFFAABBBCE...........",
+        "........ECDDDDFFFFGGGGGGGGFFFFAABBBCE...........",
+        "........ECDDDDFFFFGGGGGGGGFFFFAABBBBCE..........",
+        "........ECDDDDFFFFGGGGGGGGFFFFAABBBBCCE.........",
+        "........ECDDDDFFFFFFFFFFFFFFFFAABBBBBCCE........",
+        ".......ECCDDDDFFFFFFFFFFFFFFFFAABBBBBBCE........",
+        ".......ECDDDDDFFFFFFFFFFFFFFFFAABBBBBBBCE.......",
+        "......ECCDDDDDFFFFFFFFFFFFFFFFAABBBBBBBCE.......",
+        "......ECDDDDDDDDDDDDDDDDDDDDDDAABBBBBBBCE.......",
+        ".....ECCDDDDDDDDDDDDDDDDDDDDDDAABBBBBBBCE.......",
+        ".....ECDDDDDDDDDDDDDDDDDDDDDDDAABBBBBBCC........",
+        ".....ECDDDDDDDDDDDDDDDDDDDDDDDAABBBBBBCCE.......",
+        ".....ECDDDDDDDDDDDDDDDDDDDDDDDAABBBBBBBCE.......",
+        ".....ECCDDDDDDDDDDDDDDDDDDDDDDAABBBBBBBBCEE.....",
+        ".....ECCAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBCCE....",
+        ".....ECAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBCE....",
+        "....ECCAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBCE...",
+        "....ECAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBCE...",
+        "...ECAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBCE...",
+        "...CCAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBCCE...",
+        "..ECAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBCE....",
+        "..ECAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBCEE....",
+        "..ECCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACE.....",
+        "...ECCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCE.....",
+        "....ECCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACE......",
+        ".....ECCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACE......",
+        "......EECBBBBBBBBBBBBBBBBBBBBBBBBBBBBBCCEE......",
+        ".......ECCBBBBBBBBBBBBBBBBBBBBBBBBCCCCEEE.......",
+        "........ECCBBBBBBBBBBBBBBBBBBBBBBCEEE...........",
+        ".........ECCCBBBBBBBBBBBBBBBBBBBBCE.............",
+        "..........EECCCCCCCCCCCCCCCCCCCCCE..............",
+        "...............EECCCCCCCCCCCCCCCCE..............",
+        "................ECCCCCCCCCCCCCCCE...............",
+        ".................ECCCCCCCCCCCCCCE...............",
+        "..................ECCCCCCCCCCCCE................",
+        "..................ECCCCCCCEEEEE.................",
+        "...................EECCEEE......................",
+        ".....................EE.........................",
+        "................................................",
+        "................................................"
+      ]
+    },
+    "DIAMOND_SPRITE": {
+      "scale": 3,
+      "palette": {
+        "A": "#00FFFF",
+        "B": "#0099CC",
+        "C": "#B0FFFF"
+      },
+      "pixels": [
+        "...CC...",
+        "..CAAC..",
+        ".CAAAAB.",
+        "CAAAAAB.",
+        ".AAAABB.",
+        "..AABB..",
+        "...BB...",
+        "........"
+      ]
+    },
+    "STONE_SPRITE": {
+      "scale": 3,
+      "palette": {
+        "A": "#808080",
+        "B": "#606060",
+        "C": "#A0A0A0"
+      },
+      "pixels": [
+        "...AAAAAA...",
+        "..CACAAABB..",
+        ".CCAAAAAAB..",
+        "CAAACAAAABB.",
+        "AAAAAAAABBB.",
+        "AAACAAABBB..",
+        "BAAAAAABB...",
+        "BBAAAABB....",
+        ".BBAABB.....",
+        "..BBBB......",
+        "...BB.......",
+        "............"
+      ]
+    },
+    "BOMB_SPRITE": {
+      "scale": 3,
+      "palette": {
+        "A": "#333333",
+        "B": "#666666",
+        "C": "#FF4400",
+        "D": "#FFFF00"
+      },
+      "pixels": [
+        "....C...",
+        "...DDC..",
+        "..AAAA..",
+        ".AAAAAA.",
+        ".AABBAA.",
+        ".AABBAA.",
+        "..AAAA..",
+        "...AA..."
+      ]
+    },
+    "MYSTERY_BAG": {
+      "scale": 3,
+      "palette": {
+        "A": "#B8860B",
+        "B": "#8B0000",
+        "C": "#DAA520"
+      },
+      "pixels": [
+        "...BB...",
+        "..BAAB..",
+        ".AAAAAA.",
+        ".AACCAA.",
+        ".AACCAA.",
+        ".AAAAAA.",
+        "..AAAA..",
+        "...AA..."
+      ]
+    },
+    "BONE_SPRITE": {
+      "scale": 3,
+      "palette": {
+        "A": "#F5F5DC",
+        "B": "#D2C6A5"
+      },
+      "pixels": [
+        "..AA.....AA.",
+        "AAAAAAAAAAAA",
+        "AAAABBBBAAAA",
+        "AAAAAAAAAAAA",
+        "..AA.....AA.",
+        "............"
+      ]
+    },
+    "MOUSE_SPRITE": {
+      "scale": 3,
+      "palette": {
+        "A": "#8B6914",
+        "B": "#D2B48C",
+        "C": "#FF6666",
+        "D": "#FFB6C1",
+        "E": "#000000"
+      },
+      "pixels": [
+        "....D.......",
+        "...AAAAAAA..",
+        "..ABBBBBAAE.",
+        ".ABBBBBBBACC",
+        ".AAAAAAAAAA.",
+        "..AAAAAAAA..",
+        "...A....A...",
+        "............"
+      ]
+    },
+    "MOLE_SPRITE": {
+      "scale": 3,
+      "palette": {
+        "A": "#6B4226",
+        "B": "#C4A882",
+        "C": "#000000",
+        "D": "#FF69B4"
+      },
+      "pixels": [
+        "...AAAAAA...",
+        "..AAAAAAAA..",
+        ".AACAAAACAA.",
+        ".AAAADDAAAA.",
+        ".ABBAAAABBA.",
+        ".ABBAAAABBA.",
+        ".AAAAAAAAAA.",
+        "..AAAAAAAA..",
+        "...AA..AA...",
+        "............"
+      ]
+    },
+    "CRYSTAL_ORE_SPRITE": {
+      "scale": 3,
+      "palette": {
+        "A": "#5AB8E0",
+        "B": "#3A88B5",
+        "C": "#80E0FF",
+        "D": "#E5FAFF"
+      },
+      "pixels": [
+        "...DD...",
+        "..DCCD..",
+        ".DCAACB.",
+        "DCAAAABB",
+        ".CAAABB.",
+        "..CABB..",
+        "...AB...",
+        "........"
+      ]
+    },
+    "CRAB_SHELL_SPRITE": {
+      "scale": 3,
+      "palette": {
+        "A": "#3AC080",
+        "B": "#80FFB0",
+        "C": "#1A8050",
+        "D": "#E0FFE5"
+      },
+      "pixels": [
+        "....DD....",
+        "...DBBD...",
+        "..DBAABD..",
+        ".DBAAAABC.",
+        "DBAACCAABC",
+        ".BAACCAAC.",
+        "..BAAAAC..",
+        "...BAAC...",
+        "....BC....",
+        ".........."
+      ]
+    },
+    "PIGGY_GEM_SPRITE": {
+      "scale": 3,
+      "palette": {
+        "A": "#FFB6E5",
+        "B": "#FFFFFF",
+        "C": "#FF80C0",
+        "D": "#FFE0F0"
+      },
+      "pixels": [
+        "...BBBBB....",
+        "..BDDDAAB...",
+        ".BDDDAAACB..",
+        "BDDAAAAACCB.",
+        "DDAAAAACCCCB",
+        "BDAAAAAACCC.",
+        ".BDAAAACCCB.",
+        "..BDAACCCB..",
+        "...BDACCB...",
+        "....BACB....",
+        ".....BB.....",
+        "............"
+      ]
+    },
+    "WOODEN_BOX_SPRITE": {
+      "scale": 3,
+      "palette": {
+        "A": "#8B4513",
+        "B": "#A0652F",
+        "C": "#DAA520",
+        "D": "#5C3317"
+      },
+      "pixels": [
+        "DAAAAAAD",
+        "ABBCCBBA",
+        "ABBCCBBA",
+        "AAACCAAA",
+        "ABBCCBBA",
+        "ABBCCBBA",
+        "DAAAAAAD",
+        "........"
+      ]
+    },
+    "COIN_ICON": {
+      "scale": 3,
+      "palette": {
+        "A": "#FFD700",
+        "B": "#DAA520",
+        "C": "#FFF8B0"
+      },
+      "pixels": [
+        "..AAAA..",
+        ".ACCAAB.",
+        "ACAAAABB",
+        "AAAAAABB",
+        "BAAAABB.",
+        ".BAAAB..",
+        "..BBB...",
+        "........"
+      ]
+    }
+  },
+  "background": {
+    "skyTop": "#87CEEB",
+    "skyBottom": "#B0E0FF",
+    "groundColor": "#4CAF50",
+    "groundDark": "#388E3C",
+    "groundLight": "#66BB6A",
+    "dirtLight": "#8B6914",
+    "dirtMid": "#6B4C12",
+    "dirtDark": "#4A3508",
+    "rockColor": "#5D4E37",
+    "rockDark": "#3E3226"
+  }
+}
