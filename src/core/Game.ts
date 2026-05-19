@@ -87,6 +87,9 @@ export class Game {
   /** 标记 Bonus 是否已通过 commitLevelResult 累加，避免 SHOP 进入时重复加 */
   private bonusAlreadyCommitted: boolean = false;
 
+  /** 失败重试标记：retryCurrentLevel 设置后 changeScene 跳过 nextLevel + 金额累加 + 章节过场 */
+  private isRetrying: boolean = false;
+
   // FPS 统计
   private frameCount: number = 0;
   private fpsTime: number = 0;
@@ -177,8 +180,13 @@ export class Game {
       case GameState.SLOT_SELECT:
         scene = new SlotSelectScene(this);
         break;
-      case GameState.PLAYING:
-        if (previousState === GameState.SHOP) {
+      case GameState.PLAYING: {
+        const retrying = this.isRetrying;
+        this.isRetrying = false;
+        if (retrying) {
+          // 失败重试：保持当前关卡，本关入账不并入 currentMoney
+          this.bonusAlreadyCommitted = false;
+        } else if (previousState === GameState.SHOP) {
           // 商店分支：金额已在 SHOP case 累加，仅推进关卡
           this.bonusAlreadyCommitted = false;
           this.levelManager.nextLevel();
@@ -193,8 +201,9 @@ export class Game {
           this.persistProgress();
         }
         // CHAPTER_TRANSITION 回流：金额/关卡已在首次进入时处理过，直接创建 GameScene
-        // 章节首关守卫：非 INFINITE 模式下，进入 L1/L8/L15 时先走 ChapterScene 过场
-        if (previousState !== GameState.CHAPTER_TRANSITION
+        // 章节首关守卫：非 INFINITE 模式 + 非重试 时，进入 L1/L8/L15 走 ChapterScene 过场
+        if (!retrying
+            && previousState !== GameState.CHAPTER_TRANSITION
             && !this.getDifficultyConfig().infiniteItems
             && isChapterFirstLevel(this.levelManager.currentLevel)) {
           this.state = GameState.CHAPTER_TRANSITION;
@@ -203,6 +212,7 @@ export class Game {
         }
         scene = new GameScene(this, this.levelManager.getCurrentConfig());
         break;
+      }
       case GameState.RESULT:
         scene = new ResultScene(this, this.lastEarnedMoney, this.lastTargetMoney, this.lastRemainingTime);
         break;
@@ -412,10 +422,12 @@ export class Game {
     return this.activeSlot;
   }
 
-  /** 失败重试当前关卡（保留累计金额和已购道具） */
+  /** 失败重试当前关卡（保留累计金额和已购道具，本关入账丢弃） */
   retryCurrentLevel(): void {
-    // 重置本关金额记录，避免污染
+    // 本关入账作废 + 设置 isRetrying 标记，让 changeScene 跳过 nextLevel/累加/章节过场
     this.lastEarnedMoney = 0;
+    this.bonusAlreadyCommitted = false;
+    this.isRetrying = true;
     this.changeScene(GameState.PLAYING);
   }
 
