@@ -18,7 +18,7 @@ import { renderBackground, getChapterBackgroundColors, GROUND_Y } from '../asset
 import type { BackgroundColors } from '../assets/theme/types';
 import type { SpriteCacheMap } from '../assets/types';
 import type { LevelConfig } from '../level/levels';
-import { ChapterId, getLevelEarning } from '../level/levels';
+import { ChapterId, getLevelEarning, isEndlessLevel, TOTAL_LEVELS } from '../level/levels';
 import { ItemType, PERSISTENT_ITEM_TYPES } from '../scene/ShopScene';
 import type { SlotMeta } from '../core/Storage';
 import type { DifficultyConfig } from '../level/difficulty';
@@ -262,9 +262,16 @@ export class GameScene extends SceneBase {
       this.levelConfig.chapter,
       game.getThemeManager().getBackgroundColors(),
     );
-    this.hud.difficultyLabel = this.difficulty.infiniteItems
-      ? `🔥 ${this.difficulty.name}`
-      : `难度: ${this.difficulty.name}`;
+    // HUD 标签优先级：INFINITE 难度 > 无尽关卡（L22+）> 普通难度
+    // 注：INFINITE 难度玩家进 L22+ 仍显示"🔥 无限火力"（难度模式优先于关卡模式）
+    const inEndlessChapter = isEndlessLevel(this.levelConfig.level);
+    if (this.difficulty.infiniteItems) {
+      this.hud.difficultyLabel = `🔥 ${this.difficulty.name}`;
+    } else if (inEndlessChapter) {
+      this.hud.difficultyLabel = `⚡ 无尽 L${this.levelConfig.level - TOTAL_LEVELS}`;
+    } else {
+      this.hud.difficultyLabel = `难度: ${this.difficulty.name}`;
+    }
 
     // INFINITE 模式：开局自动加全部 persistent buff
     // 消耗品（DYNAMITE/EXTRA_TIME）由 infiniteItems flag 在使用时拦截，不自动持有

@@ -275,9 +275,38 @@ export const LEVELS: LevelConfig[] = [
   },
 ];
 
-/** 获取关卡配置（索引 0-based，越界时返回最后一关） */
+/** 总关卡数（正常 3 章节的最后一关） */
+export const TOTAL_LEVELS = LEVELS.length;
+
+/** 无尽模式判定：超过正常通关关卡数 */
+export function isEndlessLevel(level: number): boolean {
+  return level > TOTAL_LEVELS;
+}
+
+/**
+ * 无尽模式关卡配置（#19，超过 L21 后算法生成）
+ * 本关增量起步 2000，每关再 +250 递增；时间递减 1s（下限 25）；矿数 +1（上限 30）
+ * 累计目标公式：lastTarget + 2000×offset + 125×(offset-1)×offset
+ */
+function getEndlessLevelConfig(level: number): LevelConfig {
+  const last = LEVELS[LEVELS.length - 1]!;
+  const offset = level - TOTAL_LEVELS; // L22 起 offset=1
+  const cumulativeIncrease = 2000 * offset + 125 * (offset - 1) * offset;
+  return {
+    level,
+    chapter: last.chapter,
+    targetMoney: last.targetMoney + cumulativeIncrease,
+    mineralCount: Math.min(30, last.mineralCount + offset),
+    timeLimit: Math.max(25, last.timeLimit - offset + 1),
+    mineralWeights: last.mineralWeights, // 沿用 L21 高难度权重（多石头/炸弹）
+    isChapterFinale: false, // 无尽模式不算章节末关
+  };
+}
+
+/** 获取关卡配置（L1-L21 查表，L22+ 算法生成无尽模式配置） */
 export function getLevelConfig(level: number): LevelConfig {
-  const index = Math.min(level - 1, LEVELS.length - 1);
+  if (level > TOTAL_LEVELS) return getEndlessLevelConfig(level);
+  const index = Math.max(0, level - 1);
   return LEVELS[index]!;
 }
 
@@ -286,7 +315,7 @@ export function getChapterByLevel(level: number): ChapterId {
   return getLevelConfig(level).chapter;
 }
 
-/** 是否章节首关（用于触发 ChapterScene 过场） */
+/** 是否章节首关（用于触发 ChapterScene 过场，无尽模式不触发） */
 export function isChapterFirstLevel(level: number): boolean {
   return CHAPTER_ORDER.some(id => CHAPTER_INFO[id].firstLevel === level);
 }
@@ -294,13 +323,9 @@ export function isChapterFirstLevel(level: number): boolean {
 /**
  * 本关增量：target(level) - target(level-1)，用于矿物预算计算
  * L1 起步无上关，增量等于自身 target
- * 超过 TOTAL_LEVELS（INFINITE 模式无限刷）时仍返回最后一关增量，避免预算归零
+ * 无尽模式（L22+）由 getLevelConfig 自动返回算法值，无需特殊处理
  */
 export function getLevelEarning(level: number): number {
   if (level <= 1) return getLevelConfig(1).targetMoney;
-  const safeLevel = Math.min(level, TOTAL_LEVELS);
-  return getLevelConfig(safeLevel).targetMoney - getLevelConfig(safeLevel - 1).targetMoney;
+  return getLevelConfig(level).targetMoney - getLevelConfig(level - 1).targetMoney;
 }
-
-/** 总关卡数 */
-export const TOTAL_LEVELS = LEVELS.length;
