@@ -59,12 +59,30 @@ tools/
 
 ## 设计文档索引
 
+> 文档按创建时间命名 `YYYYMMDD_xxxx.md`，便于按时间线追踪需求演进。
+
+### 基础设计（2026-04-04）
+
 | 文档 | 路径 | 说明 |
 |------|------|------|
-| 游戏设计文档 | `docs/game-design.md` | 完整玩法设计、矿物体系、关卡系统、状态机、文件结构 |
-| 像素元素清单 | `docs/pixel-elements-list.md` | 所有像素精灵制作清单与进度追踪 |
-| 架构设计文档 | `docs/architecture.md` | 模块职责、数据流、状态机设计、碰撞和缩放方案 |
-| 编码规范 | `docs/coding-standards.md` | 命名规范、TypeScript 规范、像素素材规范、Git 规范 |
-| 质量标准 | `docs/quality-standards.md` | 性能/兼容性/体验标准、发布前检查清单 |
-| 执行计划 | `docs/execution-plan.md` | 6 阶段开发计划、任务清单、依赖关系、验收标准 |
-| 设计概述 | `docs/design-overview.md` | 核心玩法和参数速查表 |
+| 设计概述 | `docs/design/20260404_design-overview.md` | 核心玩法和参数速查表 |
+| 游戏设计 | `docs/design/20260404_game-design.md` | 完整玩法设计、矿物体系、关卡系统、状态机、文件结构 |
+| 架构设计 | `docs/design/20260404_architecture.md` | 模块职责、数据流、状态机设计、碰撞和缩放方案 |
+| 编码规范 | `docs/design/20260404_coding-standards.md` | 命名规范、TypeScript 规范、像素素材规范、Git 规范 |
+| 质量标准 | `docs/design/20260404_quality-standards.md` | 性能/兼容性/体验标准、发布前检查清单 |
+| 执行计划 | `docs/design/20260404_execution-plan.md` | 6 阶段开发计划、任务清单、依赖关系、验收标准 |
+| 像素元素清单 | `docs/design/20260404_pixel-elements-list.md` | 所有像素精灵制作清单与进度追踪 |
+
+### 经典版差距 & 新增系统（2026-05-18）
+
+| 文档 | 路径 | 说明 |
+|------|------|------|
+| 经典版差距 & 路线图 | `docs/design/20260518_classic-feature-gaps.md` | **核心实施总纲**：Phase A-G 路线图 + 与 2004 Flash 经典差距 |
+| 难度系统 | `docs/design/20260518_difficulty-system.md` | 5 档难度（新手/一般/困难/高手/无限火力）参数表 + 矿物预算算法 |
+| 11 槽位存档 | `docs/design/20260518_save-slot-system.md` | 1 自动 + 10 手动槽位设计 + 存档触发点矩阵 |
+
+### Phase E 章节系统（2026-05-19）
+
+| 文档 | 路径 | 说明 |
+|------|------|------|
+| 章节系统 | `docs/design/20260519_chapter-system.md` | 3 章节 21 关骨架（水晶矿坑 / 蟹潮海湾 / 猪猪王座）+ 收藏品 + 过场剧情 |

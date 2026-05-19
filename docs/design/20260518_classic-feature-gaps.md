@@ -8,8 +8,9 @@
 > **状态说明**：`[ ]` 待开发 / `[~]` 部分实现 / `[x]` 已完成
 >
 > **关联文档**：
-> - [`difficulty-system.md`](./difficulty-system.md) - 5 档难度系统设计
-> - [`save-slot-system.md`](./save-slot-system.md) - 11 槽位存档系统设计
+> - [`20260518_difficulty-system.md`](./20260518_difficulty-system.md) - 5 档难度系统设计
+> - [`20260518_save-slot-system.md`](./20260518_save-slot-system.md) - 11 槽位存档系统设计
+> - [`20260519_chapter-system.md`](./20260519_chapter-system.md) - Phase E 章节系统详细方案（3 章节 21 关骨架）
 
 ---
 
@@ -132,33 +133,35 @@
 ## 五、Phase E：内容扩充 🔥
 
 > 让游戏不那么"10 关玩完就没了"，扩充关卡数量和环境多样性。
+> **📋 详细方案**：[`20260519_chapter-system.md`](./20260519_chapter-system.md)（世界观 / 21 关数值表 / ChapterScene 过场 / 末关收藏品倾斜机制）
 
-- [ ] **#13. 关卡扩展至 20+ 关**
+- [ ] **#13. 关卡扩展至 21 关 + chapter 字段**
   - 文件：`src/level/levels.ts`
-  - 内容：当前 10 关 → 20-30 关，按 3 章节制划分
-  - 难度递增：目标金额 / 矿物分布 / 时间 / 矿物随机性
+  - 内容：当前 10 关 → 21 关，按 3 章节制划分（Ch1 水晶矿坑 L1-7 / Ch2 蟹潮海湾 L8-14 / Ch3 猪猪王座 L15-21）
+  - LevelConfig 加 `chapter: ChapterId` + `isChapterFinale?: boolean` 字段
   - 工作量：中
 
-- [ ] **#9. 章节主题包装**
-  - 文件：`levels.ts` 加 `chapter` 字段 + 新建 `ChapterScene.ts`
-  - 内容：3 章节（如 "金矿镇" / "深海遗迹" / "外星基地"）
-  - 章节间过场：显示章节标题 + 简短剧情文字
+- [ ] **#9. ChapterScene 章节过场**
+  - 文件：新建 `src/scene/ChapterScene.ts` + Game 状态机加 `CHAPTER_TRANSITION`
+  - 内容：进入新章节首关前显示章名 + 剧情文字，停留 2.5s 自动跳转
+  - INFINITE 模式需守卫（不触发过场）
   - 工作量：中
 
 - [ ] **#10. 章节背景变化**
-  - 文件：`assets/background.ts` + `ThemeManager` 接受章节参数
-  - 内容：不同章节地下背景色 + 装饰元素差异（沙漠 / 火山 / 冰川）
+  - 文件：`assets/background.ts` + `ThemeManager` 接受 chapter 参数
+  - 内容：3 套色板（棕黄 / 深蓝磷光 / 紫金）+ 装饰元素差异
   - 工作量：中
 
-- [ ] **#11. 高分特殊收藏品**
-  - 文件：`entity/types.ts` 扩展 MineralType + `assets/sprites.ts` 新精灵
-  - 内容：每章节 1-2 种独特高分物（皇冠 800$ / 陶罐 400$ / 恐龙骨 600$ / 海星 500$）
+- [ ] **#11. 章节专属收藏品 + 末关 +30% 倾斜**
+  - 文件：`entity/types.ts` 扩展 MineralType + `assets/sprites.ts` 新精灵 + GameScene 末关倾斜逻辑
+  - 内容：水晶矿石 400$ / 水晶蟹甲 800$ / 猪猪金冠 1500$
   - 工作量：中
 
 - [ ] **#12. 木箱 / 抽奖箱**
   - 文件：`Mineral.ts` 增加 `WOODEN_BOX` 类型 + 抽奖逻辑
   - 内容：抓到木箱后随机开出（钻石 / 金币 / 蜘蛛跳走扣血 / 骷髅扣分）
   - 工作量：中
+  - 独立项，可与 #9-#11 解耦
 
 ---
 

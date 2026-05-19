@@ -1,7 +1,7 @@
 /**
  * 存档槽位选择场景
  * 布局：第一行自动槽位（宽卡），下面 2×5 网格 10 个手动槽位
- * 详见 docs/design/save-slot-system.md §6.2
+ * 详见 docs/design/20260518_save-slot-system.md §6.2
  */
 
 import { SceneBase } from './SceneBase';

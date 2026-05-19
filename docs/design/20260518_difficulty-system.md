@@ -215,7 +215,7 @@ getDifficultyConfig(): DifficultyConfig
 
 ### 5.3 Storage.ts 存档结构调整
 
-> ⚠️ 存档结构涉及"10 个槽位"重构，详见 [`save-slot-system.md`](./save-slot-system.md)。两套系统强关联，建议**打包一起实施**。
+> ⚠️ 存档结构涉及"10 个槽位"重构，详见 [`20260518_save-slot-system.md`](./20260518_save-slot-system.md)。两套系统强关联，建议**打包一起实施**。
 
 简化设计：
 - 每个槽位绑定一个难度（创建时确定，不可修改）
@@ -501,5 +501,5 @@ storage.updateHighScore(difficulty: Difficulty, score: number): void
 ---
 
 > 文档创建日期：2026-05-18
-> 关联文档：[`classic-feature-gaps.md`](./classic-feature-gaps.md)
+> 关联文档：[`20260518_classic-feature-gaps.md`](./20260518_classic-feature-gaps.md)
 > 维护：实施过程中根据实际调整数值表 §二、§七

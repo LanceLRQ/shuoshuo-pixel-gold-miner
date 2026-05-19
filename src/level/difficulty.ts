@@ -1,7 +1,7 @@
 /**
  * 难度系统
  * 5 档难度（新手/一般/困难/高手/无限火力）的参数配置表
- * 详见 docs/design/difficulty-system.md
+ * 详见 docs/design/20260518_difficulty-system.md
  */
 
 /** 难度等级 */

@@ -3,7 +3,7 @@
  * - 1 个自动槽位（slotId=0）：游戏自动写入最新进度
  * - 10 个手动槽位（slotId=1-10）：玩家显式"另存为"才写入
  *
- * 详见 docs/design/save-slot-system.md
+ * 详见 docs/design/20260518_save-slot-system.md
  */
 
 import { Difficulty, DEFAULT_DIFFICULTY } from '../level/difficulty';

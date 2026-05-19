@@ -1,7 +1,7 @@
 # 多存档槽位系统规划文档
 
 > 黄金矿工 H5 引入 **1 个自动槽位 + 10 个手动槽位**（共 11 个），玩家可在不同难度/不同进度间自由切换。
-> 关联文档：[`difficulty-system.md`](./difficulty-system.md)
+> 关联文档：[`20260518_difficulty-system.md`](./20260518_difficulty-system.md)
 
 ---
 
@@ -601,5 +601,5 @@ class Game {
 ---
 
 > 文档创建日期：2026-05-18
-> 关联文档：[`difficulty-system.md`](./difficulty-system.md) / [`classic-feature-gaps.md`](./classic-feature-gaps.md)
+> 关联文档：[`20260518_difficulty-system.md`](./20260518_difficulty-system.md) / [`20260518_classic-feature-gaps.md`](./20260518_classic-feature-gaps.md)
 > 维护：实施过程中根据 UI 设计实际调整 §6 卡片布局参数
