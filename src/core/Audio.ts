@@ -54,7 +54,7 @@ export class Audio {
   private bgmIndex: number = 0;
 
   /** 钩绳循环音效节点（启动时创建，停止时清空） */
-  private ropeFrictionNodes: { osc: OscillatorNode; gain: GainNode; lfo: OscillatorNode } | null = null;
+  private ropeFrictionNodes: { source: AudioBufferSourceNode; gain: GainNode; lfo: OscillatorNode } | null = null;
 
   /** 懒初始化 AudioContext（需要用户交互后才能创建） */
   private ensureContext(): AudioContext {
@@ -265,50 +265,69 @@ export class Audio {
   }
 
   /**
-   * 启动钩绳金属摩擦循环音（#16）
-   * 锯齿波 + 低频 LFO 调频，模拟链条颤动"叮叮叮"质感
+   * 启动钩绳摩擦循环音（#16）
+   * 白噪声 + 高通/低通双滤波 → "沙沙沙"质感；LFO 调制音量模拟摩擦不均
    * 重复调用安全：已启动则跳过
    */
   startRopeFriction(): void {
     if (this.muted || this.ropeFrictionNodes) return;
     const ctx = this.ensureContext();
 
-    // 主振荡：锯齿波，金属感
-    const osc = ctx.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.value = 520;
+    // 2 秒长度的白噪声循环（缓存即可，每次启动重新生成成本可忽略）
+    const bufferSize = ctx.sampleRate * 2;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
 
-    // LFO 调制频率（颤动效果）
-    const lfo = ctx.createOscillator();
-    lfo.type = 'sine';
-    lfo.frequency.value = 9;
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 80; // 调频深度 ±80Hz
-    lfo.connect(lfoGain);
-    lfoGain.connect(osc.frequency);
+    // 双段滤波：高通去隆隆声 + 低通去嘶嘶尖，保留 700-2800Hz "沙沙"频段
+    const highpass = ctx.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 700;
+    highpass.Q.value = 0.6;
+    const lowpass = ctx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = 2800;
+    lowpass.Q.value = 0.6;
 
-    // 主音量（低音量不喧宾夺主）+ 起音 fade-in 避免爆音
+    // LFO 调制音量，模拟摩擦不均匀的"沙—沙—沙"节奏感
+    const baseVol = 0.025 * this.volume;
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.04 * this.volume, ctx.currentTime + 0.05);
-    osc.connect(gain);
+    gain.gain.linearRampToValueAtTime(baseVol, ctx.currentTime + 0.08);
+
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 5;
+    const lfoDepth = ctx.createGain();
+    lfoDepth.gain.value = baseVol * 0.4; // 音量上下浮动 ±40%
+    lfo.connect(lfoDepth);
+    lfoDepth.connect(gain.gain);
+
+    source.connect(highpass);
+    highpass.connect(lowpass);
+    lowpass.connect(gain);
     gain.connect(ctx.destination);
 
-    osc.start();
+    source.start();
     lfo.start();
-    this.ropeFrictionNodes = { osc, gain, lfo };
+    this.ropeFrictionNodes = { source, gain, lfo };
   }
 
-  /** 停止钩绳金属摩擦循环音（淡出避免爆音） */
+  /** 停止钩绳摩擦循环音（淡出避免爆音） */
   stopRopeFriction(): void {
     if (!this.ropeFrictionNodes) return;
     const ctx = this.ensureContext();
     const now = ctx.currentTime;
-    const { osc, gain, lfo } = this.ropeFrictionNodes;
+    const { source, gain, lfo } = this.ropeFrictionNodes;
     gain.gain.cancelScheduledValues(now);
     gain.gain.setValueAtTime(gain.gain.value, now);
     gain.gain.linearRampToValueAtTime(0, now + 0.06);
-    osc.stop(now + 0.07);
+    source.stop(now + 0.07);
     lfo.stop(now + 0.07);
     this.ropeFrictionNodes = null;
   }
