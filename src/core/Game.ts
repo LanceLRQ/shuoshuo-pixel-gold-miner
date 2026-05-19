@@ -13,6 +13,7 @@ import { ShopScene, ItemType, PERSISTENT_ITEM_TYPES } from '../scene/ShopScene';
 import { GameOverScene } from '../scene/GameOverScene';
 import { DifficultyScene } from '../scene/DifficultyScene';
 import { SlotSelectScene } from '../scene/SlotSelectScene';
+import { ChapterScene } from '../scene/ChapterScene';
 import { Storage, type GameProgress, AUTO_SLOT_ID } from './Storage';
 import { LevelManager } from '../level/LevelManager';
 import { Audio } from './Audio';
@@ -20,12 +21,14 @@ import { ThemeManager } from '../assets/theme/ThemeManager';
 import { CLASSIC_THEME } from '../assets/theme/classic';
 import { SHUOSHUO_CRYSTAL_THEME } from '../assets/theme/shuoshuo-crystal';
 import { Difficulty, DEFAULT_DIFFICULTY, getDifficultyConfig, type DifficultyConfig } from '../level/difficulty';
+import { isChapterFirstLevel, getChapterByLevel } from '../level/levels';
 
 /** 游戏全局状态枚举 */
 export enum GameState {
   MENU = 'MENU',
   SLOT_SELECT = 'SLOT_SELECT',           // 槽位选择（Phase C 实现场景）
   DIFFICULTY_SELECT = 'DIFFICULTY_SELECT', // 难度选择（Phase C 实现场景）
+  CHAPTER_TRANSITION = 'CHAPTER_TRANSITION', // 章节过场（Phase E #9，进入 L1/L8/L15 前）
   READY = 'READY',
   PLAYING = 'PLAYING',
   REELING = 'REELING',
@@ -192,6 +195,15 @@ export class Game {
           this.bonusAlreadyCommitted = false;
           this.levelManager.nextLevel();
           this.persistProgress();
+        }
+        // CHAPTER_TRANSITION 回流：金额/关卡已在首次进入时处理过，直接创建 GameScene
+        // 章节首关守卫：非 INFINITE 模式下，进入 L1/L8/L15 时先走 ChapterScene 过场
+        if (previousState !== GameState.CHAPTER_TRANSITION
+            && !this.getDifficultyConfig().infiniteItems
+            && isChapterFirstLevel(this.levelManager.currentLevel)) {
+          this.state = GameState.CHAPTER_TRANSITION;
+          scene = new ChapterScene(this, getChapterByLevel(this.levelManager.currentLevel));
+          break;
         }
         scene = new GameScene(this, this.levelManager.getCurrentConfig());
         break;
