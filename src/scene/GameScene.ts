@@ -312,8 +312,12 @@ export class GameScene extends SceneBase {
 
     // 难度联动：基础关卡时间 × 难度时间倍率，再加道具额外时间
     let timeLimit = this.levelConfig.timeLimit * this.difficulty.timeScale;
-    if (this.game.getOwnedItems().has(ItemType.EXTRA_TIME)) {
+    // 额外时间是一次性消耗品（与 DYNAMITE 同语义）：开局生效后即消耗
+    // INFINITE 模式因 ResultScene 跳过商店且 clearLevelBuffs 跳过，玩家不会主动买这道具，无需特判
+    const ownedItems = this.game.getOwnedItems();
+    if (ownedItems.has(ItemType.EXTRA_TIME)) {
       timeLimit += EXTRA_TIME_BONUS;
+      ownedItems.delete(ItemType.EXTRA_TIME);
     }
     this.hud.timeLeft = timeLimit;
     this.hud.money = this.levelStartMoney; // 与 ctor 一致：HUD 起步累计金额（防御性重置）
@@ -1370,11 +1374,6 @@ export class GameScene extends SceneBase {
   /** 获取目标金额 */
   getTargetMoney(): number {
     return this.targetMoney;
-  }
-
-  /** 获取剩余时间（秒，用于 Bonus 计算） */
-  getRemainingTime(): number {
-    return Math.max(0, this.hud.timeLeft);
   }
 
   /** 暂停游戏 */

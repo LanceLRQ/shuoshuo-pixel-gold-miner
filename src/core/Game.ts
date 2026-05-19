@@ -43,9 +43,6 @@ export enum GameState {
 /** FPS 统计更新间隔（毫秒） */
 const FPS_UPDATE_INTERVAL = 1000;
 
-/** 时间奖励：每剩余 1 秒折算的金币数（用于 ResultScene Bonus 计算） */
-export const TIME_BONUS_PER_SECOND = 5;
-
 /** 是否显示 FPS */
 let showFps = true;
 
@@ -83,10 +80,8 @@ export class Game {
   private lastEarnedMoney: number = 0;
   private lastTargetMoney: number = 200;
   private currentMoney: number = 0;
-  /** 上局剩余时间（用于 ResultScene 计算时间奖励） */
-  private lastRemainingTime: number = 0;
 
-  /** 标记 Bonus 是否已通过 commitLevelResult 累加，避免 SHOP 进入时重复加 */
+  /** 标记关卡结算是否已通过 commitLevelResult 累加，避免 SHOP 进入时重复加 */
   private bonusAlreadyCommitted: boolean = false;
 
   /** 失败重试标记：retryCurrentLevel 设置后 changeScene 跳过 nextLevel + 金额累加 + 章节过场 */
@@ -149,14 +144,13 @@ export class Game {
       if (this.state === GameState.PLAYING && this.currentScene instanceof GameScene) {
         this.lastEarnedMoney = this.currentScene.getEarnedThisLevel();
         this.lastTargetMoney = this.currentScene.getTargetMoney();
-        this.lastRemainingTime = this.currentScene.getRemainingTime();
         this.clearLevelBuffs();
       }
       // 如果从 ShopScene 退出，同步剩余金额
       if (this.state === GameState.SHOP && this.currentScene instanceof ShopScene) {
         this.currentMoney = this.currentScene.getMoney();
       }
-      // 如果从 ResultScene 退出（达标后进入 SHOP/GAME_OVER），用含 Bonus 的最终金额覆盖
+      // 如果从 ResultScene 退出（达标后进入 SHOP/GAME_OVER），用最终金额覆盖
       if (this.state === GameState.RESULT && this.currentScene instanceof ResultScene) {
         this.lastEarnedMoney = this.currentScene.getTotalEarned();
       }
@@ -224,7 +218,7 @@ export class Game {
         break;
       }
       case GameState.RESULT:
-        scene = new ResultScene(this, this.lastEarnedMoney, this.lastTargetMoney, this.lastRemainingTime);
+        scene = new ResultScene(this, this.lastEarnedMoney, this.lastTargetMoney);
         break;
       case GameState.SHOP:
         // 通关进商店：若 Bonus 已在 ResultScene 即时提交则不重复累加

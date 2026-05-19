@@ -44,7 +44,7 @@ const SHOP_ITEMS: ShopItem[] = [
   { name: '石头书', price: 80, description: '石头价值 x3', owned: false, type: ItemType.STONE_BOOK, persistent: true },
   { name: '老鼠药', price: 120, description: '老鼠价值 x5', owned: false, type: ItemType.MOUSE_POISON, persistent: true },
   { name: '钻石变色油', price: 250, description: '钻石价值 x2', owned: false, type: ItemType.DIAMOND_OIL, persistent: true },
-  { name: '额外时间', price: 80, description: '开局 +10 秒', owned: false, type: ItemType.EXTRA_TIME, persistent: false },
+  { name: '额外时间', price: 80, description: '本关开局 +10 秒（一次性）', owned: false, type: ItemType.EXTRA_TIME, persistent: false },
   { name: '摇晃饮料', price: 180, description: '钩爪伸出中←/→微调', owned: false, type: ItemType.SHAKE_DRINK, persistent: true },
 ];
 
