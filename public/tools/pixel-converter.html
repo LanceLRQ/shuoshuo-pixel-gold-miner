@@ -242,18 +242,30 @@
       </div>
       <div class="info" id="previewInfo">等待转换...</div>
 
-      <h2 style="margin-top:12px">4. 导出</h2>
-      <div class="control-row">
-        <label>变量名</label>
-        <input type="text" id="varName" value="SPRITE">
-      </div>
-      <div>
-        <button class="btn" id="copyBtn">复制代码</button>
-        <button class="btn" id="downloadBtn">下载 .ts</button>
+      <div id="standaloneExport">
+        <h2 style="margin-top:12px">4. 导出</h2>
+        <div class="control-row">
+          <label>变量名</label>
+          <input type="text" id="varName" value="SPRITE">
+        </div>
+        <div>
+          <button class="btn" id="copyBtn">复制代码</button>
+          <button class="btn" id="downloadBtn">下载 .ts</button>
+        </div>
+
+        <h2 style="margin-top:12px">输出代码</h2>
+        <textarea class="output" id="codeOutput" readonly></textarea>
       </div>
 
-      <h2 style="margin-top:12px">输出代码</h2>
-      <textarea class="output" id="codeOutput" readonly></textarea>
+      <!-- 嵌入模式（?embed=1）：素材管理页用 iframe 加载时显示 -->
+      <div id="embedExport" style="display:none; margin-top:12px;">
+        <h2>应用到主题</h2>
+        <div class="info" id="embedInfo">编辑完成后点"应用"返回素材管理页</div>
+        <div style="margin-top:8px">
+          <button class="btn btn-primary" id="embedApplyBtn">✓ 应用</button>
+          <button class="btn" id="embedCancelBtn">✗ 取消</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -827,6 +839,48 @@
     };
 
     varNameInput.oninput = () => { if (currentPixelMap) generateCode(currentPixelMap); };
+
+    // ========== 嵌入模式（素材管理页通过 iframe + postMessage 通信） ==========
+    const EMBED_MODE = new URLSearchParams(location.search).get('embed') === '1';
+    if (EMBED_MODE) {
+      $('standaloneExport').style.display = 'none';
+      $('embedExport').style.display = 'block';
+      const embedInfo = $('embedInfo');
+      const spriteName = new URLSearchParams(location.search).get('sprite') || '';
+      if (spriteName) {
+        embedInfo.textContent = `正在编辑 sprite: ${spriteName}`;
+      }
+
+      // 接收宿主页推送的初始 PixelMap
+      window.addEventListener('message', (ev) => {
+        if (ev.origin !== location.origin) return;
+        const msg = ev.data;
+        if (msg && msg.type === 'init' && Array.isArray(msg.pixels)) {
+          currentPixelMap = msg.pixels;
+          renderPreview(currentPixelMap);
+          previewInfo.textContent = `已加载 ${currentPixelMap[0].length}×${currentPixelMap.length}（编辑后点应用）`;
+        }
+      });
+
+      $('embedApplyBtn').onclick = () => {
+        if (!currentPixelMap) {
+          alert('请先上传图片并转换，或修改当前像素后再应用');
+          return;
+        }
+        parent.postMessage({
+          type: 'apply',
+          pixels: currentPixelMap,
+          sprite: spriteName,
+        }, location.origin);
+      };
+
+      $('embedCancelBtn').onclick = () => {
+        parent.postMessage({ type: 'cancel' }, location.origin);
+      };
+
+      // 通知宿主页 iframe 已就绪
+      parent.postMessage({ type: 'ready' }, location.origin);
+    }
   </script>
 </body>
 </html>

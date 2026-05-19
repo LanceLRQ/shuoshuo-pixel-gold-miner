@@ -35,6 +35,17 @@ export interface ThemeJson {
 /** 透明像素的固定字符（不可作 palette key） */
 const TRANSPARENT_CHAR = '.';
 
+/**
+ * 单字符调色板字符集（顺序即分配优先级）
+ * 与 scripts/sprites-to-json.mjs 保持一致；排除 '.' 保留给透明
+ */
+export const PALETTE_CHARS = (
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ' +
+  'abcdefghijklmnopqrstuvwxyz' +
+  '0123456789' +
+  '!@#$%^&*+=<>?~-'
+).split('');
+
 /** 加载失败时的占位精灵：8×8 品红/黑棋盘格（"missing texture" 模式，肉眼一眼可辨） */
 const MISSING_SPRITE: PixelMap = Array.from({ length: 8 }, (_, y) =>
   Array.from({ length: 8 }, (_, x) => ((x + y) % 2 === 0 ? '#FF00FF' : '#000000'))
@@ -117,5 +128,71 @@ export function loadTheme(json: ThemeJson): ThemeDefinition {
     sprites,
     backgroundColors: json.background,
     spriteScaleOverrides: Object.keys(scaleOverrides).length > 0 ? scaleOverrides : undefined,
+  };
+}
+
+/**
+ * 把 PixelMap 反序列化为 SpriteJson
+ * - 遍历像素去重得 unique colors，按首次出现顺序分配 PALETTE_CHARS 单字符 key
+ * - 透明像素（0）输出为 '.'
+ * @throws 当颜色数超过 PALETTE_CHARS.length 时（需升级 v2 双字符或减色）
+ */
+export function pixelMapToSpriteJson(pixels: PixelMap, scale: number): SpriteJson {
+  if (pixels.length === 0) {
+    throw new Error('PixelMap 为空，无法序列化');
+  }
+  const width = pixels[0]!.length;
+  const colorToChar = new Map<string, string>();
+  const palette: Record<string, string> = {};
+  const lines: string[] = [];
+
+  for (let y = 0; y < pixels.length; y++) {
+    const row = pixels[y]!;
+    if (row.length !== width) {
+      throw new Error(`PixelMap 第 ${y} 行长度 ${row.length} ≠ 期望 ${width}`);
+    }
+    let line = '';
+    for (let x = 0; x < row.length; x++) {
+      const color = row[x]!;
+      if (color === 0) {
+        line += TRANSPARENT_CHAR;
+        continue;
+      }
+      const hex = color.toUpperCase();
+      let ch = colorToChar.get(hex);
+      if (ch === undefined) {
+        if (colorToChar.size >= PALETTE_CHARS.length) {
+          throw new Error(
+            `单 sprite 颜色数超出 ${PALETTE_CHARS.length}（已分配 ${colorToChar.size}）：请降低颜色数量`
+          );
+        }
+        ch = PALETTE_CHARS[colorToChar.size]!;
+        colorToChar.set(hex, ch);
+        palette[ch] = hex;
+      }
+      line += ch;
+    }
+    lines.push(line);
+  }
+
+  return { scale, palette, pixels: lines };
+}
+
+/**
+ * 把 ThemeDefinition 反序列化为 ThemeJson（用于导出/保存）
+ */
+export function themeDefinitionToJson(theme: ThemeDefinition): ThemeJson {
+  const sprites: Record<string, SpriteJson> = {};
+  const overrides = theme.spriteScaleOverrides ?? {};
+  for (const [name, pixels] of Object.entries(theme.sprites)) {
+    const scale = overrides[name] ?? 3;
+    sprites[name] = pixelMapToSpriteJson(pixels, scale);
+  }
+  return {
+    id: theme.id,
+    name: theme.name,
+    description: theme.description,
+    sprites,
+    background: theme.backgroundColors,
   };
 }

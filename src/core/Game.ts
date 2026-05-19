@@ -20,6 +20,8 @@ import { Audio } from './Audio';
 import { ThemeManager } from '../assets/theme/ThemeManager';
 import { CLASSIC_THEME } from '../assets/theme/classic';
 import { SHUOSHUO_CRYSTAL_THEME } from '../assets/theme/shuoshuo-crystal';
+import { loadTheme } from '../assets/themeLoader';
+import { ThemeStore } from '../asset-manager/ThemeStore';
 import { Difficulty, DEFAULT_DIFFICULTY, getDifficultyConfig, type DifficultyConfig } from '../level/difficulty';
 import { isChapterFirstLevel, getChapterByLevel } from '../level/levels';
 
@@ -110,6 +112,14 @@ export class Game {
     this.themeManager = new ThemeManager();
     this.themeManager.register(CLASSIC_THEME);
     this.themeManager.register(SHUOSHUO_CRYSTAL_THEME);
+    // 加载用户在素材管理页（/assets.html）创建的自定义主题
+    for (const json of new ThemeStore().loadCustom()) {
+      try {
+        this.themeManager.register(loadTheme(json));
+      } catch (e) {
+        console.error('[Game] 自定义主题加载失败', json.id, e);
+      }
+    }
     this.themeManager.restoreTheme();
 
     // 加载用户音频设置
