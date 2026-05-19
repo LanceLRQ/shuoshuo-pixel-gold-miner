@@ -20,15 +20,17 @@
 |------|--------|--------|------|
 | 灵魂三件套（#1-#4） | 4 | 0 | 4 |
 | 玩法机制补齐（#5-#8） | 4 | 0 | 4 |
-| 关卡 & 内容扩充（#9-#14） | 0 | 6 | 6 |
+| 关卡 & 内容扩充（#9-#14） | 5 | 1 | 6 |
 | 视听细节（#15-#18） | 0 | 4 | 4 |
 | 元系统（#19-#21） | 0 | 3 | 3 |
 | **新增：难度系统（D1-D5）** | 5 | 0 | 5 |
 | **新增：存档系统（S1-S5）** | 5 | 0 | 5 |
 | **新增：Bug 修复（B1-B2）** | 2 | 0 | 2 |
-| **总计** | **20** | **13** | **33** |
+| **总计** | **25** | **8** | **33** |
 
-**Phase 完成度**：Phase A ✅ · Phase B ✅ · Phase C ✅ · Phase D ✅ · Phase E ⏳ · Phase F ⏳ · Phase G ⏳
+**Phase 完成度**：Phase A ✅ · Phase B ✅ · Phase C ✅ · Phase D ✅ · Phase E ✅ · Phase F ⏳ · Phase G ⏳
+
+> 🎉 Phase A-E 全部完成！剩余仅 Phase F 视听打磨（4 项）+ Phase G 元系统（4 项含 #14 关卡布局模板化）。
 
 ---
 
@@ -130,38 +132,22 @@
 
 ---
 
-## 五、Phase E：内容扩充 🔥
+## 五、Phase E：内容扩充 🔥 ✅ 已完成
 
 > 让游戏不那么"10 关玩完就没了"，扩充关卡数量和环境多样性。
 > **📋 详细方案**：[`20260519_chapter-system.md`](./20260519_chapter-system.md)（世界观 / 21 关数值表 / ChapterScene 过场 / 末关收藏品倾斜机制）
+> **提交记录**：5 commits + simplify 修复（187c14a → ee5a07e）
 
-- [ ] **#13. 关卡扩展至 21 关 + chapter 字段**
-  - 文件：`src/level/levels.ts`
-  - 内容：当前 10 关 → 21 关，按 3 章节制划分（Ch1 水晶矿坑 L1-7 / Ch2 蟹潮海湾 L8-14 / Ch3 猪猪王座 L15-21）
-  - LevelConfig 加 `chapter: ChapterId` + `isChapterFinale?: boolean` 字段
-  - 工作量：中
+- [x] **#13. 关卡扩展至 21 关 + chapter 字段** —— `src/level/levels.ts`（21 关数据 + ChapterId 枚举 + CHAPTER_INFO + 工具函数 getChapterByLevel/isChapterFirstLevel）
+- [x] **#9. ChapterScene 章节过场** —— `src/scene/ChapterScene.ts` + Game 状态机加 CHAPTER_TRANSITION（自动 2.5s 跳过 + Space/Enter/点击立即跳过 + INFINITE 守卫）
+- [x] **#10. 章节背景色板差异化** —— `src/assets/background.ts` 新增 CHAPTER_COLOR_OVERRIDES + getChapterBackgroundColors（Ch2 深蓝磷光 / Ch3 粉白宫殿）
+- [x] **#11. 章节专属收藏品 + 末关 30% 倾斜** —— 3 个新精灵（水晶矿石 / 水晶蟹甲 / 猪猪粉宝石）+ MineralType 扩展 + tryAddChapterCollectible
+- [x] **#12. 木箱抽奖箱** —— BoxContent 6 种结果（钻石 +800$ / 金币 +500/+200 / 空盒 / 大小骷髅扣分）+ L5+ 每关追加 + handleWoodenBox 反馈
 
-- [ ] **#9. ChapterScene 章节过场**
-  - 文件：新建 `src/scene/ChapterScene.ts` + Game 状态机加 `CHAPTER_TRANSITION`
-  - 内容：进入新章节首关前显示章名 + 剧情文字，停留 2.5s 自动跳转
-  - INFINITE 模式需守卫（不触发过场）
-  - 工作量：中
-
-- [ ] **#10. 章节背景变化**
-  - 文件：`assets/background.ts` + `ThemeManager` 接受 chapter 参数
-  - 内容：3 套色板（棕黄 / 深蓝磷光 / 紫金）+ 装饰元素差异
-  - 工作量：中
-
-- [ ] **#11. 章节专属收藏品 + 末关 +30% 倾斜**
-  - 文件：`entity/types.ts` 扩展 MineralType + `assets/sprites.ts` 新精灵 + GameScene 末关倾斜逻辑
-  - 内容：水晶矿石 400$ / 水晶蟹甲 800$ / 猪猪金冠 1500$
-  - 工作量：中
-
-- [ ] **#12. 木箱 / 抽奖箱**
-  - 文件：`Mineral.ts` 增加 `WOODEN_BOX` 类型 + 抽奖逻辑
-  - 内容：抓到木箱后随机开出（钻石 / 金币 / 蜘蛛跳走扣血 / 骷髅扣分）
-  - 工作量：中
-  - 独立项，可与 #9-#11 解耦
+【simplify 修复】commit ee5a07e
+- 抽 pickWeightedContent 工具 / 抽 playValueFeedback / 抽 tryAddBonusMineral
+- CHAPTER_INFO 加 bgColor + accentColor 字段，ChapterScene 删 switch
+- GameScene chapterColors 字段缓存 + ChapterScene enter() 缓存渲染数据
 
 ---
 
@@ -291,23 +277,23 @@
 ---
 
 > 文档创建日期：2026-05-18
-> 最近更新：2026-05-18（Phase A-D 全部完成，下一步开 Phase E 内容扩充）
+> 最近更新：2026-05-19（Phase A-E 全部完成，下一步开 Phase F 视听打磨 或 Phase G 元系统）
 > 维护：每个 Phase 完成后更新进度并标记 `[x]`
 
 ---
 
-## 十二、下一步：Phase E 内容扩充
+## 十二、下一步：Phase F 视听打磨 / Phase G 元系统
 
-**推荐起步顺序**（按依赖关系）：
-1. **#13 关卡扩展至 20+ 关**（数据基础，必先做）
-   - 影响：`src/level/levels.ts` 配置扩充 + Storage progressive 加载验证
-2. **#9 章节主题包装**（依赖 #13 关卡分组）
-   - 影响：levels.ts 加 `chapter` 字段 + 新建 ChapterScene.ts 过场
-3. **#10 章节背景变化**（依赖 #9 chapter 标识）
-   - 影响：assets/background.ts + ThemeManager 按章节切色
-4. **#11 高分特殊收藏品**（独立）
-   - 影响：entity/types.ts 扩展 MineralType + 新精灵
-5. **#12 木箱抽奖**（独立，最后做）
-   - 影响：Mineral.ts WOODEN_BOX 类型 + 抽奖逻辑
+**Phase F 视听打磨**（推荐先做，单点工作量小、效果直接可见）：
+1. **#18 金额达标视觉反馈**（HUD 闪烁 + "叮" 音效，工作量小）
+2. **#15 拉重物用力动画**（Miner STRAIN 状态，需新精灵帧，工作量中）
+3. **#16 钩绳金属摩擦音**（Audio 循环音效支持，工作量小）
+4. **#17 钩绳重物拖拽下垂感**（Hook 渲染曲线，工作量中）
 
-按规则：开干前先讨论 #13 关卡难度曲线设计（3 章节 × 7 关 = 21 关，还是 4 章节 × 5 关 = 20 关），定好骨架再写数据。
+**Phase G 元系统**（长期留存机制，按需实施）：
+1. **#14 关卡布局模板化**（GameScene.tryPlaceMineral 支持 mineralLayout 字段，工作量大）
+2. **#19 无尽模式 / 挑战模式**（新建 EndlessScene，工作量中）
+3. **#20 成就 / 收藏图鉴系统**（新建 Achievement + 存档，工作量中）
+4. **#21 结算赌局 / 拍卖**（ResultScene 加赌博按钮，工作量中）
+
+按规则：开干前先告知 Phase 方向选择，必要时拆 Sprint 推进。
