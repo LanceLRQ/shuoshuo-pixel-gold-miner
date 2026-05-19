@@ -300,7 +300,7 @@ export class GameScene extends SceneBase {
       timeLimit += EXTRA_TIME_BONUS;
     }
     this.hud.timeLeft = timeLimit;
-    this.hud.money = this.levelStartMoney; // 累计模式：HUD 起步 = 进关时累计金额
+    this.hud.money = this.levelStartMoney; // 与 ctor 一致：HUD 起步累计金额（防御性重置）
     this.hook.reset();
   }
 

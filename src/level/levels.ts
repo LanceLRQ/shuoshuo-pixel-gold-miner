@@ -293,11 +293,13 @@ export function isChapterFirstLevel(level: number): boolean {
 
 /**
  * 本关增量：target(level) - target(level-1)，用于矿物预算计算
- * L1 增量等于自身 target（无上关），越界返回最后一关增量
+ * L1 起步无上关，增量等于自身 target
+ * 超过 TOTAL_LEVELS（INFINITE 模式无限刷）时仍返回最后一关增量，避免预算归零
  */
 export function getLevelEarning(level: number): number {
   if (level <= 1) return getLevelConfig(1).targetMoney;
-  return getLevelConfig(level).targetMoney - getLevelConfig(level - 1).targetMoney;
+  const safeLevel = Math.min(level, TOTAL_LEVELS);
+  return getLevelConfig(safeLevel).targetMoney - getLevelConfig(safeLevel - 1).targetMoney;
 }
 
 /** 总关卡数 */
