@@ -18,6 +18,8 @@ export enum MineralType {
   CRYSTAL_ORE = 'CRYSTAL_ORE',   // Ch1 水晶矿石
   CRAB_SHELL = 'CRAB_SHELL',     // Ch2 水晶蟹甲
   PIGGY_GEM = 'PIGGY_GEM',       // Ch3 猪猪粉宝石
+  // 木箱抽奖箱（L5+ 关卡每关追加 1 个，内容构造时随机）
+  WOODEN_BOX = 'WOODEN_BOX',
 }
 
 /** 矿物配置接口 */
@@ -150,6 +152,16 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
     spriteName: 'PIGGY_GEM_SPRITE',
     width: 12,
     height: 12,
+  },
+  // ========== 木箱抽奖箱 ==========
+  [MineralType.WOODEN_BOX]: {
+    type: MineralType.WOODEN_BOX,
+    value: 0, // 真实价值由 Mineral 构造时按 BoxContent 随机
+    weight: 0.5,
+    radius: 22,
+    spriteName: 'WOODEN_BOX_SPRITE',
+    width: 8,
+    height: 8,
   },
 };
 

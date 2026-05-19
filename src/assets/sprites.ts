@@ -68,6 +68,12 @@ const PNK_LIGHT = '#FFE0F0';
 const PNK_MID = '#FFB6E5';
 const PNK_DARK = '#FF80C0';
 
+// 木箱配色
+const WOOD = '#8B4513';
+const WOOD_LIGHT = '#A0652F';
+const WOOD_DARK = '#5C3317';
+const METAL = '#DAA520';
+
 // ==================== 角色精灵 ====================
 
 /** 矿工-待机 (16x16) - 坐姿，微微前倾 */
@@ -336,6 +342,18 @@ export const CRAB_SHELL_SPRITE: PixelMap = [
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 ];
 
+/** 木箱抽奖箱 (8x8) - 中央金属扣条分割 */
+export const WOODEN_BOX_SPRITE: PixelMap = [
+  [WOOD_DARK, WOOD, WOOD, WOOD, WOOD, WOOD, WOOD, WOOD_DARK],
+  [WOOD, WOOD_LIGHT, WOOD_LIGHT, METAL, METAL, WOOD_LIGHT, WOOD_LIGHT, WOOD],
+  [WOOD, WOOD_LIGHT, WOOD_LIGHT, METAL, METAL, WOOD_LIGHT, WOOD_LIGHT, WOOD],
+  [WOOD, WOOD, WOOD, METAL, METAL, WOOD, WOOD, WOOD],
+  [WOOD, WOOD_LIGHT, WOOD_LIGHT, METAL, METAL, WOOD_LIGHT, WOOD_LIGHT, WOOD],
+  [WOOD, WOOD_LIGHT, WOOD_LIGHT, METAL, METAL, WOOD_LIGHT, WOOD_LIGHT, WOOD],
+  [WOOD_DARK, WOOD, WOOD, WOOD, WOOD, WOOD, WOOD, WOOD_DARK],
+  [0, 0, 0, 0, 0, 0, 0, 0],
+];
+
 /** Ch3 猪猪粉宝石 (12x12) - 钻石形粉色晶体 + 高光 */
 export const PIGGY_GEM_SPRITE: PixelMap = [
   [0, 0, 0, PNK_BRIGHT, PNK_BRIGHT, PNK_BRIGHT, PNK_BRIGHT, PNK_BRIGHT, 0, 0, 0, 0],
@@ -388,5 +406,6 @@ export const ALL_SPRITES: Record<string, PixelMap> = {
   CRYSTAL_ORE_SPRITE,
   CRAB_SHELL_SPRITE,
   PIGGY_GEM_SPRITE,
+  WOODEN_BOX_SPRITE,
   COIN_ICON,
 };

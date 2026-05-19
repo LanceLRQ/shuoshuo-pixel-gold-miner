@@ -158,6 +158,9 @@ const CHAPTER_COLLECTIBLE_MAP: Record<ChapterId, MineralType> = {
   [ChapterId.PIGGY_THRONE]: MineralType.PIGGY_GEM,
 };
 
+/** 木箱抽奖箱的最小关卡（前几关玩家还在学基础玩法，不放抽奖箱） */
+const WOODEN_BOX_MIN_LEVEL = 5;
+
 export class GameScene extends SceneBase {
   private game: Game;
   private miner: Miner;
@@ -851,6 +854,12 @@ export class GameScene extends SceneBase {
         return;
       }
 
+      // 木箱抽奖处理
+      if (mineral.config.type === MineralType.WOODEN_BOX) {
+        this.handleWoodenBox(mineral);
+        return;
+      }
+
       // 计算实际价值
       let value = mineral.value;
 
@@ -976,6 +985,39 @@ export class GameScene extends SceneBase {
     }
   }
 
+  /** 处理木箱抽奖结果 */
+  private handleWoodenBox(mineral: Mineral): void {
+    const px = GAME_CONFIG.MINER_X;
+    const py = GAME_CONFIG.MINER_Y + 10;
+
+    // 难度联动：木箱开出的金额也按 valueScale 缩放（含负值）
+    const value = Math.round(mineral.value * this.difficulty.valueScale);
+    this.hud.money += value;
+
+    // 飘字：开盒结果 label（更直观）
+    const color = value > 0 ? '#FFD700' : value < 0 ? '#FF4444' : '#AAAAAA';
+    this.floatingTexts.emit(px, py - 20, mineral.boxLabel, color, 'MEDIUM');
+    this.showNotification(`木箱: ${mineral.boxLabel}`);
+
+    // 音效 + 矿工表情 + 粒子（按结果分档）
+    if (value >= VALUE_TIER.HIGH) {
+      this.game.getAudio().play(SoundType.GRAB_DIAMOND);
+      this.game.getAudio().play(SoundType.MINER_HAPPY);
+      this.miner.setState(MinerState.HAPPY);
+      this.particles.emit({ ...PRESET_DIAMOND_SPARKLE, x: px, y: py });
+    } else if (value > 0) {
+      this.game.getAudio().play(SoundType.GRAB_GOLD);
+      this.game.getAudio().play(SoundType.MINER_NORMAL);
+      this.miner.setState(MinerState.HAPPY);
+      this.particles.emit({ ...PRESET_GOLD_SPARKLE, x: px, y: py });
+    } else {
+      this.game.getAudio().play(SoundType.GRAB_STONE);
+      this.game.getAudio().play(SoundType.MINER_SAD);
+      this.miner.setState(MinerState.SAD);
+      this.particles.emit({ ...PRESET_STONE_DUST, x: px, y: py });
+    }
+  }
+
   /** 显示通知文字 */
   private showNotification(text: string): void {
     this.notificationText = text;
@@ -1016,7 +1058,10 @@ export class GameScene extends SceneBase {
     // 5) 章节末关：30% 概率插入章节专属收藏品（独立于预算系统的彩蛋）
     this.tryAddChapterCollectible();
 
-    // 6) 幸运草：神秘袋最低 $200
+    // 6) 木箱：L5+ 关卡保证 1 个抽奖箱（不进预算系统）
+    this.tryAddWoodenBox();
+
+    // 7) 幸运草：神秘袋最低 $200
     const items = this.game.getOwnedItems();
     if (items.has(ItemType.LUCKY_CLOVER)) {
       for (const mineral of this.minerals) {
@@ -1033,6 +1078,15 @@ export class GameScene extends SceneBase {
     if (Math.random() >= CHAPTER_COLLECTIBLE_CHANCE) return;
     const type = CHAPTER_COLLECTIBLE_MAP[this.levelConfig.chapter];
     const placed = this.tryPlaceMineral(type);
+    if (placed) {
+      this.minerals.push(placed);
+    }
+  }
+
+  /** L5+ 关卡每关追加 1 个木箱（保证有抽奖机会） */
+  private tryAddWoodenBox(): void {
+    if (this.levelConfig.level < WOODEN_BOX_MIN_LEVEL) return;
+    const placed = this.tryPlaceMineral(MineralType.WOODEN_BOX);
     if (placed) {
       this.minerals.push(placed);
     }
