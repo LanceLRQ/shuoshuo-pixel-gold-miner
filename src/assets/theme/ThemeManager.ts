@@ -12,7 +12,8 @@ const THEME_STORAGE_KEY = 'goldminer_theme';
 
 export class ThemeManager {
   private themes: Map<string, ThemeDefinition> = new Map();
-  private currentThemeId: string = 'classic';
+  /** 默认主题：说说Crystal（HD 矿物 + 替换矿工形象） */
+  private currentThemeId: string = 'shuoshuo_crystal';
   private currentCache: SpriteCacheMap | null = null;
 
   /** 注册主题 */

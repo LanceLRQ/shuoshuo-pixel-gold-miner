@@ -347,79 +347,131 @@ function makePiggyGem(W, H) {
   });
 }
 
-/** 钩爪算法：垂直绳 + T 形挂钩 + 三叉爪（保留原版几何特征） */
-function makeHook(W, H) {
+/**
+ * 钩爪算法：保留原版 10×12 钩爪几何（绳→主杆→T头→主体→中杆+两侧爪散开→爪尖延伸）
+ * 关键特征：
+ *   - 主体最宽 (~60% 总宽)
+ *   - 三叉爪分裂：中杆短（branch 段消失），两侧爪持续向外散开到底部
+ *   - 金属反光：左明右暗（圆柱形质感）
+ */
+function makeHook(W = 30, H = 36) {
   const cx = (W - 1) / 2;
-  // 区域划分（按 H=36 比例）
-  const sH = H / 12;
-  const ropeY = 1 * sH;       // 顶部绳子末端
-  const stemY = 2 * sH;       // 主杆起始
-  const headY = 4 * sH;       // T 头部加宽起始
-  const mainY = 6 * sH;       // 主体（最宽）起始
-  const branchY = 7 * sH;     // 三叉爪分叉点
-  const tipY = 11 * sH;       // 爪尖
 
-  // 颜色
+  // 颜色（5 档金属 + 2 档绳子）
   const ROPE = '#DEB887';
+  const ROPE_DK = '#A07840';
   const HOOK = '#D0D0D0';
   const HOOK_HL = '#FFFFFF';
   const HOOK_DK = '#808080';
   const HOOK_SH = '#3F3F3F';
 
+  // 按原版 12 行结构划分（每段 3 行 HD）
+  const ropeEnd = H * 0.083;     // 绳子末端 y=3
+  const stemEnd = H * 0.333;     // 主杆 y=4-11
+  const headEnd = H * 0.417;     // T 头部 y=12-14
+  const mainEnd = H * 0.5;       // 主体 y=15-17
+  const branchEnd = H * 0.667;   // 三叉张开 y=18-23
+  const tipsStart = H * 0.667;   // 爪尖延伸起 y=24
+
+  // 半宽配置（按原版形状缩放）
+  const stemHalfW = W * 0.1;      // 主杆 ~3 px
+  const headHalfW = W * 0.2;      // T 头 ~6 px
+  const mainHalfW = W * 0.3;      // 主体 ~9 px
+
   return generateGrid(W, H, (x, y) => {
     const dx = x - cx;
-    // 顶部绳子
-    if (y < ropeY) {
-      if (Math.abs(dx) < 1.2) return ROPE;
-      return null;
-    }
-    // 主杆（中央 2-3 列）
-    if (y < stemY) {
-      if (Math.abs(dx) < 1.5) return HOOK;
-      return null;
-    }
-    // 主杆 + 描边
-    if (y < headY) {
-      if (Math.abs(dx) <= 0.5) return HOOK_HL;
-      if (Math.abs(dx) < 2) return HOOK;
-      return null;
-    }
-    // T 形加宽
-    if (y < mainY) {
-      const halfW = (W * 0.18) * ((y - headY) / (mainY - headY));
-      if (Math.abs(dx) > halfW + 2) return null;
-      if (Math.abs(dx) > halfW + 1) return HOOK_SH;
-      if (dx < -halfW * 0.3) return HOOK_HL;
-      if (dx < halfW * 0.3) return HOOK;
-      return HOOK_DK;
-    }
-    // 主体（最宽部分）
-    if (y < branchY) {
-      const halfW = W * 0.22;
-      if (Math.abs(dx) > halfW + 2) return null;
-      if (Math.abs(dx) > halfW + 1) return HOOK_SH;
-      if (dx < -halfW * 0.3) return HOOK_HL;
-      if (dx < halfW * 0.3) return HOOK;
-      return HOOK_DK;
-    }
-    // 三叉爪分叉
-    if (y < tipY) {
-      const t = (y - branchY) / (tipY - branchY);
-      // 左爪：x 中心从 -halfW * 0.5 渐变到 -halfW
-      const leftCx = -W * 0.11 - (W * 0.28 - W * 0.11) * t;
-      const rightCx = W * 0.11 + (W * 0.28 - W * 0.11) * t;
-      const midCx = 0;
-      const armW = 1.5 - t * 0.8;  // 爪臂越往下越细
-      for (const ax of [leftCx, midCx, rightCx]) {
-        if (Math.abs(dx - ax) < armW) {
-          // 描边
-          if (Math.abs(dx - ax) > armW - 0.8) return HOOK_SH;
-          return HOOK;
-        }
+    const adx = Math.abs(dx);
+
+    // 1. 顶部绳子（中央 2 像素宽 + 编织纹）
+    if (y < ropeEnd) {
+      if (adx < 1.2) {
+        if (y % 2 === 0 && adx > 0.4) return ROPE_DK;
+        return ROPE;
       }
       return null;
     }
-    // 爪尖（最底部 1-2 行）
+
+    // 2. 主杆（中央 ~3 像素宽，圆柱反光左明右暗）
+    if (y < stemEnd) {
+      if (adx >= stemHalfW + 0.5) return null;
+      if (dx < -stemHalfW * 0.6) return HOOK_HL;
+      if (dx < stemHalfW * 0.3) return HOOK;
+      if (dx < stemHalfW * 0.7) return HOOK_DK;
+      return HOOK_SH;
+    }
+
+    // 3. T 头部（加宽到 ~6 像素，加斜阴影）
+    if (y < headEnd) {
+      if (adx >= headHalfW + 0.5) return null;
+      if (adx >= headHalfW - 0.5) return HOOK_SH;
+      if (adx >= headHalfW - 1.5) return HOOK_DK;
+      if (dx < -headHalfW * 0.4) return HOOK_HL;
+      if (dx < headHalfW * 0.4) return HOOK;
+      return HOOK_DK;
+    }
+
+    // 4. 主体（最宽 ~9 像素，顶部高光弧）
+    if (y < mainEnd) {
+      if (adx >= mainHalfW + 0.5) return null;
+      if (adx >= mainHalfW - 0.5) return HOOK_SH;
+      if (adx >= mainHalfW - 1.5) return HOOK_DK;
+      // 顶部弧形高光
+      if (y < mainEnd - (mainEnd - headEnd) * 0.6 && adx < mainHalfW * 0.5) return HOOK_HL;
+      if (dx < -mainHalfW * 0.3) return HOOK_HL;
+      if (dx < mainHalfW * 0.4) return HOOK;
+      return HOOK_DK;
+    }
+
+    // 5. 三叉张开 (中间杆 + 两侧爪起始向外散)
+    if (y < branchEnd) {
+      const t = (y - mainEnd) / (branchEnd - mainEnd);  // 0..1
+      // 5a. 中间小杆（2 像素宽，仅在前半段存在）
+      if (t < 0.5 && adx < stemHalfW + 0.3) {
+        if (dx < -stemHalfW * 0.3) return HOOK_HL;
+        if (dx < stemHalfW * 0.5) return HOOK;
+        return HOOK_DK;
+      }
+      // 5b. 左爪 + 右爪（从 main 外侧向外斜散）
+      // 左爪中心 x: 起 -mainHalfW * 0.7, 终 -mainHalfW * 1.1
+      const leftCx = -mainHalfW * 0.7 - mainHalfW * 0.4 * t;
+      const rightCx = mainHalfW * 0.7 + mainHalfW * 0.4 * t;
+      const armW = 1.6;
+      const dl = dx - leftCx;
+      const dr = dx - rightCx;
+      if (Math.abs(dl) < armW) {
+        // 描边在右内侧（朝主轴方向暗，朝外亮）
+        if (dl > armW - 0.7) return HOOK_DK;
+        if (dl > armW - 1.4) return HOOK;
+        return HOOK_HL;
+      }
+      if (Math.abs(dr) < armW) {
+        if (dr < -armW + 0.7) return HOOK_DK;
+        if (dr < -armW + 1.4) return HOOK;
+        return HOOK_HL;
+      }
+      return null;
+    }
+
+    // 6. 爪尖延伸（只剩两侧爪，向外继续散开 + 渐细 + 钩头收尖）
+    if (y < H) {
+      const t = (y - tipsStart) / (H - tipsStart);  // 0..1
+      // 左爪 x：起 -mainHalfW * 1.1, 终 -mainHalfW * 1.6（更外）
+      const leftCx = -mainHalfW * 1.1 - mainHalfW * 0.5 * t;
+      const rightCx = mainHalfW * 1.1 + mainHalfW * 0.5 * t;
+      // 爪宽渐细（钩尖效果）
+      const armW = 1.6 - t * 0.9;  // 1.6 → 0.7
+      const dl = dx - leftCx;
+      const dr = dx - rightCx;
+      if (Math.abs(dl) < armW) {
+        if (dl > armW - 0.6) return HOOK_DK;
+        return HOOK;
+      }
+      if (Math.abs(dr) < armW) {
+        if (dr < -armW + 0.6) return HOOK_DK;
+        return HOOK;
+      }
+      return null;
+    }
     return null;
   });
 }
@@ -829,7 +881,7 @@ const SPRITES_TO_GENERATE = {
   CRYSTAL_ORE_SPRITE: () => toSpriteJson(makeCrystalOre(24, 24), 1),
   CRAB_SHELL_SPRITE: () => toSpriteJson(makeCrabShell(30, 30), 1),
   PIGGY_GEM_SPRITE: () => toSpriteJson(makePiggyGem(36, 36), 1),
-  HOOK_SPRITE: () => toSpriteJson(makeHook(33, 36), 1),
+  HOOK_SPRITE: () => toSpriteJson(makeHook(30, 36), 1),
   COIN_ICON: () => toSpriteJson(makeCoinIcon(24, 24), 1),
   MOUSE_SPRITE: () => toSpriteJson(makeMouse(36, 24), 1),
   MOLE_SPRITE: () => toSpriteJson(makeMole(36, 30), 1),
@@ -864,3 +916,24 @@ console.log('✅ HD 精灵已写入 classic.json:');
 for (const s of stats) {
   console.log(`  ${s.name.padEnd(18)} ${s.size.padEnd(8)} ${s.colors} 色`);
 }
+
+// ==================== 同步到 shuoshuo-crystal.json（保留矿工 5 态） ====================
+
+const CRYSTAL_JSON = path.join(ROOT, 'src/assets/themes/shuoshuo-crystal.json');
+const MINER_KEYS = ['MINER_IDLE', 'MINER_PULL', 'MINER_HAPPY', 'MINER_SAD', 'MINER_STRAIN'];
+
+const crystalJson = JSON.parse(fs.readFileSync(CRYSTAL_JSON, 'utf-8'));
+const preservedMiners = {};
+for (const k of MINER_KEYS) {
+  if (crystalJson.sprites[k]) preservedMiners[k] = crystalJson.sprites[k];
+}
+
+// 用 classic.json 的所有 sprite 覆盖（深拷贝避免共享引用）
+crystalJson.sprites = JSON.parse(JSON.stringify(classicJson.sprites));
+// 恢复矿工 5 态
+for (const [k, v] of Object.entries(preservedMiners)) {
+  crystalJson.sprites[k] = v;
+}
+
+fs.writeFileSync(CRYSTAL_JSON, JSON.stringify(crystalJson, null, 2));
+console.log(`\n🔄 shuoshuo-crystal.json 已同步 ${Object.keys(classicJson.sprites).length - MINER_KEYS.length} 个非矿工精灵（矿工 5 态保留）`);

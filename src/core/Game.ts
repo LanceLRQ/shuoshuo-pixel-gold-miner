@@ -103,15 +103,11 @@ export class Game {
       renderer.height
     );
 
-    // 初始化主题管理器
+    // 初始化主题管理器（默认 shuoshuo_crystal，详见 ThemeManager 默认值）
     this.themeManager = new ThemeManager();
     this.themeManager.register(CLASSIC_THEME);
     this.themeManager.register(SHUOSHUO_CRYSTAL_THEME);
     this.themeManager.restoreTheme();
-    // 默认使用说说Crystal主题
-    if (!localStorage.getItem('goldminer_theme')) {
-      this.themeManager.setTheme('shuoshuo_crystal');
-    }
 
     // 加载用户音频设置
     const settings = this.storage.loadSettings();
