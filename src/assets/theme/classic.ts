@@ -1,26 +1,33 @@
 /**
  * 经典主题 - 黄金矿工原味配色
- * 精灵数据引用 sprites.ts，矿工精灵放大至 32x32 统一尺寸
+ * 矿工 5 态使用 32×32 HD 原生精灵，其他矿物精灵复用 ALL_SPRITES
  */
 
+import type { PixelMap } from '../types';
 import type { ThemeDefinition } from './types';
-import { ALL_SPRITES, MINER_IDLE, MINER_PULL, MINER_HAPPY, MINER_SAD, MINER_STRAIN } from '../sprites';
-import { scalePixelMap } from '../../utils/pixel';
+import {
+  ALL_SPRITES,
+  MINER_IDLE_HD,
+  MINER_PULL_HD,
+  MINER_HAPPY_HD,
+  MINER_SAD_HD,
+  MINER_STRAIN_HD,
+} from '../sprites';
 
-/** 经典矿工精灵放大到 32x32（统一尺寸） */
-const SCALED_CLASSIC_SPRITES: Record<string, ReturnType<typeof scalePixelMap>> = {
-  MINER_IDLE: scalePixelMap(MINER_IDLE, 2),
-  MINER_PULL: scalePixelMap(MINER_PULL, 2),
-  MINER_HAPPY: scalePixelMap(MINER_HAPPY, 2),
-  MINER_SAD: scalePixelMap(MINER_SAD, 2),
-  MINER_STRAIN: scalePixelMap(MINER_STRAIN, 2),
+/** 经典矿工精灵：5 态全部用 32×32 HD 真高密度版本 */
+const HD_CLASSIC_MINER_SPRITES: Record<string, PixelMap> = {
+  MINER_IDLE: MINER_IDLE_HD,
+  MINER_PULL: MINER_PULL_HD,
+  MINER_HAPPY: MINER_HAPPY_HD,
+  MINER_SAD: MINER_SAD_HD,
+  MINER_STRAIN: MINER_STRAIN_HD,
 };
 
 export const CLASSIC_THEME: ThemeDefinition = {
   id: 'classic',
   name: '经典',
   description: '黄金矿工原味配色',
-  sprites: { ...ALL_SPRITES, ...SCALED_CLASSIC_SPRITES },
+  sprites: { ...ALL_SPRITES, ...HD_CLASSIC_MINER_SPRITES },
   backgroundColors: {
     skyTop: '#87CEEB',
     skyBottom: '#B0E0FF',
