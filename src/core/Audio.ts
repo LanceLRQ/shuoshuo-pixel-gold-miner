@@ -17,6 +17,7 @@ export enum SoundType {
   LEVEL_FAIL = 'LEVEL_FAIL',     // 关卡失败
   TICK = 'TICK',                 // 倒计时滴答
   CLICK = 'CLICK',               // UI 点击
+  TARGET_REACHED = 'TARGET_REACHED', // 金额达标"叮咚"提示音（Phase F #18）
   MINER_HAPPY = 'MINER_HAPPY',   // 矿工语音：高兴（抓到值钱物）"Oooh~"
   MINER_NORMAL = 'MINER_NORMAL', // 矿工语音：平淡（普通物）"Hmm"
   MINER_SAD = 'MINER_SAD',       // 矿工语音：失望（石头/炸弹）"Aaah..."
@@ -51,6 +52,9 @@ export class Audio {
   private bgmNextNoteTime: number = 0;
   /** BGM 序列指针 */
   private bgmIndex: number = 0;
+
+  /** 钩绳循环音效节点（启动时创建，停止时清空） */
+  private ropeFrictionNodes: { osc: OscillatorNode; gain: GainNode; lfo: OscillatorNode } | null = null;
 
   /** 懒初始化 AudioContext（需要用户交互后才能创建） */
   private ensureContext(): AudioContext {
@@ -98,6 +102,9 @@ export class Audio {
         break;
       case SoundType.CLICK:
         this.playBeep(ctx, 600, 0.05, 0.2);
+        break;
+      case SoundType.TARGET_REACHED:
+        this.playTargetReached(ctx);
         break;
       case SoundType.MINER_HAPPY:
         this.playMinerHappy(ctx);
@@ -249,6 +256,61 @@ export class Audio {
     this.scheduleBeep(ctx, 1200, 0.05, 0.2, 0);
     this.scheduleBeep(ctx, 1500, 0.05, 0.2, 0.05);
     this.scheduleBeep(ctx, 1800, 0.1, 0.15, 0.1);
+  }
+
+  /** 达标"叮咚"音效（两声短促上扬，#18 提示玩家可完关） */
+  private playTargetReached(ctx: AudioContext): void {
+    this.scheduleBeep(ctx, 1200, 0.08, 0.3, 0);
+    this.scheduleBeep(ctx, 1800, 0.12, 0.25, 0.1);
+  }
+
+  /**
+   * 启动钩绳金属摩擦循环音（#16）
+   * 锯齿波 + 低频 LFO 调频，模拟链条颤动"叮叮叮"质感
+   * 重复调用安全：已启动则跳过
+   */
+  startRopeFriction(): void {
+    if (this.muted || this.ropeFrictionNodes) return;
+    const ctx = this.ensureContext();
+
+    // 主振荡：锯齿波，金属感
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.value = 520;
+
+    // LFO 调制频率（颤动效果）
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 9;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 80; // 调频深度 ±80Hz
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+
+    // 主音量（低音量不喧宾夺主）+ 起音 fade-in 避免爆音
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.04 * this.volume, ctx.currentTime + 0.05);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    lfo.start();
+    this.ropeFrictionNodes = { osc, gain, lfo };
+  }
+
+  /** 停止钩绳金属摩擦循环音（淡出避免爆音） */
+  stopRopeFriction(): void {
+    if (!this.ropeFrictionNodes) return;
+    const ctx = this.ensureContext();
+    const now = ctx.currentTime;
+    const { osc, gain, lfo } = this.ropeFrictionNodes;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(gain.gain.value, now);
+    gain.gain.linearRampToValueAtTime(0, now + 0.06);
+    osc.stop(now + 0.07);
+    lfo.stop(now + 0.07);
+    this.ropeFrictionNodes = null;
   }
 
   /** 精确调度的蜂鸣音（替代 setTimeout，避免标签页失焦时跑调） */

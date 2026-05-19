@@ -224,6 +224,12 @@ export class GameScene extends SceneBase {
   /** 提前结算按钮（仅在达标后显示） */
   private finishButton: Button;
 
+  /** 上一帧达标状态：用于检测 false→true 上升沿，触发"叮咚"提示音（#18） */
+  private wasTargetReached: boolean = false;
+
+  /** 上一帧钩爪是否在 REELING 系列状态：用于启停金属摩擦循环音（#16） */
+  private wasReeling: boolean = false;
+
   constructor(game: Game, levelConfig: LevelConfig) {
     super();
     this.game = game;
@@ -309,11 +315,20 @@ export class GameScene extends SceneBase {
     this.minerals = [];
     this.particles.clear();
     this.floatingTexts.clear();
+    // 场景退出时停止钩绳循环音，防止泄漏到下一场景
+    this.game.getAudio().stopRopeFriction();
   }
 
   update(dt: number): void {
     if (this.saveToastTimer > 0) this.saveToastTimer -= dt;
-    if (this.isPaused) return;
+    if (this.isPaused) {
+      // 暂停时主动停止钩绳循环音（恢复后 detectStateTransitionSfx 会重新启动）
+      if (this.wasReeling) {
+        this.game.getAudio().stopRopeFriction();
+        this.wasReeling = false;
+      }
+      return;
+    }
 
     // 更新 HUD（倒计时）
     this.hud.update(dt);
@@ -352,6 +367,9 @@ export class GameScene extends SceneBase {
 
     this.particles.update(dt);
     this.floatingTexts.update(dt);
+
+    // 状态变化反馈：达标"叮咚"上升沿 + 钩绳金属摩擦循环音启停
+    this.detectStateTransitionSfx();
 
     // 同步提前结算按钮禁用状态：钩爪不在摆动时禁用（避免抓取中途结算的歧义）
     this.finishButton.disabled = this.hook.state !== HookState.SWINGING;
@@ -1246,8 +1264,33 @@ export class GameScene extends SceneBase {
 
   /** 跳转到结算场景 */
   private goToResult(): void {
+    // 退出时确保钩绳循环音停止
+    this.game.getAudio().stopRopeFriction();
     // 将金额传递给 Game，由 Game 传递给 ResultScene
     this.game.changeScene(GameState.RESULT);
+  }
+
+  /**
+   * 状态变化反馈：检测达标上升沿（叮咚音）+ 钩爪 REELING 状态切换（金属摩擦循环音启停）
+   * 在 update 末尾调用一次，比对当前状态与上一帧字段
+   */
+  private detectStateTransitionSfx(): void {
+    // #18 达标"叮咚"：false → true 上升沿瞬间触发一次
+    const reached = this.hud.isTargetReached();
+    if (reached && !this.wasTargetReached) {
+      this.game.getAudio().play(SoundType.TARGET_REACHED);
+    }
+    this.wasTargetReached = reached;
+
+    // #16 钩绳金属摩擦音：进入 REELING 系列状态时启动，退出时停止
+    const reeling = this.hook.state === HookState.REELING_WITH_MINERAL
+                 || this.hook.state === HookState.REELING_EMPTY;
+    if (reeling && !this.wasReeling) {
+      this.game.getAudio().startRopeFriction();
+    } else if (!reeling && this.wasReeling) {
+      this.game.getAudio().stopRopeFriction();
+    }
+    this.wasReeling = reeling;
   }
 
   /** 获取当前金额（累计模式下 = 本关起步累计 + 本关入账） */
