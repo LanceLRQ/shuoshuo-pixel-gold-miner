@@ -31,4 +31,6 @@ export interface ThemeDefinition {
   sprites: Record<string, PixelMap>;
   /** 背景颜色配置 */
   backgroundColors: BackgroundColors;
+  /** 按精灵名覆盖 cache scale（HD 高密度精灵用 scale=1，让数据维度等于显示维度） */
+  spriteScaleOverrides?: Record<string, number>;
 }

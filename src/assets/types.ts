@@ -55,15 +55,18 @@ export function createSpriteCache(map: PixelMap, scale: number = 3): HTMLCanvasE
 /**
  * 批量预渲染精灵数据到缓存 Map
  * @param sprites 精灵名称到 PixelMap 的映射
- * @param scale 缩放倍数
+ * @param defaultScale 默认缩放倍数（未在 scaleOverrides 中指定的精灵采用此值）
+ * @param scaleOverrides 按精灵名覆盖 scale 的表。HD 高密度精灵通常 scale=1（数据维度=显示维度）
  * @returns 缓存映射
  */
 export function createSpriteCacheMap(
   sprites: Record<string, PixelMap>,
-  scale: number = 3
+  defaultScale: number = 3,
+  scaleOverrides: Record<string, number> = {}
 ): SpriteCacheMap {
   const cache: SpriteCacheMap = new Map();
   for (const [name, map] of Object.entries(sprites)) {
+    const scale = scaleOverrides[name] ?? defaultScale;
     cache.set(name, createSpriteCache(map, scale));
   }
   return cache;

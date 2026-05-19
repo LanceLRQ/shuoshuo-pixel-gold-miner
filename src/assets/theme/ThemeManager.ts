@@ -48,7 +48,12 @@ export class ThemeManager {
   /** 获取当前主题的精灵缓存（懒构建） */
   getSpriteCache(): SpriteCacheMap {
     if (!this.currentCache) {
-      this.currentCache = createSpriteCacheMap(this.getTheme().sprites);
+      const theme = this.getTheme();
+      this.currentCache = createSpriteCacheMap(
+        theme.sprites,
+        3,
+        theme.spriteScaleOverrides
+      );
     }
     return this.currentCache;
   }
