@@ -1077,9 +1077,15 @@ export class GameScene extends SceneBase {
     this.minerals = [];
     const weights = this.levelConfig.mineralWeights ?? MINERAL_WEIGHTS;
 
-    // 1) 基础加权生成
+    // 1) 基础加权生成 — 应用 largeWeightScale 削弱大件（GOLD_MEDIUM/LARGE/DIAMOND）
+    // MINERAL_TYPES 顺序：GOLD_SMALL(0), GOLD_MEDIUM(1), GOLD_LARGE(2), DIAMOND(3), ...
+    const lws = this.difficulty.largeWeightScale;
+    const adjustedWeights = weights.map((w, i) => {
+      if (i === 1 || i === 2 || i === 3) return Math.max(0, Math.round(w * lws));
+      return w;
+    });
     for (let i = 0; i < count; i++) {
-      const typeIndex = weightedRandom(weights);
+      const typeIndex = weightedRandom(adjustedWeights);
       const type = MINERAL_TYPES[typeIndex]!;
       const placed = this.tryPlaceMineral(type);
       if (placed) {
@@ -1098,6 +1104,9 @@ export class GameScene extends SceneBase {
 
     // 4) 仍不足则追加大金块
     this.appendMineralsToReachBudget(targetBudget, count);
+
+    // 4.5) 场上总值超过 budget × cap 时强制降级最高价矿物（约束"刚好卡过线"难度）
+    this.downgradeMineralsToReachCap(targetBudget * this.difficulty.mineralBudgetCap);
 
     // 5) 章节末关：30% 概率插入章节专属收藏品（独立于预算系统的彩蛋）
     this.tryAddChapterCollectible();
@@ -1168,6 +1177,42 @@ export class GameScene extends SceneBase {
       const nextType = VALUE_UPGRADE_CHAIN[candidateChainIdx + 1]!;
       const newMineral = new Mineral(oldMineral.x, oldMineral.y, nextType, this.spriteCache);
       // 继承移动属性（升级前是 MOUSE/MOLE 时）
+      if (oldMineral.vx !== 0) {
+        newMineral.vx = oldMineral.vx;
+        newMineral.moveLeft = oldMineral.moveLeft;
+        newMineral.moveRight = oldMineral.moveRight;
+      }
+      this.minerals[candidateIdx] = newMineral;
+    }
+  }
+
+  /**
+   * 反向降级：场上总价值超过 budget × cap 时，将最高价矿物沿升级链降一级
+   * 让"刚好卡过线"难度可控（避免 weights 偶发生成出过富场地）
+   */
+  private downgradeMineralsToReachCap(budgetCap: number): void {
+    for (let attempt = 0; attempt < BUDGET_UPGRADE_MAX_ATTEMPTS; attempt++) {
+      if (this.getCurrentMineralTotal() <= budgetCap) return;
+
+      // 找到当前价值最高的可降级矿物
+      let candidateIdx = -1;
+      let candidateChainIdx = -1;
+      let candidateValue = -Infinity;
+      for (let i = 0; i < this.minerals.length; i++) {
+        const m = this.minerals[i]!;
+        const chainIdx = VALUE_UPGRADE_CHAIN.indexOf(m.config.type);
+        if (chainIdx <= 0) continue;  // 已是最低档或不在升级链
+        if (m.value > candidateValue) {
+          candidateValue = m.value;
+          candidateIdx = i;
+          candidateChainIdx = chainIdx;
+        }
+      }
+      if (candidateIdx < 0) return;  // 无可降级矿物
+
+      const oldMineral = this.minerals[candidateIdx]!;
+      const prevType = VALUE_UPGRADE_CHAIN[candidateChainIdx - 1]!;
+      const newMineral = new Mineral(oldMineral.x, oldMineral.y, prevType, this.spriteCache);
       if (oldMineral.vx !== 0) {
         newMineral.vx = oldMineral.vx;
         newMineral.moveLeft = oldMineral.moveLeft;

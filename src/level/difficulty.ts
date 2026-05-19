@@ -29,6 +29,10 @@ export interface DifficultyConfig {
   weightFactorScale: number;
   /** 矿物总价值相对 target 的最低保障倍率（用于矿物预算驱动生成器） */
   mineralBudgetRatio: number;
+  /** 大件矿物权重倍率（GOLD_MEDIUM/LARGE/DIAMOND），值越小高难度越多小件 */
+  largeWeightScale: number;
+  /** 矿物总价值上限倍率（相对 budget），超过时强制降级最高价矿物。1.10 = 上限 110% budget */
+  mineralBudgetCap: number;
   /** 是否开放商店 */
   shopEnabled: boolean;
   /** 道具是否永久不消耗（无限火力娱乐模式） */
@@ -41,14 +45,17 @@ export interface DifficultyConfig {
 
 /** 难度配置表 */
 export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
+  // 新数值经过 analyze-difficulty.mjs 模拟验证（贪心抓取率达 NOVICE 10% / NORMAL 33% / HARD 60% / EXPERT 75%）
   [Difficulty.NOVICE]: {
     id: Difficulty.NOVICE,
     name: '新手',
-    description: '金额翻倍 + 无重量影响，轻松上手',
-    valueScale: 2.0,
+    description: '金额翻倍 + 大件多，1-2 件即可达标',
+    valueScale: 1.5,
     timeScale: 1.0,
     weightFactorScale: 0,
-    mineralBudgetRatio: 3.0,
+    mineralBudgetRatio: 2.5,
+    largeWeightScale: 1.0,
+    mineralBudgetCap: 1.40,  // 上限较宽（允许场上富裕）
     shopEnabled: true,
     infiniteItems: false,
     isHardcore: false,
@@ -57,11 +64,13 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   [Difficulty.NORMAL]: {
     id: Difficulty.NORMAL,
     name: '一般',
-    description: '原汁原味经典体验',
-    valueScale: 1.0,
+    description: '原汁原味经典体验，抓 3-4 件达标',
+    valueScale: 0.85,
     timeScale: 1.0,
     weightFactorScale: 1.0,
-    mineralBudgetRatio: 3.0,
+    mineralBudgetRatio: 1.1,
+    largeWeightScale: 0.35,
+    mineralBudgetCap: 1.20,
     shopEnabled: true,
     infiniteItems: false,
     isHardcore: false,
@@ -70,11 +79,13 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   [Difficulty.HARD]: {
     id: Difficulty.HARD,
     name: '困难',
-    description: '金额减半 + 重物显著慢，精打细算',
-    valueScale: 0.5,
+    description: '大件稀少 + 重物慢，需抓 5-6 件',
+    valueScale: 0.45,
     timeScale: 1.0,
     weightFactorScale: 1.5,
-    mineralBudgetRatio: 2.25,
+    mineralBudgetRatio: 1.0,
+    largeWeightScale: 0.10,
+    mineralBudgetCap: 1.10,
     shopEnabled: true,
     infiniteItems: false,
     isHardcore: true,
@@ -83,11 +94,13 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   [Difficulty.EXPERT]: {
     id: Difficulty.EXPERT,
     name: '高手',
-    description: '金额减半 + 时间减半 + 重物极慢',
-    valueScale: 0.5,
+    description: '无大件 + 时间减半 + 重物极慢，几乎全抓',
+    valueScale: 0.15,
     timeScale: 0.5,
     weightFactorScale: 2.0,
-    mineralBudgetRatio: 1.75,
+    mineralBudgetRatio: 1.0,
+    largeWeightScale: 0.0,
+    mineralBudgetCap: 1.05,
     shopEnabled: true,
     infiniteItems: false,
     isHardcore: true,
@@ -101,6 +114,8 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     timeScale: 1.0,
     weightFactorScale: 0,
     mineralBudgetRatio: 3.0,
+    largeWeightScale: 1.0,
+    mineralBudgetCap: 2.0,  // 几乎无限制
     shopEnabled: false,
     infiniteItems: true,
     isHardcore: false,
