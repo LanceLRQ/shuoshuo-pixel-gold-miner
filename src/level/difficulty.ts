@@ -27,7 +27,7 @@ export interface DifficultyConfig {
   timeScale: number;
   /** 重量影响系数倍率（与 GAME_CONFIG.WEIGHT_FACTOR 相乘，控制重物收回慢的程度） */
   weightFactorScale: number;
-  /** 矿物总价值相对 target 的最低保障倍率（用于矿物预算驱动生成器） */
+  /** 金块（GOLD_SMALL/MEDIUM/LARGE，不含钻石）总金额相对 target 的最低保障倍率 */
   mineralBudgetRatio: number;
   /** 大件矿物权重倍率（GOLD_MEDIUM/LARGE/DIAMOND），值越小高难度越多小件 */
   largeWeightScale: number;
@@ -53,7 +53,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     valueScale: 1.5,
     timeScale: 1.0,
     weightFactorScale: 0,
-    mineralBudgetRatio: 2.5,
+    mineralBudgetRatio: 2.0,
     largeWeightScale: 1.0,
     mineralBudgetCap: 1.40,  // 上限较宽（允许场上富裕）
     shopEnabled: true,
@@ -68,7 +68,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     valueScale: 0.85,
     timeScale: 1.0,
     weightFactorScale: 1.0,
-    mineralBudgetRatio: 1.1,
+    mineralBudgetRatio: 1.5,
     largeWeightScale: 0.35,
     mineralBudgetCap: 1.20,
     shopEnabled: true,
@@ -83,7 +83,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     valueScale: 0.45,
     timeScale: 1.0,
     weightFactorScale: 1.5,
-    mineralBudgetRatio: 1.0,
+    mineralBudgetRatio: 1.25,
     largeWeightScale: 0.10,
     mineralBudgetCap: 1.10,
     shopEnabled: true,
@@ -98,7 +98,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     valueScale: 0.15,
     timeScale: 0.5,
     weightFactorScale: 2.0,
-    mineralBudgetRatio: 1.0,
+    mineralBudgetRatio: 1.25,
     largeWeightScale: 0.0,
     mineralBudgetCap: 1.05,
     shopEnabled: true,

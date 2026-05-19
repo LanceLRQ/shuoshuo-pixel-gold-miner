@@ -37,13 +37,15 @@ console.log(`📊 解析到 ${LEVELS.length} 关`);
 
 // 解析难度配置
 const DIFFICULTIES = [];
-const diffRE = /\[Difficulty\.(\w+)\]:\s*\{[\s\S]*?valueScale:\s*([\d.]+),[\s\S]*?mineralBudgetRatio:\s*([\d.]+)/g;
+const diffRE = /\[Difficulty\.(\w+)\]:\s*\{[\s\S]*?valueScale:\s*([\d.]+),[\s\S]*?mineralBudgetRatio:\s*([\d.]+),[\s\S]*?largeWeightScale:\s*([\d.]+),[\s\S]*?mineralBudgetCap:\s*([\d.]+)/g;
 for (const m of difficultySrc.matchAll(diffRE)) {
   if (m[1] === 'INFINITE') continue;
   DIFFICULTIES.push({
     id: m[1],
     valueScale: parseFloat(m[2]),
     ratio: parseFloat(m[3]),
+    largeWeightScale: parseFloat(m[4]),
+    cap: parseFloat(m[5]),
   });
 }
 console.log(`⚙️  解析到 ${DIFFICULTIES.length} 档难度（不含 INFINITE）`);
@@ -94,6 +96,25 @@ function makeRNG(seed) {
   };
 }
 
+/**
+ * 与 GameScene.pickGoldVariant / getCurrentGoldTotal 一致
+ * 任何一处改动需同步两侧（mjs 不能 import TS）
+ * 注：weightedPick 用 r<0 判断，对应 TS 的 weightedRandom r<=0，浮点边界差异可忽略
+ */
+function pickGoldVariant(lws, rng) {
+  const pLarge = Math.max(0, Math.min(1, lws));
+  const pMedium = Math.max(0, Math.min(1, lws * 1.5));
+  const pSmall = 1.0;
+  const idx = weightedPick([pSmall, pMedium, pLarge], rng);
+  return ['GOLD_SMALL', 'GOLD_MEDIUM', 'GOLD_LARGE'][idx];
+}
+
+function goldTotal(minerals) {
+  return minerals
+    .filter(t => t === 'GOLD_SMALL' || t === 'GOLD_MEDIUM' || t === 'GOLD_LARGE')
+    .reduce((s, t) => s + MINERAL_VALUES[t], 0);
+}
+
 function simulateLevel(level, difficulty, seed, useCap = false) {
   const rng = makeRNG(seed);
   const minerals = [];
@@ -110,43 +131,27 @@ function simulateLevel(level, difficulty, seed, useCap = false) {
     minerals.push(TYPE_ORDER[idx]);
   }
 
-  // 2) 计算预算下限
+  // 2) 计算金块保底预算
   const earning = level.level === 1
     ? level.targetMoney
     : level.targetMoney - LEVELS[level.level - 2].targetMoney;
-  const targetBudget = (earning * difficulty.ratio) / difficulty.valueScale;
+  const goldBudget = (earning * difficulty.ratio) / difficulty.valueScale;
 
-  // 3) 升级低价矿物到达预算
+  // 3) 金块保底：追加金块直到金块总值 ≥ goldBudget（按 largeWeightScale 加权选品种）
+  let goldVal = goldTotal(minerals);
+  let append = 0;
+  while (goldVal < goldBudget && append < 30) {
+    const variant = pickGoldVariant(lws, rng);
+    minerals.push(variant);
+    goldVal += MINERAL_VALUES[variant];
+    append++;
+  }
+
   let totalValue = minerals.reduce((s, t) => s + (MINERAL_VALUES[t] || 0), 0);
-  let attempts = 0;
-  while (totalValue < targetBudget && attempts < 100) {
-    // 找到最低升级链矿物的索引
-    let minLevel = UPGRADE_CHAIN.length;
-    let minIdx = -1;
-    for (let i = 0; i < minerals.length; i++) {
-      const ul = UPGRADE_CHAIN.indexOf(minerals[i]);
-      if (ul >= 0 && ul < minLevel) {
-        minLevel = ul;
-        minIdx = i;
-      }
-    }
-    if (minIdx < 0 || minLevel >= UPGRADE_CHAIN.length - 1) break;
-    const oldType = minerals[minIdx];
-    const newType = UPGRADE_CHAIN[minLevel + 1];
-    minerals[minIdx] = newType;
-    totalValue += MINERAL_VALUES[newType] - MINERAL_VALUES[oldType];
-    attempts++;
-  }
 
-  // 4) 不足追加大金块
-  while (totalValue < targetBudget && minerals.length < level.mineralCount * 1.3) {
-    minerals.push('GOLD_LARGE');
-    totalValue += MINERAL_VALUES.GOLD_LARGE;
-  }
-
-  // 4.5) 新算法可选：降级超过 cap 的矿物（让场上总值靠近 target），优先降最大价值
+  // 4) cap 降级（仅在 useCap=true 时）：场上总值溢出 goldBudget × cap 时反向降级最高价矿物
   if (useCap) {
-    const budgetCap = targetBudget * 1.10;  // 上限 = 下限 × 1.10（更紧）
+    const budgetCap = goldBudget * (difficulty.cap ?? 1.10);
     let downgrades = 0;
     while (totalValue > budgetCap && downgrades < 500) {
       // 找到当前价值最高的矿物（不是升级链上的而是真实价值）

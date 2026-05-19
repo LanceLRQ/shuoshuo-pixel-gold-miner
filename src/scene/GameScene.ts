@@ -145,11 +145,28 @@ const VALUE_UPGRADE_CHAIN: MineralType[] = [
   MineralType.GOLD_LARGE,
 ];
 
-/** 矿物预算升级算法最大迭代次数（防死循环） */
+/** 矿物预算降级 / 金块保底循环最大迭代次数（防死循环） */
 const BUDGET_UPGRADE_MAX_ATTEMPTS = 50;
 
-/** 追加矿物的数量上限（baseCount × 此系数） */
-const BUDGET_APPEND_RATIO = 0.3;
+/**
+ * 金块保底阶段最多追加金块数（场地容量安全上界）
+ * 估算：最大 baseCount 约 25-30，再加保底空间，30 足够覆盖最差 HARD/EXPERT 关
+ * 当 tryPlaceMineral 找不到空位时也会提前返回，本上限只防数据异常死循环
+ */
+const GOLD_BUDGET_MAX_APPEND = 30;
+
+/**
+ * 金块（仅 GOLD_SMALL/MEDIUM/LARGE，不含钻石）
+ * 顺序必须与 pickGoldVariant 的权重数组 [pSmall, pMedium, pLarge] 一一对应
+ * 复用 VALUE_UPGRADE_CHAIN 末三项确保单一真值源
+ */
+const GOLD_TYPES: readonly MineralType[] = VALUE_UPGRADE_CHAIN.slice(-3);
+
+/**
+ * MEDIUM 金块的权重系数（× largeWeightScale）
+ * 用于在 SMALL(=1) 与 LARGE(=lws) 之间形成梯度过渡，1.5 经模拟器调试得出
+ */
+const GOLD_MEDIUM_WEIGHT_FACTOR = 1.5;
 
 /** 章节末关插入章节专属收藏品的概率（详见 docs/design/20260519_chapter-system.md §四） */
 const CHAPTER_COLLECTIBLE_CHANCE = 0.3;
@@ -1070,11 +1087,11 @@ export class GameScene extends SceneBase {
   }
 
   /**
-   * 矿物生成（预算驱动）
-   * 1. 按关卡权重生成基础矿物
-   * 2. 计算预算目标 = target × budgetRatio / valueScale
-   * 3. 总价值不足时：升级低价值矿物（沿 VALUE_UPGRADE_CHAIN）
-   * 4. 仍不足时：追加大金块（上限 baseCount × 0.3）
+   * 矿物生成（金块保底驱动）
+   * 1. 按关卡权重 + largeWeightScale 抑制大件，生成基础 count 个矿物
+   * 2. 计算金块保底 goldBudget = levelEarning × mineralBudgetRatio / valueScale
+   * 3. 金块保底：循环追加金块（按 largeWeightScale 加权选品种）直到金块总值 ≥ goldBudget
+   * 4. cap 降级：总价值溢出时沿升级链反向降级最高价矿物
    * 5. 应用幸运草等 buff
    */
   private generateMinerals(count: number): void {
@@ -1097,20 +1114,17 @@ export class GameScene extends SceneBase {
       }
     }
 
-    // 2) 计算原始价值预算
+    // 2) 计算金块保底预算
     //    累计模式：预算按"本关增量"算（不是累计目标），否则预算会无意义地放大
     //    除以 valueScale 是因为玩家最终看到的金额会再乘 valueScale
     const levelEarning = getLevelEarning(this.levelConfig.level);
-    const targetBudget = (levelEarning * this.difficulty.mineralBudgetRatio) / this.difficulty.valueScale;
+    const goldBudget = (levelEarning * this.difficulty.mineralBudgetRatio) / this.difficulty.valueScale;
 
-    // 3) 不足时升级低价值矿物
-    this.upgradeMineralsToReachBudget(targetBudget);
+    // 3) 金块保底：场上金块总额不足时按 largeWeightScale 加权追加 GOLD_SMALL/MEDIUM/LARGE
+    this.ensureGoldBudget(goldBudget);
 
-    // 4) 仍不足则追加大金块
-    this.appendMineralsToReachBudget(targetBudget, count);
-
-    // 4.5) 场上总值超过 budget × cap 时强制降级最高价矿物（约束"刚好卡过线"难度）
-    this.downgradeMineralsToReachCap(targetBudget * this.difficulty.mineralBudgetCap);
+    // 4) 场上总值超过 budget × cap 时强制降级最高价矿物（防过富）
+    this.downgradeMineralsToReachCap(goldBudget * this.difficulty.mineralBudgetCap);
 
     // 5) 章节末关：30% 概率插入章节专属收藏品（独立于预算系统的彩蛋）
     this.tryAddChapterCollectible();
@@ -1155,38 +1169,34 @@ export class GameScene extends SceneBase {
     return this.minerals.reduce((sum, m) => sum + m.value, 0);
   }
 
-  /** 沿 VALUE_UPGRADE_CHAIN 升级最低价矿物，直到达到预算或无可升级 */
-  private upgradeMineralsToReachBudget(targetBudget: number): void {
-    for (let attempt = 0; attempt < BUDGET_UPGRADE_MAX_ATTEMPTS; attempt++) {
-      if (this.getCurrentMineralTotal() >= targetBudget) return;
+  /** 场上金块（GOLD_SMALL/MEDIUM/LARGE，不含钻石）的原始总价值 */
+  private getCurrentGoldTotal(): number {
+    return this.minerals
+      .filter((m) => GOLD_TYPES.includes(m.config.type))
+      .reduce((sum, m) => sum + m.value, 0);
+  }
 
-      // 找到价值最低的可升级矿物
-      let candidateIdx = -1;
-      let candidateChainIdx = -1;
-      let candidateValue = Infinity;
-      for (let i = 0; i < this.minerals.length; i++) {
-        const m = this.minerals[i]!;
-        const chainIdx = VALUE_UPGRADE_CHAIN.indexOf(m.config.type);
-        if (chainIdx < 0 || chainIdx >= VALUE_UPGRADE_CHAIN.length - 1) continue;
-        if (m.value < candidateValue) {
-          candidateValue = m.value;
-          candidateIdx = i;
-          candidateChainIdx = chainIdx;
-        }
-      }
-      if (candidateIdx < 0) return; // 无可升级矿物
+  /**
+   * 按 largeWeightScale 加权随机选金块品种（NOVICE 偏 LARGE，HARD/EXPERT 偏 SMALL）
+   * 权重数组 [pSmall, pMedium, pLarge] 顺序与 GOLD_TYPES 一一对应
+   * pMedium = lws × 1.5：让 MEDIUM 在 SMALL 与 LARGE 之间形成平滑梯度，避免高难度突变到全 SMALL
+   */
+  private pickGoldVariant(): MineralType {
+    const lws = this.difficulty.largeWeightScale;
+    const pLarge = Math.max(0, Math.min(1, lws));
+    const pMedium = Math.max(0, Math.min(1, lws * GOLD_MEDIUM_WEIGHT_FACTOR));
+    const pSmall = 1.0;
+    const idx = weightedRandom([pSmall, pMedium, pLarge]);
+    return GOLD_TYPES[idx]!;
+  }
 
-      // 升级为链中下一档
-      const oldMineral = this.minerals[candidateIdx]!;
-      const nextType = VALUE_UPGRADE_CHAIN[candidateChainIdx + 1]!;
-      const newMineral = new Mineral(oldMineral.x, oldMineral.y, nextType, this.spriteCache);
-      // 继承移动属性（升级前是 MOUSE/MOLE 时）
-      if (oldMineral.vx !== 0) {
-        newMineral.vx = oldMineral.vx;
-        newMineral.moveLeft = oldMineral.moveLeft;
-        newMineral.moveRight = oldMineral.moveRight;
-      }
-      this.minerals[candidateIdx] = newMineral;
+  /** 金块保底：循环追加金块直到金块总值满足 goldBudget 或达到上限 */
+  private ensureGoldBudget(goldBudget: number): void {
+    for (let i = 0; i < GOLD_BUDGET_MAX_APPEND; i++) {
+      if (this.getCurrentGoldTotal() >= goldBudget) return;
+      const placed = this.tryPlaceMineral(this.pickGoldVariant());
+      if (!placed) return; // 找不到空位
+      this.minerals.push(placed);
     }
   }
 
@@ -1223,17 +1233,6 @@ export class GameScene extends SceneBase {
         newMineral.moveRight = oldMineral.moveRight;
       }
       this.minerals[candidateIdx] = newMineral;
-    }
-  }
-
-  /** 升级仍不够时追加大金块，上限 baseCount × BUDGET_APPEND_RATIO */
-  private appendMineralsToReachBudget(targetBudget: number, baseCount: number): void {
-    const maxAppend = Math.floor(baseCount * BUDGET_APPEND_RATIO);
-    for (let i = 0; i < maxAppend; i++) {
-      if (this.getCurrentMineralTotal() >= targetBudget) return;
-      const placed = this.tryPlaceMineral(MineralType.GOLD_LARGE);
-      if (!placed) return; // 找不到空位
-      this.minerals.push(placed);
     }
   }
 
