@@ -70,7 +70,7 @@ export interface LevelConfig {
   level: number;
   /** 所属章节 */
   chapter: ChapterId;
-  /** 目标金额 */
+  /** 累计目标金额（原版风格：玩家从上关累计起步赚到这个数才能过关，HUD 显示累计 / 累计目标） */
   targetMoney: number;
   /** 矿物数量 */
   mineralCount: number;
@@ -83,13 +83,17 @@ export interface LevelConfig {
 }
 
 /**
- * 全部关卡配置（21 关 3 章节）
+ * 全部关卡配置（21 关 3 章节，原版风格累计目标）
+ *
+ * targetMoney = 截止本关结束玩家累计应达到的金额（HUD 显示累计 / 累计目标）
+ * 本关增量 = targetMoney - 上关 targetMoney（由 getLevelEarning() 计算）
  *
  * 数值曲线（NORMAL 难度基准）：
- *  Ch1 L1-L7  : target 150 → 1400, time 60 → 50, 矿数 10 → 17
- *  Ch2 L8-L14 : target 1700 → 4200, time 55 → 45, 矿数 18 → 21
- *  Ch3 L15-L21: target 4800 → 9500, time 50 → 40, 矿数 21 → 24
+ *  Ch1 L1-L7  : 累计 200 → 2450  / 本关增量 200 → 500
+ *  Ch2 L8-L14 : 累计 3050 → 7750 / 本关增量 600 → 950
+ *  Ch3 L15-L21: 累计 8750 → 17000 / 本关增量 1000 → 1750
  *
+ * 矿物预算按本关增量算（不是累计目标），保证关卡矿物量合理。
  * 矿物权重总和恒定为 100，便于按比例直观调参。
  */
 export const LEVELS: LevelConfig[] = [
@@ -97,7 +101,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 1,
     chapter: ChapterId.CRYSTAL_MINE,
-    targetMoney: 150,
+    targetMoney: 200,
     mineralCount: 10,
     timeLimit: 60,
     mineralWeights: [28, 10, 8, 2, 22, 4, 6, 8, 6, 6],
@@ -105,7 +109,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 2,
     chapter: ChapterId.CRYSTAL_MINE,
-    targetMoney: 300,
+    targetMoney: 450,
     mineralCount: 12,
     timeLimit: 60,
     mineralWeights: [26, 10, 8, 3, 22, 5, 7, 7, 6, 6],
@@ -113,7 +117,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 3,
     chapter: ChapterId.CRYSTAL_MINE,
-    targetMoney: 450,
+    targetMoney: 750,
     mineralCount: 13,
     timeLimit: 60,
     mineralWeights: [24, 10, 8, 4, 24, 6, 7, 6, 6, 5],
@@ -121,7 +125,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 4,
     chapter: ChapterId.CRYSTAL_MINE,
-    targetMoney: 650,
+    targetMoney: 1100,
     mineralCount: 14,
     timeLimit: 55,
     mineralWeights: [22, 10, 8, 5, 26, 7, 7, 5, 5, 5],
@@ -129,7 +133,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 5,
     chapter: ChapterId.CRYSTAL_MINE,
-    targetMoney: 850,
+    targetMoney: 1500,
     mineralCount: 15,
     timeLimit: 55,
     mineralWeights: [20, 10, 8, 5, 28, 8, 7, 5, 5, 4],
@@ -137,7 +141,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 6,
     chapter: ChapterId.CRYSTAL_MINE,
-    targetMoney: 1100,
+    targetMoney: 1950,
     mineralCount: 16,
     timeLimit: 55,
     mineralWeights: [18, 8, 8, 6, 30, 9, 6, 5, 5, 5],
@@ -145,7 +149,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 7,
     chapter: ChapterId.CRYSTAL_MINE,
-    targetMoney: 1400,
+    targetMoney: 2450,
     mineralCount: 17,
     timeLimit: 50,
     mineralWeights: [16, 8, 8, 6, 32, 10, 6, 5, 5, 4],
@@ -156,7 +160,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 8,
     chapter: ChapterId.CRAB_BAY,
-    targetMoney: 1700,
+    targetMoney: 3050,
     mineralCount: 18,
     timeLimit: 55,
     mineralWeights: [14, 8, 8, 7, 32, 11, 6, 5, 5, 4],
@@ -164,7 +168,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 9,
     chapter: ChapterId.CRAB_BAY,
-    targetMoney: 2000,
+    targetMoney: 3700,
     mineralCount: 18,
     timeLimit: 55,
     mineralWeights: [13, 7, 7, 8, 33, 12, 6, 5, 5, 4],
@@ -172,7 +176,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 10,
     chapter: ChapterId.CRAB_BAY,
-    targetMoney: 2400,
+    targetMoney: 4400,
     mineralCount: 19,
     timeLimit: 55,
     mineralWeights: [12, 7, 7, 8, 34, 12, 7, 5, 4, 4],
@@ -180,7 +184,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 11,
     chapter: ChapterId.CRAB_BAY,
-    targetMoney: 2800,
+    targetMoney: 5150,
     mineralCount: 19,
     timeLimit: 50,
     mineralWeights: [11, 7, 7, 9, 34, 13, 7, 5, 4, 3],
@@ -188,7 +192,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 12,
     chapter: ChapterId.CRAB_BAY,
-    targetMoney: 3200,
+    targetMoney: 5950,
     mineralCount: 20,
     timeLimit: 50,
     mineralWeights: [10, 6, 6, 9, 35, 14, 7, 5, 4, 4],
@@ -196,7 +200,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 13,
     chapter: ChapterId.CRAB_BAY,
-    targetMoney: 3600,
+    targetMoney: 6800,
     mineralCount: 20,
     timeLimit: 50,
     mineralWeights: [9, 6, 6, 10, 35, 14, 7, 5, 4, 4],
@@ -204,7 +208,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 14,
     chapter: ChapterId.CRAB_BAY,
-    targetMoney: 4200,
+    targetMoney: 7750,
     mineralCount: 21,
     timeLimit: 45,
     mineralWeights: [8, 5, 5, 11, 36, 15, 7, 5, 4, 4],
@@ -215,7 +219,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 15,
     chapter: ChapterId.PIGGY_THRONE,
-    targetMoney: 4800,
+    targetMoney: 8750,
     mineralCount: 21,
     timeLimit: 50,
     mineralWeights: [8, 6, 7, 12, 35, 14, 8, 4, 3, 3],
@@ -223,7 +227,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 16,
     chapter: ChapterId.PIGGY_THRONE,
-    targetMoney: 5500,
+    targetMoney: 9850,
     mineralCount: 22,
     timeLimit: 50,
     mineralWeights: [7, 6, 7, 13, 35, 15, 8, 4, 3, 2],
@@ -231,7 +235,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 17,
     chapter: ChapterId.PIGGY_THRONE,
-    targetMoney: 6200,
+    targetMoney: 11050,
     mineralCount: 22,
     timeLimit: 45,
     mineralWeights: [6, 5, 8, 14, 35, 15, 8, 4, 3, 2],
@@ -239,7 +243,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 18,
     chapter: ChapterId.PIGGY_THRONE,
-    targetMoney: 7000,
+    targetMoney: 12350,
     mineralCount: 22,
     timeLimit: 45,
     mineralWeights: [6, 5, 8, 15, 35, 16, 7, 4, 2, 2],
@@ -247,7 +251,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 19,
     chapter: ChapterId.PIGGY_THRONE,
-    targetMoney: 7800,
+    targetMoney: 13750,
     mineralCount: 23,
     timeLimit: 45,
     mineralWeights: [5, 5, 9, 15, 36, 16, 7, 3, 2, 2],
@@ -255,7 +259,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 20,
     chapter: ChapterId.PIGGY_THRONE,
-    targetMoney: 8500,
+    targetMoney: 15250,
     mineralCount: 23,
     timeLimit: 40,
     mineralWeights: [4, 4, 9, 16, 37, 17, 7, 3, 2, 1],
@@ -263,7 +267,7 @@ export const LEVELS: LevelConfig[] = [
   {
     level: 21,
     chapter: ChapterId.PIGGY_THRONE,
-    targetMoney: 9500,
+    targetMoney: 17000,
     mineralCount: 24,
     timeLimit: 40,
     mineralWeights: [3, 4, 10, 17, 37, 18, 7, 2, 1, 1],
@@ -285,6 +289,15 @@ export function getChapterByLevel(level: number): ChapterId {
 /** 是否章节首关（用于触发 ChapterScene 过场） */
 export function isChapterFirstLevel(level: number): boolean {
   return CHAPTER_ORDER.some(id => CHAPTER_INFO[id].firstLevel === level);
+}
+
+/**
+ * 本关增量：target(level) - target(level-1)，用于矿物预算计算
+ * L1 增量等于自身 target（无上关），越界返回最后一关增量
+ */
+export function getLevelEarning(level: number): number {
+  if (level <= 1) return getLevelConfig(1).targetMoney;
+  return getLevelConfig(level).targetMoney - getLevelConfig(level - 1).targetMoney;
 }
 
 /** 总关卡数 */

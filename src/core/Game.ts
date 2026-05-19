@@ -136,9 +136,9 @@ export class Game {
   changeScene(state: GameState): void {
     // 退出当前场景
     if (this.currentScene) {
-      // 如果从 GameScene 退出，记录本关金额（不在此处累加，等进入商店/通关时才算）
+      // 如果从 GameScene 退出，记录本关入账（不含起步累计，避免后续 += 时重复加）
       if (this.state === GameState.PLAYING && this.currentScene instanceof GameScene) {
-        this.lastEarnedMoney = this.currentScene.getMoney();
+        this.lastEarnedMoney = this.currentScene.getEarnedThisLevel();
         this.lastTargetMoney = this.currentScene.getTargetMoney();
         this.lastRemainingTime = this.currentScene.getRemainingTime();
         this.clearLevelBuffs();
@@ -399,6 +399,11 @@ export class Game {
   /** 获取当前难度配置 */
   getDifficultyConfig(): DifficultyConfig {
     return getDifficultyConfig(this.currentDifficulty);
+  }
+
+  /** 获取当前累计金额（用于 GameScene 初始化 HUD + ResultScene 判断累计达标） */
+  getCurrentMoney(): number {
+    return this.currentMoney;
   }
 
   /** 设置难度（在 DifficultyScene 选择后调用） */

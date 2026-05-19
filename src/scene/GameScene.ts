@@ -18,7 +18,7 @@ import { renderBackground, getChapterBackgroundColors, GROUND_Y } from '../asset
 import type { BackgroundColors } from '../assets/theme/types';
 import type { SpriteCacheMap } from '../assets/types';
 import type { LevelConfig } from '../level/levels';
-import { ChapterId } from '../level/levels';
+import { ChapterId, getLevelEarning } from '../level/levels';
 import { ItemType, PERSISTENT_ITEM_TYPES } from '../scene/ShopScene';
 import type { SlotMeta } from '../core/Storage';
 import type { DifficultyConfig } from '../level/difficulty';
@@ -179,8 +179,11 @@ export class GameScene extends SceneBase {
   /** 关卡配置 */
   private levelConfig: LevelConfig;
 
-  /** 关卡目标金额 */
+  /** 关卡目标金额（累计目标） */
   private targetMoney: number;
+
+  /** 本关起步金额：进入关卡时玩家已累计的金额（HUD.money 初始值，用于推算本关入账） */
+  private levelStartMoney: number;
 
   /** 暂停状态 */
   private isPaused: boolean = false;
@@ -227,6 +230,9 @@ export class GameScene extends SceneBase {
     this.levelConfig = levelConfig;
     this.targetMoney = levelConfig.targetMoney;
 
+    // 累计模式：本关起步金额 = 玩家进关时已累计的金额（含商店花费扣除后）
+    this.levelStartMoney = game.getCurrentMoney();
+
     // 从主题管理器获取精灵缓存
     this.spriteCache = game.getThemeManager().getSpriteCache();
 
@@ -234,8 +240,9 @@ export class GameScene extends SceneBase {
     this.miner = new Miner(GAME_CONFIG.MINER_X, GAME_CONFIG.MINER_Y, this.spriteCache);
     this.hook = new Hook(GAME_CONFIG.MINER_X, GROUND_Y, this.spriteCache);
 
-    // 初始化 HUD（直接传入关卡时长）
+    // 初始化 HUD（HUD.money 起步值 = levelStartMoney，使其与累计目标在同一参照系）
     this.hud = new HUD(this.spriteCache, this.targetMoney, this.levelConfig.timeLimit);
+    this.hud.money = this.levelStartMoney;
 
     // 难度联动：缓存配置 + 注入重量影响系数倍率 + HUD 标签
     this.difficulty = game.getDifficultyConfig();
@@ -293,7 +300,7 @@ export class GameScene extends SceneBase {
       timeLimit += EXTRA_TIME_BONUS;
     }
     this.hud.timeLeft = timeLimit;
-    this.hud.money = 0;
+    this.hud.money = this.levelStartMoney; // 累计模式：HUD 起步 = 进关时累计金额
     this.hook.reset();
   }
 
@@ -1052,8 +1059,11 @@ export class GameScene extends SceneBase {
       }
     }
 
-    // 2) 计算原始价值预算（除以 valueScale 是因为玩家最终看到的金额会再乘 valueScale）
-    const targetBudget = (this.levelConfig.targetMoney * this.difficulty.mineralBudgetRatio) / this.difficulty.valueScale;
+    // 2) 计算原始价值预算
+    //    累计模式：预算按"本关增量"算（不是累计目标），否则预算会无意义地放大
+    //    除以 valueScale 是因为玩家最终看到的金额会再乘 valueScale
+    const levelEarning = getLevelEarning(this.levelConfig.level);
+    const targetBudget = (levelEarning * this.difficulty.mineralBudgetRatio) / this.difficulty.valueScale;
 
     // 3) 不足时升级低价值矿物
     this.upgradeMineralsToReachBudget(targetBudget);
@@ -1240,9 +1250,14 @@ export class GameScene extends SceneBase {
     this.game.changeScene(GameState.RESULT);
   }
 
-  /** 获取当前金额 */
+  /** 获取当前金额（累计模式下 = 本关起步累计 + 本关入账） */
   getMoney(): number {
     return this.hud.money;
+  }
+
+  /** 本关入账（hud.money - levelStartMoney），用于 ResultScene 显示和 commitLevelResult 累加 */
+  getEarnedThisLevel(): number {
+    return this.hud.money - this.levelStartMoney;
   }
 
   /** 获取目标金额 */

@@ -36,6 +36,8 @@ export class ResultScene extends SceneBase {
   private bonusMoney: number;
   private totalMoney: number;
   private isPassed: boolean;
+  /** 本关起步前的累计金额（用于显示"累计达成 X/Y"） */
+  private cumulativeBeforeLevel: number;
 
   /** 主操作按钮（通过=进入商店；失败=重试本关） */
   private primaryButton: Button;
@@ -60,7 +62,9 @@ export class ResultScene extends SceneBase {
     this.earnedMoney = earnedMoney;
     this.targetMoney = targetMoney;
     this.remainingTime = remainingTime;
-    this.isPassed = earnedMoney >= targetMoney;
+    // 累计模式：判断本关起步累计 + 本关入账 >= 累计目标（commitLevelResult 在 enter 才执行，此时 currentMoney 仍是本关起步累计）
+    this.cumulativeBeforeLevel = game.getCurrentMoney();
+    this.isPassed = (this.cumulativeBeforeLevel + earnedMoney) >= targetMoney;
     // Bonus 只在达标时计算
     this.bonusMoney = this.isPassed ? Math.floor(remainingTime) * TIME_BONUS_PER_SECOND : 0;
     this.totalMoney = this.earnedMoney + this.bonusMoney;
@@ -197,9 +201,9 @@ export class ResultScene extends SceneBase {
     const resultColor = this.isPassed ? '#00FF00' : '#FF4444';
     drawTextCentered(renderer, resultText, 120, resultColor, 'LARGE');
 
-    // 获得金额（动画 tween）
-    drawTextCentered(renderer, `获得金额: $${this.displayEarned}`, 190, '#FFD700', 'MEDIUM');
-    drawTextCentered(renderer, `目标金额: $${this.targetMoney}`, 225, '#AAAAAA', 'SMALL');
+    // 本关入账（动画 tween）+ 累计目标
+    drawTextCentered(renderer, `本关入账: +$${this.displayEarned}`, 190, '#FFD700', 'MEDIUM');
+    drawTextCentered(renderer, `累计目标: $${this.targetMoney}`, 225, '#AAAAAA', 'SMALL');
 
     // Bonus（达标且 stage 进入 BONUS 后显示）
     if (this.isPassed && this.bonusMoney > 0 && this.stage !== ResultStage.EARNED) {
@@ -213,10 +217,20 @@ export class ResultScene extends SceneBase {
       );
     }
 
-    // 总计（动画完成后显示）
+    // 总计 + 累计达成（动画完成后显示）
     if (this.isPassed && (this.stage === ResultStage.TOTAL || this.stage === ResultStage.DONE)) {
       const totalDisplay = this.stage === ResultStage.TOTAL ? this.displayTotal : this.totalMoney;
-      drawTextCentered(renderer, `总计: $${totalDisplay}`, 330, '#FFFF00', 'LARGE');
+      drawTextCentered(renderer, `本关总计: +$${totalDisplay}`, 330, '#FFFF00', 'LARGE');
+      const cumulative = this.cumulativeBeforeLevel + this.totalMoney;
+      drawTextCentered(renderer, `累计达成: $${cumulative} / $${this.targetMoney}`, 370, '#FFD27C', 'MEDIUM');
+    }
+
+    // 未达标时显示差距
+    if (!this.isPassed && this.stage === ResultStage.DONE) {
+      const cumulative = this.cumulativeBeforeLevel + this.earnedMoney;
+      const gap = this.targetMoney - cumulative;
+      drawTextCentered(renderer, `累计: $${cumulative} / $${this.targetMoney}`, 330, '#FF4444', 'MEDIUM');
+      drawTextCentered(renderer, `还差 $${gap}`, 365, '#FF8888', 'SMALL');
     }
 
     // 按钮（动画完成后才显示）
