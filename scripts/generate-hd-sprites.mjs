@@ -464,6 +464,350 @@ function makeCoinIcon(W, H) {
   });
 }
 
+/** 老鼠：侧面朝右，椭圆身体 + 圆头 + 尖鼻 + 长尾 + 粉耳 */
+function makeMouse(W, H) {
+  const cy = H / 2;
+  const bodyCx = W * 0.42;  // 身体中心
+  const bodyRx = W * 0.28;
+  const bodyRy = H * 0.32;
+  const headCx = W * 0.18;  // 头部中心
+  const headRx = W * 0.13;
+  const headRy = H * 0.27;
+  const tailStartX = bodyCx + bodyRx;  // 尾巴起点
+
+  const M_BODY = '#8B6914';
+  const M_BELLY = '#D2B48C';
+  const M_EAR = '#FFB6C1';
+  const M_NOSE = '#FF6B6B';
+  const M_EYE = '#000000';
+  const M_HL = '#A88830';
+  const M_SH = '#5D4708';
+  const M_OL = '#2A2003';
+
+  return generateGrid(W, H, (x, y) => {
+    // 尾巴：从 tailStartX 向右斜上的曲线
+    const tailY = cy + 2 * Math.sin((x - tailStartX) * 0.4);
+    if (x > tailStartX && x < W && Math.abs(y - tailY) < 1) {
+      return M_OL;
+    }
+    if (x > tailStartX && x < W && Math.abs(y - tailY) < 2) {
+      return M_BODY;
+    }
+
+    // 身体椭圆
+    const bdx = x - bodyCx, bdy = y - cy;
+    const bD = (bdx * bdx) / (bodyRx * bodyRx) + (bdy * bdy) / (bodyRy * bodyRy);
+    // 头部椭圆
+    const hdx = x - headCx, hdy = y - cy;
+    const hD = (hdx * hdx) / (headRx * headRx) + (hdy * hdy) / (headRy * headRy);
+
+    const inBody = bD <= 1.0;
+    const inHead = hD <= 1.0;
+
+    if (!inBody && !inHead) {
+      // 耳朵：头顶上方
+      const earCx1 = headCx + headRx * 0.5;
+      const earCy = cy - headRy * 0.7;
+      const eDx = x - earCx1, eDy = y - earCy;
+      if (eDx * eDx + eDy * eDy < 4) return M_EAR;
+      return null;
+    }
+
+    // 描边（接近边缘）
+    if (inBody && bD > 0.85) return M_OL;
+    if (inHead && hD > 0.85) return M_OL;
+    if (inBody && bD > 0.72) return M_SH;
+    if (inHead && hD > 0.72) return M_SH;
+
+    // 眼睛：头部前部
+    const eyeX = headCx - headRx * 0.3;
+    const eyeY = cy - headRy * 0.2;
+    if (Math.abs(x - eyeX) < 1 && Math.abs(y - eyeY) < 1.2) return M_EYE;
+
+    // 鼻尖：头部最左侧
+    if (inHead && hdx < -headRx * 0.85) return M_NOSE;
+
+    // 腹部（下半部浅色）
+    if (inBody && bdy > bodyRy * 0.2) return M_BELLY;
+    if (inHead && hdy > headRy * 0.3) return M_BELLY;
+
+    // 高光（顶部）
+    if ((inBody || inHead) && bdy < -bodyRy * 0.5) return M_HL;
+
+    return M_BODY;
+  });
+}
+
+/** 鼹鼠：圆滚正面，大粉鼻头 + 黑眼 + 利爪 */
+function makeMole(W, H) {
+  const cx = (W - 1) / 2;
+  const cy = (H - 1) / 2;
+  const bodyR = Math.min(W, H) * 0.42;
+
+  const ML_BODY = '#6B4226';
+  const ML_BELLY = '#C4A882';
+  const ML_NOSE = '#FF69B4';
+  const ML_NOSE_HL = '#FFB6E5';
+  const ML_EYE = '#000000';
+  const ML_CLAW = '#F0F0F0';
+  const ML_HL = '#8B5A36';
+  const ML_SH = '#3F2410';
+  const ML_OL = '#1A0F06';
+
+  return generateGrid(W, H, (x, y) => {
+    const dx = x - cx, dy = y - cy;
+    // 身体圆形
+    const r = Math.sqrt(dx * dx + dy * dy);
+    if (r > bodyR) {
+      // 利爪：底部左右两侧
+      if (dy > bodyR * 0.6 && dy < bodyR * 1.1) {
+        if (Math.abs(dx + bodyR * 0.5) < 1) return ML_CLAW;
+        if (Math.abs(dx - bodyR * 0.5) < 1) return ML_CLAW;
+      }
+      return null;
+    }
+    // 边缘描边
+    if (r > bodyR - 1) return ML_OL;
+    if (r > bodyR - 2) return ML_SH;
+
+    // 大粉鼻头（中央偏下）
+    const noseDx = dx, noseDy = dy + bodyR * 0.05;
+    const noseR = bodyR * 0.18;
+    if (noseDx * noseDx + noseDy * noseDy < noseR * noseR) {
+      if (noseDx * noseDx + (noseDy + 1) * (noseDy + 1) < 2) return ML_NOSE_HL;
+      return ML_NOSE;
+    }
+
+    // 双眼
+    const eyeY = cy - bodyR * 0.3;
+    if (Math.abs(y - eyeY) < 1.5) {
+      if (Math.abs(x - (cx - bodyR * 0.35)) < 1.2) return ML_EYE;
+      if (Math.abs(x - (cx + bodyR * 0.35)) < 1.2) return ML_EYE;
+    }
+
+    // 腹部（下半浅色）
+    if (dy > bodyR * 0.25 && Math.abs(dx) < bodyR * 0.6) return ML_BELLY;
+
+    // 顶部高光（光照来自上方）
+    if (dy < -bodyR * 0.5 && Math.abs(dx) < bodyR * 0.4) return ML_HL;
+
+    return ML_BODY;
+  });
+}
+
+/** 骨头：横向，两端关节球 + 中段细 + 米黄渐变 */
+function makeBone(W, H) {
+  const cy = (H - 1) / 2;
+  const knobR = H * 0.42;  // 端部关节球半径
+  const knobLeftCx = knobR + 1;
+  const knobRightCx = W - knobR - 2;
+  const stemH = H * 0.45;  // 中段粗细
+
+  const B_BODY = '#F5F5DC';
+  const B_HL = '#FFFFF0';
+  const B_SH = '#C8C0A0';
+  const B_DK = '#9B9474';
+  const B_OL = '#5C5740';
+
+  return generateGrid(W, H, (x, y) => {
+    const dy = y - cy;
+
+    // 关节球（两侧各两个 — 上下两个突起组成 H 形）
+    function inKnob(cxK) {
+      const dxK = x - cxK;
+      // 上球
+      const upDy = dy + knobR * 0.4;
+      if (dxK * dxK + upDy * upDy < knobR * knobR) return 'in';
+      // 下球
+      const dnDy = dy - knobR * 0.4;
+      if (dxK * dxK + dnDy * dnDy < knobR * knobR) return 'in';
+      return null;
+    }
+    const inLK = inKnob(knobLeftCx);
+    const inRK = inKnob(knobRightCx);
+
+    // 中段（细杆）
+    const inStem = x > knobLeftCx && x < knobRightCx && Math.abs(dy) < stemH / 2;
+
+    if (!inLK && !inRK && !inStem) return null;
+
+    // 边缘描边判定
+    function isEdge() {
+      if (inLK || inRK) {
+        const cxK = inLK ? knobLeftCx : knobRightCx;
+        const dxK = x - cxK;
+        const upDy = dy + knobR * 0.4;
+        const dnDy = dy - knobR * 0.4;
+        const upR = Math.sqrt(dxK * dxK + upDy * upDy);
+        const dnR = Math.sqrt(dxK * dxK + dnDy * dnDy);
+        return Math.min(upR, dnR) > knobR - 1;
+      }
+      // 中段
+      return Math.abs(dy) > stemH / 2 - 1;
+    }
+    if (isEdge()) return B_OL;
+
+    // 顶部高光
+    if (dy < -knobR * 0.4) return B_HL;
+    if (dy < 0) return B_BODY;
+    if (dy < knobR * 0.3) return B_SH;
+    return B_DK;
+  });
+}
+
+/** 炸弹：黑铁球 + 反光 + 引信 + 火花 */
+function makeBomb(W, H) {
+  const cx = (W - 1) / 2;
+  const bodyCy = H * 0.62;
+  const bodyR = Math.min(W, H) * 0.36;
+  const fuseTopY = H * 0.18;
+
+  const BMB_BODY = '#2A2A2A';
+  const BMB_HL = '#5A5A5A';
+  const BMB_DK = '#000000';
+  const FUSE = '#5C3317';
+  const SPARK = '#FFFF00';
+  const SPARK2 = '#FF4400';
+
+  return generateGrid(W, H, (x, y) => {
+    const dx = x - cx;
+    // 火花（顶部）
+    if (y < fuseTopY) {
+      const sDx = x - cx, sDy = y - fuseTopY * 0.3;
+      const sR = Math.sqrt(sDx * sDx + sDy * sDy);
+      if (sR < 2) return SPARK;
+      if (sR < 3.5) return SPARK2;
+      return null;
+    }
+    // 引信（弯曲）
+    const fuseY = fuseTopY + (H * 0.22 - fuseTopY) * 0.5;
+    if (y < bodyCy - bodyR + 1) {
+      const fuseCurveX = cx + 1.5 * Math.sin((y - fuseTopY) * 0.5);
+      if (Math.abs(x - fuseCurveX) < 0.8) return FUSE;
+      return null;
+    }
+    // 炸弹球体
+    const bdx = x - cx, bdy = y - bodyCy;
+    const r = Math.sqrt(bdx * bdx + bdy * bdy);
+    if (r > bodyR) return null;
+    if (r > bodyR - 1) return BMB_DK;
+    // 左上反光（小高光圆）
+    const hlDx = x - (cx - bodyR * 0.4);
+    const hlDy = y - (bodyCy - bodyR * 0.4);
+    if (hlDx * hlDx + hlDy * hlDy < 4) return BMB_HL;
+    return BMB_BODY;
+  });
+}
+
+/** 神秘袋：麻布袋 + 红绳系口 + 中央金币凸起 */
+function makeMysteryBag(W, H) {
+  const cx = (W - 1) / 2;
+  const bagTopY = H * 0.22;
+  const tieY = H * 0.30;
+  const bagBotY = H * 0.92;
+
+  const BAG = '#B8860B';
+  const BAG_HL = '#D9A028';
+  const BAG_SH = '#7F5C08';
+  const TIE = '#8B0000';
+  const TIE_HL = '#C03030';
+  const COIN = '#FFD700';
+  const COIN_HL = '#FFF8B0';
+  const OUTLINE = '#3F2A02';
+
+  return generateGrid(W, H, (x, y) => {
+    const dx = x - cx;
+    // 红绳系口
+    if (y >= tieY - 1 && y <= tieY + 1) {
+      const halfW = W * 0.30;
+      if (Math.abs(dx) < halfW) {
+        if (y === Math.floor(tieY)) return TIE_HL;
+        return TIE;
+      }
+    }
+    // 袋口（窄）
+    if (y < tieY) {
+      const halfW = W * 0.18 + (y - bagTopY) * 0.4;
+      if (Math.abs(dx) < halfW) {
+        if (y < bagTopY) return null;
+        if (Math.abs(dx) > halfW - 1) return OUTLINE;
+        return BAG_SH;
+      }
+      return null;
+    }
+    // 袋身（宽，弧形底）
+    if (y < bagBotY) {
+      const t = (y - tieY) / (bagBotY - tieY);
+      const halfW = W * 0.32 + W * 0.10 * Math.sin(t * Math.PI);
+      if (Math.abs(dx) < halfW) {
+        if (Math.abs(dx) > halfW - 1) return OUTLINE;
+        if (Math.abs(dx) > halfW - 2) return BAG_SH;
+        // 中央金币凸起
+        const cnDx = x - cx;
+        const cnDy = y - H * 0.6;
+        if (cnDx * cnDx + cnDy * cnDy < 9) {
+          if (cnDx * cnDx + (cnDy + 1) * (cnDy + 1) < 2) return COIN_HL;
+          return COIN;
+        }
+        // 左明右暗
+        if (dx < 0) return BAG_HL;
+        return BAG;
+      }
+    }
+    return null;
+  });
+}
+
+/** 木箱：木纹 + 铁皮包角 + 中央锁扣 */
+function makeWoodenBox(W, H) {
+  const margin = 1;
+  const cx = (W - 1) / 2;
+  const cy = (H - 1) / 2;
+
+  const WOOD = '#8B4513';
+  const WOOD_HL = '#B0732F';
+  const WOOD_DK = '#5C2F0A';
+  const METAL = '#C0C0C0';
+  const METAL_HL = '#FFFFFF';
+  const METAL_DK = '#606060';
+  const LOCK = '#DAA520';
+  const OUTLINE = '#2A1305';
+
+  // 包角占据角落 4×4 区域
+  const cornerSize = Math.floor(W * 0.18);
+
+  return generateGrid(W, H, (x, y) => {
+    if (x < margin || x >= W - margin || y < margin || y >= H - margin) return null;
+    // 边缘描边
+    if (x === margin || x === W - margin - 1 || y === margin || y === H - margin - 1) {
+      return OUTLINE;
+    }
+    // 铁皮包角
+    const inCorner =
+      (x < margin + cornerSize && y < margin + cornerSize) ||
+      (x >= W - margin - cornerSize && y < margin + cornerSize) ||
+      (x < margin + cornerSize && y >= H - margin - cornerSize) ||
+      (x >= W - margin - cornerSize && y >= H - margin - cornerSize);
+    if (inCorner) {
+      if (x === margin + 1 || x === W - margin - 2 || y === margin + 1 || y === H - margin - 2) {
+        return METAL_DK;
+      }
+      // 包角内部一个高光斑
+      const inThisCorner = (x < W / 2) ? (y < H / 2) : (y < H / 2);
+      if ((x % 3 === 0) && (y % 3 === 0)) return METAL_HL;
+      return METAL;
+    }
+    // 中央锁扣（小金色圆）
+    const ldx = x - cx, ldy = y - cy;
+    if (ldx * ldx + ldy * ldy < 5) return LOCK;
+    // 木纹横线（每 3 行一条暗纹）
+    if (y % 3 === 0) return WOOD_DK;
+    // 左明右暗
+    if (x < cx) return WOOD_HL;
+    return WOOD;
+  });
+}
+
 // ==================== HD 精灵列表 ====================
 
 // 金块共用调色板（与 classic.json 中现有 GOLD_LARGE_HD 一致）
@@ -487,6 +831,12 @@ const SPRITES_TO_GENERATE = {
   PIGGY_GEM_SPRITE: () => toSpriteJson(makePiggyGem(36, 36), 1),
   HOOK_SPRITE: () => toSpriteJson(makeHook(33, 36), 1),
   COIN_ICON: () => toSpriteJson(makeCoinIcon(24, 24), 1),
+  MOUSE_SPRITE: () => toSpriteJson(makeMouse(36, 24), 1),
+  MOLE_SPRITE: () => toSpriteJson(makeMole(36, 30), 1),
+  BONE_SPRITE: () => toSpriteJson(makeBone(36, 18), 1),
+  BOMB_SPRITE: () => toSpriteJson(makeBomb(24, 24), 1),
+  MYSTERY_BAG: () => toSpriteJson(makeMysteryBag(24, 24), 1),
+  WOODEN_BOX_SPRITE: () => toSpriteJson(makeWoodenBox(24, 24), 1),
 };
 
 // ==================== 主流程：patch classic.json ====================
