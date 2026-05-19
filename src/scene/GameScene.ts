@@ -164,6 +164,9 @@ const CHAPTER_COLLECTIBLE_MAP: Record<ChapterId, MineralType> = {
 /** 木箱抽奖箱的最小关卡（前几关玩家还在学基础玩法，不放抽奖箱） */
 const WOODEN_BOX_MIN_LEVEL = 5;
 
+/** 矿工进入 STRAIN 用力态的矿物重量阈值（基础矿物 weight 范围 0.2-1.5，0.8 让大金/石头/骨头都触发） */
+const STRAIN_WEIGHT_THRESHOLD = 0.8;
+
 export class GameScene extends SceneBase {
   private game: Game;
   private miner: Miner;
@@ -1291,6 +1294,15 @@ export class GameScene extends SceneBase {
       this.game.getAudio().stopRopeFriction();
     }
     this.wasReeling = reeling;
+
+    // #15 矿工 STRAIN 用力态：拉重物时切到 STRAIN，松手或切到 HAPPY/SAD 时回 IDLE
+    // HAPPY/SAD 持续 1.5s 自动 reset 后会被这里覆盖到 STRAIN（如果仍在拉重物），符合预期
+    const pullingHeavy = this.hook.isPullingHeavy(STRAIN_WEIGHT_THRESHOLD);
+    if (pullingHeavy && this.miner.state !== MinerState.STRAIN) {
+      this.miner.setState(MinerState.STRAIN);
+    } else if (!pullingHeavy && this.miner.state === MinerState.STRAIN) {
+      this.miner.setState(MinerState.IDLE);
+    }
   }
 
   /** 获取当前金额（累计模式下 = 本关起步累计 + 本关入账） */

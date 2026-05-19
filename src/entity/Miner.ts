@@ -12,6 +12,8 @@ export enum MinerState {
   PULL = 'PULL',
   HAPPY = 'HAPPY',
   SAD = 'SAD',
+  /** 拉重物用力态（Phase F #15）：涨红脸 + 咬牙，由 GameScene 按 hook.grabbedMineral.weight 阈值切换 */
+  STRAIN = 'STRAIN',
 }
 
 /** 矿工状态到精灵名称映射 */
@@ -20,6 +22,7 @@ const STATE_SPRITE_MAP: Record<MinerState, string> = {
   [MinerState.PULL]: 'MINER_PULL',
   [MinerState.HAPPY]: 'MINER_HAPPY',
   [MinerState.SAD]: 'MINER_SAD',
+  [MinerState.STRAIN]: 'MINER_STRAIN',
 };
 
 export class Miner {
@@ -40,7 +43,11 @@ export class Miner {
     this.spriteCache = spriteCache;
   }
 
-  /** 切换到临时状态（HAPPY/SAD 会自动恢复为 IDLE） */
+  /**
+   * 切换状态
+   * - HAPPY / SAD：临时态，1.5s 后自动回 IDLE
+   * - STRAIN / PULL / IDLE：持续态，由调用方控制何时退出
+   */
   setState(state: MinerState): void {
     this.state = state;
     if (state === MinerState.HAPPY || state === MinerState.SAD) {

@@ -4,7 +4,7 @@
  */
 
 import type { ThemeDefinition } from './types';
-import { ALL_SPRITES, MINER_IDLE, MINER_PULL, MINER_HAPPY, MINER_SAD } from '../sprites';
+import { ALL_SPRITES, MINER_IDLE, MINER_PULL, MINER_HAPPY, MINER_SAD, MINER_STRAIN } from '../sprites';
 import { scalePixelMap } from '../../utils/pixel';
 
 /** 经典矿工精灵放大到 32x32（统一尺寸） */
@@ -13,6 +13,7 @@ const SCALED_CLASSIC_SPRITES: Record<string, ReturnType<typeof scalePixelMap>> =
   MINER_PULL: scalePixelMap(MINER_PULL, 2),
   MINER_HAPPY: scalePixelMap(MINER_HAPPY, 2),
   MINER_SAD: scalePixelMap(MINER_SAD, 2),
+  MINER_STRAIN: scalePixelMap(MINER_STRAIN, 2),
 };
 
 export const CLASSIC_THEME: ThemeDefinition = {

@@ -15,6 +15,9 @@ const SHAKE_ANGLE_STEP = 0.05;
 /** 钩爪角度上限安全系数（避免完全水平摆动） */
 const HOOK_ANGLE_SAFE_RATIO = 0.95;
 
+/** 绳索下垂偏移系数：sag(px) = weight × SAG_FACTOR */
+const ROPE_SAG_FACTOR = 10;
+
 /** 钩爪状态 */
 export enum HookState {
   /** 摆动中，等待玩家操作 */
@@ -124,6 +127,16 @@ export class Hook {
     this.grabbedMineral = null;
     this.state = HookState.REELING_EMPTY;
     return mineral;
+  }
+
+  /**
+   * 当前是否在收回阶段拉着「重物」（封装 grabbedMineral.config.weight 内部细节）
+   * 仅 REELING_WITH_MINERAL 状态返回 true（EXTENDING/SWINGING 都不算"在拉"）
+   */
+  isPullingHeavy(weightThreshold: number): boolean {
+    return this.state === HookState.REELING_WITH_MINERAL
+        && this.grabbedMineral != null
+        && this.grabbedMineral.config.weight >= weightThreshold;
   }
 
   /** 重置钩爪到摆动状态 */
@@ -245,12 +258,19 @@ export class Hook {
   render(renderer: Renderer): void {
     const ctx = renderer.getContext();
 
-    // 绘制绳索
+    // 绘制绳索：抓重物时用二次贝塞尔曲线模拟下垂感（#17）
     ctx.strokeStyle = '#DEB887';
     ctx.lineWidth = GAME_CONFIG.HOOK_ROPE_WIDTH;
     ctx.beginPath();
     ctx.moveTo(this.anchorX, this.anchorY);
-    ctx.lineTo(this.tipX, this.tipY);
+    if (this.grabbedMineral && this.state === HookState.REELING_WITH_MINERAL) {
+      const sag = this.grabbedMineral.config.weight * ROPE_SAG_FACTOR;
+      const midX = (this.anchorX + this.tipX) / 2;
+      const midY = (this.anchorY + this.tipY) / 2 + sag;
+      ctx.quadraticCurveTo(midX, midY, this.tipX, this.tipY);
+    } else {
+      ctx.lineTo(this.tipX, this.tipY);
+    }
     ctx.stroke();
 
     // 绘制钩爪精灵

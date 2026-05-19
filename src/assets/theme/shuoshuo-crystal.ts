@@ -52,6 +52,7 @@ const ALTERNATE_SPRITES: Record<string, PixelMap> = {
   MINER_PULL: MINER_SPRITE,
   MINER_HAPPY: MINER_SPRITE,
   MINER_SAD: MINER_SPRITE,
+  MINER_STRAIN: MINER_SPRITE, // 复用同一精灵（水晶主题无差异化用力态）
 };
 
 export const SHUOSHUO_CRYSTAL_THEME: ThemeDefinition = {
