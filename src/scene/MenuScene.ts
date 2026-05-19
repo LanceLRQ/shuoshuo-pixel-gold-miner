@@ -63,11 +63,10 @@ export class MenuScene extends SceneBase {
     this.hasProgress = this.game.getStorage().hasProgress();
     this.continueButton.disabled = !this.hasProgress;
     this.settingsOpen = false;
-    // 进入主菜单时启动 BGM
-    const audio = this.game.getAudio();
-    if (audio.isBgmEnabled() && !audio.isMuted()) {
-      audio.startBgm();
-    }
+    // 暂时禁用首页自动 BGM；用户仍可在设置里手动开启
+    // 旧逻辑：
+    //   const audio = this.game.getAudio();
+    //   if (audio.isBgmEnabled() && !audio.isMuted()) audio.startBgm();
   }
 
   exit(): void {}
