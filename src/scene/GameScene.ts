@@ -14,7 +14,7 @@ import { Hook, HookState } from '../entity/Hook';
 import { Mineral, MysteryContent } from '../entity/Mineral';
 import { HUD, HUD_HEIGHT } from '../ui/HUD';
 import { SoundType } from '../core/Audio';
-import { renderBackground, GROUND_Y } from '../assets/background';
+import { renderBackground, getChapterBackgroundColors, GROUND_Y } from '../assets/background';
 import type { SpriteCacheMap } from '../assets/types';
 import type { LevelConfig } from '../level/levels';
 import { ItemType, PERSISTENT_ITEM_TYPES } from '../scene/ShopScene';
@@ -454,8 +454,10 @@ export class GameScene extends SceneBase {
     // 清空画面
     renderer.clear('#000000');
 
-    // 绘制背景（使用当前主题颜色）
-    renderBackground(renderer, renderer.width, renderer.height, this.game.getThemeManager().getBackgroundColors());
+    // 绘制背景（主题基础色 + 章节色板覆盖）
+    const baseColors = this.game.getThemeManager().getBackgroundColors();
+    const chapterColors = getChapterBackgroundColors(this.levelConfig.chapter, baseColors);
+    renderBackground(renderer, renderer.width, renderer.height, chapterColors);
 
     // 绘制矿物
     for (const mineral of this.minerals) {
