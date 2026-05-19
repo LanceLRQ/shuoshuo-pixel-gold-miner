@@ -16,34 +16,44 @@ export enum ChapterId {
   PIGGY_THRONE = 'PIGGY_THRONE',
 }
 
-/** 章节元信息（边界 + 显示名 + 过场剧情文字） */
+/** 章节元信息（边界 + 显示名 + 过场剧情 + 过场配色） */
 export interface ChapterInfo {
   readonly firstLevel: number;
   readonly lastLevel: number;
   readonly displayName: string;
   /** ChapterScene 过场显示的一句剧情 */
   readonly intro: string;
+  /** ChapterScene 过场背景色（深色调，氛围底） */
+  readonly bgColor: string;
+  /** ChapterScene 过场强调色（章名 + 进度条） */
+  readonly accentColor: string;
 }
 
-/** 章节信息表 */
+/** 章节信息表（颜色与 background.ts 章节色板呼应） */
 export const CHAPTER_INFO: Record<ChapterId, ChapterInfo> = {
   [ChapterId.CRYSTAL_MINE]: {
     firstLevel: 1,
     lastLevel: 7,
     displayName: '水晶矿坑',
     intro: '矿工老王听说这里能挖到水晶宝石国的入口……',
+    bgColor: '#2A1F14',     // 矿洞棕黑
+    accentColor: '#FFD27C', // 暖金黄
   },
   [ChapterId.CRAB_BAY]: {
     firstLevel: 8,
     lastLevel: 14,
     displayName: '蟹潮海湾',
     intro: '传说海湾深处有水晶蟹守卫着前往王城的通道。',
+    bgColor: '#0D1F35',     // 海湾深蓝
+    accentColor: '#7CD9FF', // 海湾青蓝
   },
   [ChapterId.PIGGY_THRONE]: {
     firstLevel: 15,
     lastLevel: 21,
     displayName: '猪猪王座',
     intro: '粉色宫殿深处，猪猪公主抱着粉宝石打盹。',
+    bgColor: '#3A2540',     // 王座紫暗
+    accentColor: '#FFB6E5', // 粉色公主
   },
 };
 

@@ -6,7 +6,7 @@
 import type { Renderer } from '../core/Renderer';
 import type { SpriteCacheMap } from '../assets/types';
 import { MineralType, MINERAL_CONFIGS, type MineralConfig } from './types';
-import { randomInt, weightedRandom } from '../utils/random';
+import { randomInt, pickWeightedContent } from '../utils/random';
 
 /** 神秘袋内容类型 */
 export enum MysteryContent {
@@ -98,14 +98,12 @@ export class Mineral {
 
     // 神秘袋内容随机
     if (type === MineralType.MYSTERY_BAG) {
-      const weights = MYSTERY_CONTENTS.map(c => c.weight);
-      const idx = weightedRandom(weights);
-      const content = MYSTERY_CONTENTS[idx];
+      const content = pickWeightedContent(MYSTERY_CONTENTS);
       if (content) {
         this.mysteryContent = content.type;
         this.mysteryLabel = content.label;
       }
-      // 根据内容类型设定价值和重量
+      // 根据内容类型设定价值（道具类内容由 onHookComplete 处理，value=0）
       if (this.mysteryContent === MysteryContent.CASH_SMALL) {
         this.value = randomInt(50, 200);
       } else if (this.mysteryContent === MysteryContent.CASH_LARGE) {
@@ -115,9 +113,7 @@ export class Mineral {
       }
     } else if (type === MineralType.WOODEN_BOX) {
       // 木箱抽奖：构造时随机决定内容（玩家抓到才看到结果）
-      const weights = BOX_CONTENTS.map(c => c.weight);
-      const idx = weightedRandom(weights);
-      const content = BOX_CONTENTS[idx];
+      const content = pickWeightedContent(BOX_CONTENTS);
       if (content) {
         this.boxContent = content.type;
         this.boxLabel = content.label;

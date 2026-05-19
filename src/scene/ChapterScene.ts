@@ -36,6 +36,13 @@ export class ChapterScene extends SceneBase {
   private chapterId: ChapterId;
   private elapsed: number = 0;
 
+  // enter() 计算一次的渲染数据（避免每帧重算 switch / 字符串切片）
+  private introLines: string[] = [];
+  private ordinal: string = '';
+  private displayName: string = '';
+  private bgColor: string = '#1a1a2e';
+  private accentColor: string = '#FFD700';
+
   constructor(game: Game, chapterId: ChapterId) {
     super();
     this.game = game;
@@ -44,6 +51,13 @@ export class ChapterScene extends SceneBase {
 
   enter(): void {
     this.elapsed = 0;
+    const info = CHAPTER_INFO[this.chapterId];
+    const chapterIndex = CHAPTER_ORDER.indexOf(this.chapterId);
+    this.ordinal = CHAPTER_ORDINAL[chapterIndex] ?? '';
+    this.displayName = info.displayName;
+    this.bgColor = info.bgColor;
+    this.accentColor = info.accentColor;
+    this.introLines = wrapText(info.intro, MAX_CHARS_PER_LINE);
   }
 
   exit(): void {}
@@ -63,76 +77,36 @@ export class ChapterScene extends SceneBase {
   }
 
   render(renderer: Renderer): void {
-    const info = CHAPTER_INFO[this.chapterId];
-    const chapterIndex = CHAPTER_ORDER.indexOf(this.chapterId);
-    const ordinal = CHAPTER_ORDINAL[chapterIndex] ?? '';
+    renderer.clear(this.bgColor);
 
-    // 背景：根据章节微调主色调（弱化版，过场不喧宾夺主）
-    renderer.clear(this.getChapterBgColor());
+    drawTextCentered(renderer, this.ordinal, LAYOUT.chapterIndexY, '#AAAAAA', 'MEDIUM');
+    drawTextCentered(renderer, this.displayName, LAYOUT.chapterNameY, this.accentColor, 'LARGE');
 
-    // 第 X 章（小字）
-    drawTextCentered(renderer, ordinal, LAYOUT.chapterIndexY, '#AAAAAA', 'MEDIUM');
-
-    // 章名（大字 + 章节主色）
-    drawTextCentered(renderer, info.displayName, LAYOUT.chapterNameY, this.getChapterAccentColor(), 'LARGE');
-
-    // 剧情文字（中字，过长自动换行）
-    const lines = this.wrapIntro(info.intro);
-    for (let i = 0; i < lines.length; i++) {
-      drawTextCentered(renderer, lines[i]!, LAYOUT.introStartY + i * LAYOUT.introLineHeight, '#FFFFFF', 'MEDIUM');
+    for (let i = 0; i < this.introLines.length; i++) {
+      drawTextCentered(renderer, this.introLines[i]!, LAYOUT.introStartY + i * LAYOUT.introLineHeight, '#FFFFFF', 'MEDIUM');
     }
 
-    // 跳过提示（淡灰小字 + 闪烁，提示玩家可交互）
+    // 跳过提示闪烁（500ms 周期）
     if (Math.floor(this.elapsed * 2) % 2 === 0) {
       drawTextCentered(renderer, '按任意键跳过 · 2.5s 后自动进入', LAYOUT.hintY, '#888888', 'SMALL');
     }
 
-    // 倒计时进度条（底部，2px 高）
+    // 倒计时进度条（底部 2px）
     const progress = Math.min(this.elapsed / AUTO_SKIP_SECONDS, 1);
-    const barWidth = renderer.width * progress;
-    renderer.fillRect(0, 538, barWidth, 2, this.getChapterAccentColor());
+    renderer.fillRect(0, 538, renderer.width * progress, 2, this.accentColor);
   }
 
-  /** 简易 CJK 换行（按字符数硬切，不做单词识别） */
-  private wrapIntro(text: string): string[] {
-    if (text.length <= MAX_CHARS_PER_LINE) return [text];
-    const lines: string[] = [];
-    for (let i = 0; i < text.length; i += MAX_CHARS_PER_LINE) {
-      lines.push(text.slice(i, i + MAX_CHARS_PER_LINE));
-    }
-    return lines;
-  }
-
-  /** 章节背景色（深色调，过场氛围） */
-  private getChapterBgColor(): string {
-    switch (this.chapterId) {
-      case 'CRYSTAL_MINE':
-        return '#2A1F14'; // 矿洞棕黑
-      case 'CRAB_BAY':
-        return '#0D1F35'; // 海湾深蓝
-      case 'PIGGY_THRONE':
-        return '#3A2540'; // 王座紫暗
-      default:
-        return '#1a1a2e';
-    }
-  }
-
-  /** 章节强调色（用于章名/进度条） */
-  private getChapterAccentColor(): string {
-    switch (this.chapterId) {
-      case 'CRYSTAL_MINE':
-        return '#FFD27C'; // 暖金黄
-      case 'CRAB_BAY':
-        return '#7CD9FF'; // 海湾青蓝
-      case 'PIGGY_THRONE':
-        return '#FFB6E5'; // 粉色公主
-      default:
-        return '#FFD700';
-    }
-  }
-
-  /** 跳关：进入实际 PLAYING 场景（Game 内部识别 previousState 跳过 nextLevel） */
   private skipToPlaying(): void {
     this.game.changeScene(GameState.PLAYING);
   }
+}
+
+/** CJK 文本按字符数硬切换行（无单词识别，适用于中文短文本） */
+function wrapText(text: string, maxCharsPerLine: number): string[] {
+  if (text.length <= maxCharsPerLine) return [text];
+  const lines: string[] = [];
+  for (let i = 0; i < text.length; i += maxCharsPerLine) {
+    lines.push(text.slice(i, i + maxCharsPerLine));
+  }
+  return lines;
 }

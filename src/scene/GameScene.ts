@@ -15,6 +15,7 @@ import { Mineral, MysteryContent } from '../entity/Mineral';
 import { HUD, HUD_HEIGHT } from '../ui/HUD';
 import { SoundType } from '../core/Audio';
 import { renderBackground, getChapterBackgroundColors, GROUND_Y } from '../assets/background';
+import type { BackgroundColors } from '../assets/theme/types';
 import type { SpriteCacheMap } from '../assets/types';
 import type { LevelConfig } from '../level/levels';
 import { ChapterId } from '../level/levels';
@@ -79,10 +80,12 @@ const VALUE_COLOR = {
   PREMIUM: '#00FFFF',
   MEDIUM: '#FFD700',
   LOW: '#FFFFFF',
+  PENALTY: '#FF4444', // 负值（如木箱骷髅扣分）
 } as const;
 
-/** 按价值返回飘字颜色 */
+/** 按价值返回飘字颜色（负值=红色，正值按 PREMIUM/MEDIUM/LOW 三档） */
 function pickValueColor(value: number): string {
+  if (value < 0) return VALUE_COLOR.PENALTY;
   if (value >= VALUE_TIER.PREMIUM) return VALUE_COLOR.PREMIUM;
   if (value >= VALUE_TIER.MEDIUM) return VALUE_COLOR.MEDIUM;
   return VALUE_COLOR.LOW;
@@ -169,6 +172,8 @@ export class GameScene extends SceneBase {
   private hud: HUD;
   /** 难度配置缓存（构造时一次性读取，热路径避免每帧调 getDifficultyConfig()） */
   private readonly difficulty: DifficultyConfig;
+  /** 章节背景色板缓存（构造时一次性合成，避免每帧 spread 临时对象） */
+  private readonly chapterColors: BackgroundColors;
   private spriteCache: SpriteCacheMap;
 
   /** 关卡配置 */
@@ -235,6 +240,12 @@ export class GameScene extends SceneBase {
     // 难度联动：缓存配置 + 注入重量影响系数倍率 + HUD 标签
     this.difficulty = game.getDifficultyConfig();
     this.hook.weightFactorScale = this.difficulty.weightFactorScale;
+
+    // 章节背景色板：构造时一次性合成（同关章节固定，避免每帧 spread 临时对象）
+    this.chapterColors = getChapterBackgroundColors(
+      this.levelConfig.chapter,
+      game.getThemeManager().getBackgroundColors(),
+    );
     this.hud.difficultyLabel = this.difficulty.infiniteItems
       ? `🔥 ${this.difficulty.name}`
       : `难度: ${this.difficulty.name}`;
@@ -468,10 +479,8 @@ export class GameScene extends SceneBase {
     // 清空画面
     renderer.clear('#000000');
 
-    // 绘制背景（主题基础色 + 章节色板覆盖）
-    const baseColors = this.game.getThemeManager().getBackgroundColors();
-    const chapterColors = getChapterBackgroundColors(this.levelConfig.chapter, baseColors);
-    renderBackground(renderer, renderer.width, renderer.height, chapterColors);
+    // 绘制背景（用构造时缓存的章节色板，避免每帧 alloc）
+    renderBackground(renderer, renderer.width, renderer.height, this.chapterColors);
 
     // 绘制矿物
     for (const mineral of this.minerals) {
@@ -906,19 +915,23 @@ export class GameScene extends SceneBase {
         pickValueColor(value),
         isHighValue ? 'LARGE' : 'MEDIUM'
       );
-
-      if (isHighValue) {
-        this.game.getAudio().play(SoundType.MINER_HAPPY);
-        this.miner.setState(MinerState.HAPPY);
-      } else if (value > 0) {
-        this.game.getAudio().play(SoundType.MINER_NORMAL);
-        this.miner.setState(MinerState.HAPPY);
-      } else {
-        this.game.getAudio().play(SoundType.MINER_SAD);
-        this.miner.setState(MinerState.SAD);
-      }
+      this.playValueFeedback(value);
     } else {
       this.game.getAudio().play(SoundType.HOOK_REEL);
+    }
+  }
+
+  /** 按金额档位播放矿工表情 + 音效（高价/正向/扣分三档，多处复用） */
+  private playValueFeedback(value: number): void {
+    if (value >= VALUE_TIER.HIGH) {
+      this.game.getAudio().play(SoundType.MINER_HAPPY);
+      this.miner.setState(MinerState.HAPPY);
+    } else if (value > 0) {
+      this.game.getAudio().play(SoundType.MINER_NORMAL);
+      this.miner.setState(MinerState.HAPPY);
+    } else {
+      this.game.getAudio().play(SoundType.MINER_SAD);
+      this.miner.setState(MinerState.SAD);
     }
   }
 
@@ -930,7 +943,7 @@ export class GameScene extends SceneBase {
 
     if (content === MysteryContent.CASH_SMALL || content === MysteryContent.CASH_LARGE) {
       // 难度联动：神秘袋现金也按 valueScale 缩放
-      let value = Math.round(mineral.value * this.difficulty.valueScale);
+      const value = Math.round(mineral.value * this.difficulty.valueScale);
       this.hud.money += value;
       this.showNotification(`${mineral.mysteryLabel}: +$${value}`);
       const isHigh = value >= VALUE_TIER.HIGH;
@@ -941,8 +954,7 @@ export class GameScene extends SceneBase {
         isHigh ? 'LARGE' : 'MEDIUM'
       );
       this.game.getAudio().play(SoundType.GRAB_GOLD);
-      this.game.getAudio().play(isHigh ? SoundType.MINER_HAPPY : SoundType.MINER_NORMAL);
-      this.miner.setState(MinerState.HAPPY);
+      this.playValueFeedback(value);
     } else if (content === MysteryContent.STRENGTH_POTION) {
       // 大力药剂：本关收回速度永久 +80%
       this.hook.reelSpeedMultiplier = Math.max(this.hook.reelSpeedMultiplier, 1.8);
@@ -994,28 +1006,22 @@ export class GameScene extends SceneBase {
     const value = Math.round(mineral.value * this.difficulty.valueScale);
     this.hud.money += value;
 
-    // 飘字：开盒结果 label（更直观）
-    const color = value > 0 ? '#FFD700' : value < 0 ? '#FF4444' : '#AAAAAA';
-    this.floatingTexts.emit(px, py - 20, mineral.boxLabel, color, 'MEDIUM');
+    // 飘字：开盒结果 label（pickValueColor 已支持负值返回 PENALTY 红色）
+    this.floatingTexts.emit(px, py - 20, mineral.boxLabel, pickValueColor(value), 'MEDIUM');
     this.showNotification(`木箱: ${mineral.boxLabel}`);
 
-    // 音效 + 矿工表情 + 粒子（按结果分档）
+    // grab 音效 + 粒子按 value 档位（事后才知道价值的特殊场景）
     if (value >= VALUE_TIER.HIGH) {
       this.game.getAudio().play(SoundType.GRAB_DIAMOND);
-      this.game.getAudio().play(SoundType.MINER_HAPPY);
-      this.miner.setState(MinerState.HAPPY);
       this.particles.emit({ ...PRESET_DIAMOND_SPARKLE, x: px, y: py });
     } else if (value > 0) {
       this.game.getAudio().play(SoundType.GRAB_GOLD);
-      this.game.getAudio().play(SoundType.MINER_NORMAL);
-      this.miner.setState(MinerState.HAPPY);
       this.particles.emit({ ...PRESET_GOLD_SPARKLE, x: px, y: py });
     } else {
       this.game.getAudio().play(SoundType.GRAB_STONE);
-      this.game.getAudio().play(SoundType.MINER_SAD);
-      this.miner.setState(MinerState.SAD);
       this.particles.emit({ ...PRESET_STONE_DUST, x: px, y: py });
     }
+    this.playValueFeedback(value);
   }
 
   /** 显示通知文字 */
@@ -1076,17 +1082,18 @@ export class GameScene extends SceneBase {
   private tryAddChapterCollectible(): void {
     if (!this.levelConfig.isChapterFinale) return;
     if (Math.random() >= CHAPTER_COLLECTIBLE_CHANCE) return;
-    const type = CHAPTER_COLLECTIBLE_MAP[this.levelConfig.chapter];
-    const placed = this.tryPlaceMineral(type);
-    if (placed) {
-      this.minerals.push(placed);
-    }
+    this.tryAddBonusMineral(CHAPTER_COLLECTIBLE_MAP[this.levelConfig.chapter]);
   }
 
   /** L5+ 关卡每关追加 1 个木箱（保证有抽奖机会） */
   private tryAddWoodenBox(): void {
     if (this.levelConfig.level < WOODEN_BOX_MIN_LEVEL) return;
-    const placed = this.tryPlaceMineral(MineralType.WOODEN_BOX);
+    this.tryAddBonusMineral(MineralType.WOODEN_BOX);
+  }
+
+  /** 追加独立于预算系统的彩蛋矿物（收藏品/木箱等，找不到空位则静默放弃） */
+  private tryAddBonusMineral(type: MineralType): void {
+    const placed = this.tryPlaceMineral(type);
     if (placed) {
       this.minerals.push(placed);
     }

@@ -23,3 +23,10 @@ export function weightedRandom(weights: number[]): number {
   }
   return weights.length - 1;
 }
+
+/** 按 weight 字段从配置数组中随机选一项（神秘袋/木箱等配置抽样通用模式） */
+export function pickWeightedContent<T extends { weight: number }>(items: readonly T[]): T | undefined {
+  if (items.length === 0) return undefined;
+  const idx = weightedRandom(items.map(i => i.weight));
+  return items[idx];
+}
