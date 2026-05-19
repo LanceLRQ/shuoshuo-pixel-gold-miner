@@ -17,6 +17,7 @@ import { SoundType } from '../core/Audio';
 import { renderBackground, getChapterBackgroundColors, GROUND_Y } from '../assets/background';
 import type { SpriteCacheMap } from '../assets/types';
 import type { LevelConfig } from '../level/levels';
+import { ChapterId } from '../level/levels';
 import { ItemType, PERSISTENT_ITEM_TYPES } from '../scene/ShopScene';
 import type { SlotMeta } from '../core/Storage';
 import type { DifficultyConfig } from '../level/difficulty';
@@ -146,6 +147,16 @@ const BUDGET_UPGRADE_MAX_ATTEMPTS = 50;
 
 /** 追加矿物的数量上限（baseCount × 此系数） */
 const BUDGET_APPEND_RATIO = 0.3;
+
+/** 章节末关插入章节专属收藏品的概率（详见 docs/design/20260519_chapter-system.md §四） */
+const CHAPTER_COLLECTIBLE_CHANCE = 0.3;
+
+/** 章节 → 专属收藏品矿物类型 */
+const CHAPTER_COLLECTIBLE_MAP: Record<ChapterId, MineralType> = {
+  [ChapterId.CRYSTAL_MINE]: MineralType.CRYSTAL_ORE,
+  [ChapterId.CRAB_BAY]: MineralType.CRAB_SHELL,
+  [ChapterId.PIGGY_THRONE]: MineralType.PIGGY_GEM,
+};
 
 export class GameScene extends SceneBase {
   private game: Game;
@@ -1002,7 +1013,10 @@ export class GameScene extends SceneBase {
     // 4) 仍不足则追加大金块
     this.appendMineralsToReachBudget(targetBudget, count);
 
-    // 5) 幸运草：神秘袋最低 $200
+    // 5) 章节末关：30% 概率插入章节专属收藏品（独立于预算系统的彩蛋）
+    this.tryAddChapterCollectible();
+
+    // 6) 幸运草：神秘袋最低 $200
     const items = this.game.getOwnedItems();
     if (items.has(ItemType.LUCKY_CLOVER)) {
       for (const mineral of this.minerals) {
@@ -1010,6 +1024,17 @@ export class GameScene extends SceneBase {
           mineral.value = Math.max(mineral.value, 200);
         }
       }
+    }
+  }
+
+  /** 章节末关倾斜：30% 概率追加 1 个章节专属收藏品 */
+  private tryAddChapterCollectible(): void {
+    if (!this.levelConfig.isChapterFinale) return;
+    if (Math.random() >= CHAPTER_COLLECTIBLE_CHANCE) return;
+    const type = CHAPTER_COLLECTIBLE_MAP[this.levelConfig.chapter];
+    const placed = this.tryPlaceMineral(type);
+    if (placed) {
+      this.minerals.push(placed);
     }
   }
 

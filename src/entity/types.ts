@@ -14,6 +14,10 @@ export enum MineralType {
   BONE = 'BONE',
   MOUSE = 'MOUSE',
   MOLE = 'MOLE',
+  // 章节专属收藏品（仅末关倾斜插入，不进随机权重池）
+  CRYSTAL_ORE = 'CRYSTAL_ORE',   // Ch1 水晶矿石
+  CRAB_SHELL = 'CRAB_SHELL',     // Ch2 水晶蟹甲
+  PIGGY_GEM = 'PIGGY_GEM',       // Ch3 猪猪粉宝石
 }
 
 /** 矿物配置接口 */
@@ -118,6 +122,34 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
     spriteName: 'MOLE_SPRITE',
     width: 12,
     height: 10,
+  },
+  // ========== 章节专属收藏品 ==========
+  [MineralType.CRYSTAL_ORE]: {
+    type: MineralType.CRYSTAL_ORE,
+    value: 400,
+    weight: 0.4,
+    radius: 22,
+    spriteName: 'CRYSTAL_ORE_SPRITE',
+    width: 8,
+    height: 8,
+  },
+  [MineralType.CRAB_SHELL]: {
+    type: MineralType.CRAB_SHELL,
+    value: 800,
+    weight: 0.5,
+    radius: 26,
+    spriteName: 'CRAB_SHELL_SPRITE',
+    width: 10,
+    height: 10,
+  },
+  [MineralType.PIGGY_GEM]: {
+    type: MineralType.PIGGY_GEM,
+    value: 1500,
+    weight: 0.3,
+    radius: 28,
+    spriteName: 'PIGGY_GEM_SPRITE',
+    width: 12,
+    height: 12,
   },
 };
 

@@ -52,6 +52,22 @@ const HOOK = '#C0C0C0';
 const HOOK_DARK = '#808080';
 const ROPE = '#DEB887';
 
+// 章节收藏品配色（呼应章节主题色板）
+const CRY_BRIGHT = '#E5FAFF';
+const CRY_LIGHT = '#80E0FF';
+const CRY_MID = '#5AB8E0';
+const CRY_DARK = '#3A88B5';
+
+const SHL_BRIGHT = '#E0FFE5';
+const SHL_LIGHT = '#80FFB0';
+const SHL_MID = '#3AC080';
+const SHL_DARK = '#1A8050';
+
+const PNK_BRIGHT = '#FFFFFF';
+const PNK_LIGHT = '#FFE0F0';
+const PNK_MID = '#FFB6E5';
+const PNK_DARK = '#FF80C0';
+
 // ==================== 角色精灵 ====================
 
 /** 矿工-待机 (16x16) - 坐姿，微微前倾 */
@@ -290,6 +306,52 @@ export const MOLE_SPRITE: PixelMap = [
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 ];
 
+// ==================== 章节收藏品 ====================
+// 仅在章节末关（L7/L14/L21）通过 GameScene 末关倾斜逻辑插入
+// 详见 docs/design/20260519_chapter-system.md §四
+
+/** Ch1 水晶矿石 (8x8) - 半透明蓝晶 + 边缘高光 */
+export const CRYSTAL_ORE_SPRITE: PixelMap = [
+  [0, 0, 0, CRY_BRIGHT, CRY_BRIGHT, 0, 0, 0],
+  [0, 0, CRY_BRIGHT, CRY_LIGHT, CRY_LIGHT, CRY_BRIGHT, 0, 0],
+  [0, CRY_BRIGHT, CRY_LIGHT, CRY_MID, CRY_MID, CRY_LIGHT, CRY_DARK, 0],
+  [CRY_BRIGHT, CRY_LIGHT, CRY_MID, CRY_MID, CRY_MID, CRY_MID, CRY_DARK, CRY_DARK],
+  [0, CRY_LIGHT, CRY_MID, CRY_MID, CRY_MID, CRY_DARK, CRY_DARK, 0],
+  [0, 0, CRY_LIGHT, CRY_MID, CRY_DARK, CRY_DARK, 0, 0],
+  [0, 0, 0, CRY_MID, CRY_DARK, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0],
+];
+
+/** Ch2 水晶蟹甲 (10x10) - 翠绿菱形甲壳 + 反光纹 */
+export const CRAB_SHELL_SPRITE: PixelMap = [
+  [0, 0, 0, 0, SHL_BRIGHT, SHL_BRIGHT, 0, 0, 0, 0],
+  [0, 0, 0, SHL_BRIGHT, SHL_LIGHT, SHL_LIGHT, SHL_BRIGHT, 0, 0, 0],
+  [0, 0, SHL_BRIGHT, SHL_LIGHT, SHL_MID, SHL_MID, SHL_LIGHT, SHL_BRIGHT, 0, 0],
+  [0, SHL_BRIGHT, SHL_LIGHT, SHL_MID, SHL_MID, SHL_MID, SHL_MID, SHL_LIGHT, SHL_DARK, 0],
+  [SHL_BRIGHT, SHL_LIGHT, SHL_MID, SHL_MID, SHL_DARK, SHL_DARK, SHL_MID, SHL_MID, SHL_LIGHT, SHL_DARK],
+  [0, SHL_LIGHT, SHL_MID, SHL_MID, SHL_DARK, SHL_DARK, SHL_MID, SHL_MID, SHL_DARK, 0],
+  [0, 0, SHL_LIGHT, SHL_MID, SHL_MID, SHL_MID, SHL_MID, SHL_DARK, 0, 0],
+  [0, 0, 0, SHL_LIGHT, SHL_MID, SHL_MID, SHL_DARK, 0, 0, 0],
+  [0, 0, 0, 0, SHL_LIGHT, SHL_DARK, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+];
+
+/** Ch3 猪猪粉宝石 (12x12) - 钻石形粉色晶体 + 高光 */
+export const PIGGY_GEM_SPRITE: PixelMap = [
+  [0, 0, 0, PNK_BRIGHT, PNK_BRIGHT, PNK_BRIGHT, PNK_BRIGHT, PNK_BRIGHT, 0, 0, 0, 0],
+  [0, 0, PNK_BRIGHT, PNK_LIGHT, PNK_LIGHT, PNK_LIGHT, PNK_MID, PNK_MID, PNK_BRIGHT, 0, 0, 0],
+  [0, PNK_BRIGHT, PNK_LIGHT, PNK_LIGHT, PNK_LIGHT, PNK_MID, PNK_MID, PNK_MID, PNK_DARK, PNK_BRIGHT, 0, 0],
+  [PNK_BRIGHT, PNK_LIGHT, PNK_LIGHT, PNK_MID, PNK_MID, PNK_MID, PNK_MID, PNK_MID, PNK_DARK, PNK_DARK, PNK_BRIGHT, 0],
+  [PNK_LIGHT, PNK_LIGHT, PNK_MID, PNK_MID, PNK_MID, PNK_MID, PNK_MID, PNK_DARK, PNK_DARK, PNK_DARK, PNK_DARK, PNK_BRIGHT],
+  [PNK_BRIGHT, PNK_LIGHT, PNK_MID, PNK_MID, PNK_MID, PNK_MID, PNK_MID, PNK_MID, PNK_DARK, PNK_DARK, PNK_DARK, 0],
+  [0, PNK_BRIGHT, PNK_LIGHT, PNK_MID, PNK_MID, PNK_MID, PNK_MID, PNK_DARK, PNK_DARK, PNK_DARK, PNK_BRIGHT, 0],
+  [0, 0, PNK_BRIGHT, PNK_LIGHT, PNK_MID, PNK_MID, PNK_DARK, PNK_DARK, PNK_DARK, PNK_BRIGHT, 0, 0],
+  [0, 0, 0, PNK_BRIGHT, PNK_LIGHT, PNK_MID, PNK_DARK, PNK_DARK, PNK_BRIGHT, 0, 0, 0],
+  [0, 0, 0, 0, PNK_BRIGHT, PNK_MID, PNK_DARK, PNK_BRIGHT, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, PNK_BRIGHT, PNK_BRIGHT, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+];
+
 // ==================== 金币图标 ====================
 
 /** 金币图标 (8x8) */
@@ -323,5 +385,8 @@ export const ALL_SPRITES: Record<string, PixelMap> = {
   BONE_SPRITE,
   MOUSE_SPRITE,
   MOLE_SPRITE,
+  CRYSTAL_ORE_SPRITE,
+  CRAB_SHELL_SPRITE,
+  PIGGY_GEM_SPRITE,
   COIN_ICON,
 };
