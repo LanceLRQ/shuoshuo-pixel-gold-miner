@@ -287,7 +287,7 @@ export class Hook {
       ctx.save();
       ctx.translate(this.tipX, this.tipY);
       ctx.rotate(-this.angle);
-      renderer.drawImageSlice(sprite, f.sx, f.sy, f.sw, f.sh, -f.sw / 2, 0);
+      renderer.drawImageSlice(sprite, f.sx, f.sy, f.sw, f.sh, -f.dw / 2, 0, f.dw, f.dh);
       ctx.restore();
     }
 

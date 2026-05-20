@@ -271,7 +271,7 @@ export class GameScene extends SceneBase {
     this.hook = new Hook(GAME_CONFIG.MINER_X, GROUND_Y, this.spriteCache, this.spriteMetaProvider);
 
     // 初始化 HUD（HUD.money 起步值 = levelStartMoney，使其与累计目标在同一参照系）
-    this.hud = new HUD(this.spriteCache, this.targetMoney, this.levelConfig.timeLimit);
+    this.hud = new HUD(this.spriteCache, this.targetMoney, this.levelConfig.timeLimit, this.spriteMetaProvider);
     this.hud.money = this.levelStartMoney;
 
     // 难度联动：缓存配置 + 注入重量影响系数倍率 + HUD 标签

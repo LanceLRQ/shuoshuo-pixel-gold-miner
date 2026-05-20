@@ -228,13 +228,22 @@
         <!-- GIF 模式专用：单帧目标宽。隐藏静态 sprite 用的 targetWidth 滑块 -->
         <div class="control-row" id="perFrameWidthRow" style="display:none">
           <label>单帧目标宽</label>
-          <input type="range" id="perFrameWidth" min="4" max="64" value="32">
-          <span class="val" id="perFrameWidthVal">32</span>
+          <input type="range" id="perFrameWidth" min="4" max="128" value="96">
+          <span class="val" id="perFrameWidthVal">96</span>
         </div>
         <div class="control-row" id="targetWidthRow">
           <label>输出像素宽</label>
-          <input type="range" id="targetWidth" min="4" max="4096" value="32">
-          <span class="val" id="targetWidthVal">32</span>
+          <input type="range" id="targetWidth" min="4" max="4096" value="96">
+          <span class="val" id="targetWidthVal">96</span>
+        </div>
+        <!-- HD 精度方案：PixelMap 96 + displayWidth/Height 在游戏内显示成更小尺寸 -->
+        <div class="control-row">
+          <label>显示宽（游戏内）</label>
+          <input type="number" id="displayWidth" min="1" placeholder="自动" style="width:80px">
+        </div>
+        <div class="control-row">
+          <label>显示高（游戏内）</label>
+          <input type="number" id="displayHeight" min="1" placeholder="自动" style="width:80px">
         </div>
         <div class="control-row">
           <label>颜色数量</label>
@@ -346,6 +355,8 @@
     const cropInputW = $('cropInputW');
     const cropInputH = $('cropInputH');
     const cropApplyInputsBtn = $('cropApplyInputs');
+    const displayWidthInput = $('displayWidth');
+    const displayHeightInput = $('displayHeight');
     const colorCountSlider = $('colorCount');
     const colorCountVal = $('colorCountVal');
     const alphaThresholdSlider = $('alphaThreshold');
@@ -536,8 +547,8 @@
 
           imageInfo.innerHTML = `已加载: <span class="info-highlight">${img.width} x ${img.height} px</span>`;
 
-          // 自动设置输出宽度
-          const autoW = Math.min(Math.max(Math.round(img.width / 8), 8), 32);
+          // 自动设置输出宽度：默认 96（HD 精度方案），但不超过源图宽度
+          const autoW = Math.min(96, img.width);
           targetWidthSlider.value = autoW;
           targetWidthVal.textContent = autoW;
 
@@ -622,8 +633,8 @@
         setGifModeUI(true);
         updateGifFrameLabel();
 
-        // 自动 perFrameWidth = clamp(frameW/4, 8, 32)；tw = perFrame × N
-        const perFrameW = Math.min(Math.max(Math.round(frameW / 4), 8), 32);
+        // 自动 perFrameWidth：默认 96（HD 精度方案），但不超过单帧源宽
+        const perFrameW = Math.min(96, frameW);
         perFrameWidthSlider.value = perFrameW;
         perFrameWidthVal.textContent = perFrameW;
         const autoW = perFrameW * N;
@@ -1230,7 +1241,13 @@
       const animHeader = gifFrameCount > 1
         ? `// 动画 sprite — frameCount: ${gifFrameCount}, frameDurationMs: ${gifFrameDurationMs}, frameLoop: ${gifFrameLoop}\n`
         : '';
-      codeOutput.value = `${animHeader}export const ${name}: PixelMap = [\n${lines.join(',\n')}\n];\n`;
+      // HD 精度方案：用户填了显示尺寸时输出提示，方便手动写入 SpriteJson.displayWidth/Height
+      const dw = parseInt(displayWidthInput.value, 10);
+      const dh = parseInt(displayHeightInput.value, 10);
+      const displayHeader = (dw > 0 || dh > 0)
+        ? `// 显示尺寸 — displayWidth: ${dw > 0 ? dw : '(缺省)'}, displayHeight: ${dh > 0 ? dh : '(缺省)'}\n`
+        : '';
+      codeOutput.value = `${animHeader}${displayHeader}export const ${name}: PixelMap = [\n${lines.join(',\n')}\n];\n`;
     }
 
     // ========== 按钮事件 ==========
@@ -1250,6 +1267,8 @@
       previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
       cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
       cropRectText.textContent = '无'; cropSizeText.textContent = '-';
+      displayWidthInput.value = '';
+      displayHeightInput.value = '';
       fileInput.value = '';
     };
 
@@ -1271,6 +1290,8 @@
     };
 
     varNameInput.oninput = () => { if (currentPixelMap) generateCode(currentPixelMap); };
+    displayWidthInput.oninput = () => { if (currentPixelMap) generateCode(currentPixelMap); };
+    displayHeightInput.oninput = () => { if (currentPixelMap) generateCode(currentPixelMap); };
 
     // ========== 嵌入模式（素材管理页通过 iframe + postMessage 通信） ==========
     const EMBED_MODE = new URLSearchParams(location.search).get('embed') === '1';
@@ -1310,11 +1331,25 @@
             gifFrameCount = 1;
             setGifModeUI(false);
           }
+          // 透传宿主侧记录的显示尺寸（HD 精度方案），让用户重新转换时保留原显示尺寸
+          if (typeof msg.displayWidth === 'number' && msg.displayWidth > 0) {
+            displayWidthInput.value = msg.displayWidth;
+          } else {
+            displayWidthInput.value = '';
+          }
+          if (typeof msg.displayHeight === 'number' && msg.displayHeight > 0) {
+            displayHeightInput.value = msg.displayHeight;
+          } else {
+            displayHeightInput.value = '';
+          }
           renderPreview(currentPixelMap, tw, th);
           const animSuffix = gifFrameCount > 1
             ? `，动画 ${gifFrameCount} 帧 @ ${gifFrameDurationMs}ms`
             : '';
-          previewInfo.textContent = `当前内容：${tw}×${th}（上传新图后将自动转换覆盖）${animSuffix}`;
+          const dispSuffix = (displayWidthInput.value || displayHeightInput.value)
+            ? `，显示 ${displayWidthInput.value || '?'}×${displayHeightInput.value || '?'}`
+            : '';
+          previewInfo.textContent = `当前内容：${tw}×${th}（上传新图后将自动转换覆盖）${animSuffix}${dispSuffix}`;
         }
       });
 
@@ -1323,7 +1358,7 @@
           alert('请先上传图片并转换，或修改当前像素后再应用');
           return;
         }
-        // apply 消息带帧元信息；frameCount=1 时省略，确保静态 sprite 协议向后兼容
+        // apply 消息带帧元信息 + 显示尺寸；缺省字段省略以保持向后兼容
         const payload = {
           type: 'apply',
           pixels: currentPixelMap,
@@ -1334,6 +1369,10 @@
           payload.frameDurationMs = gifFrameDurationMs;
           payload.frameLoop = gifFrameLoop;
         }
+        const dw = parseInt(displayWidthInput.value, 10);
+        const dh = parseInt(displayHeightInput.value, 10);
+        if (dw > 0) payload.displayWidth = dw;
+        if (dh > 0) payload.displayHeight = dh;
         parent.postMessage(payload, location.origin);
       };
 

@@ -118,6 +118,10 @@ function SpriteCard({ name, sprite, readonly, onClick }: CardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const label = getSpriteLabel(name);
   const frameCount = sprite.frameCount && sprite.frameCount > 1 ? sprite.frameCount : 1;
+  // HD 精度方案：sprite 自带显示尺寸（如 96 艺术精度 + displayWidth=24 → 缩略图显示 24×24，
+  // 让美术直观看到"游戏内会比 PixelMap 小多少"）；缺省走"源帧填满容器"老行为
+  const hasDisplaySize =
+    typeof sprite.displayWidth === 'number' || typeof sprite.displayHeight === 'number';
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -133,9 +137,12 @@ function SpriteCard({ name, sprite, readonly, onClick }: CardProps) {
       const frameW = cached.width / frameCount;
       const sourceW = frameW;
       const sourceH = cached.height;
-      const scale = Math.min(THUMBNAIL_SIZE / sourceW, THUMBNAIL_SIZE / sourceH);
-      const drawW = sourceW * scale;
-      const drawH = sourceH * scale;
+      // 目标显示尺寸（缺省 = 源帧尺寸）
+      const targetW = sprite.displayWidth ?? sourceW;
+      const targetH = sprite.displayHeight ?? sourceH;
+      const scale = Math.min(THUMBNAIL_SIZE / targetW, THUMBNAIL_SIZE / targetH);
+      const drawW = targetW * scale;
+      const drawH = targetH * scale;
       const dx = (THUMBNAIL_SIZE - drawW) / 2;
       const dy = (THUMBNAIL_SIZE - drawH) / 2;
       ctx.drawImage(cached, 0, 0, sourceW, sourceH, dx, dy, drawW, drawH);
@@ -143,6 +150,13 @@ function SpriteCard({ name, sprite, readonly, onClick }: CardProps) {
       console.warn(`sprite "${name}" 缩略图生成失败`, e);
     }
   }, [name, sprite, frameCount]);
+
+  // 缩略图角标：源帧精度 / 显示尺寸（仅当 sprite 自带 displayWidth/Height 时显示）
+  const frameW = typeof sprite.pixels[0] === 'string' ? sprite.pixels[0].length / frameCount : 0;
+  const frameH = sprite.pixels.length;
+  const displayBadge = hasDisplaySize
+    ? `HD ${frameW}×${frameH} → ${sprite.displayWidth ?? frameW}×${sprite.displayHeight ?? frameH}`
+    : null;
 
   return (
     <Card
@@ -182,6 +196,11 @@ function SpriteCard({ name, sprite, readonly, onClick }: CardProps) {
       {label && (
         <div className="text-center text-xs text-muted-foreground">
           {label}
+        </div>
+      )}
+      {displayBadge && (
+        <div className="text-center text-[10px] font-mono text-muted-foreground">
+          {displayBadge}
         </div>
       )}
     </Card>

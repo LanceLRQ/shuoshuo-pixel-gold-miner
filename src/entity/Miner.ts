@@ -80,6 +80,16 @@ export class Miner {
     if (!sprite) return;
     const meta = this.metaProvider?.(spriteName);
     const f = getSpriteFrame(sprite, meta, performance.now());
-    renderer.drawImageSlice(sprite, f.sx, f.sy, f.sw, f.sh, this.x - f.sw / 2, this.y - f.sh / 2);
+    renderer.drawImageSlice(
+      sprite,
+      f.sx,
+      f.sy,
+      f.sw,
+      f.sh,
+      this.x - f.dw / 2,
+      this.y - f.dh / 2,
+      f.dw,
+      f.dh
+    );
   }
 }

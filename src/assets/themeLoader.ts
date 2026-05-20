@@ -21,6 +21,14 @@ export interface SpriteJson {
   palette: Record<string, string>;
   /** 像素数据：每行一个字符串，每字符代表一个像素（'.' = 透明）；动画 sprite 时为横向拼帧 spritesheet */
   pixels: string[];
+  /**
+   * 渲染到游戏画布时的目标显示宽（逻辑像素）。
+   * 缺省 = 源帧宽（缓存 canvas 宽 / frameCount），即"PixelMap 尺寸 = 显示尺寸"老行为。
+   * HD 精度方案下：PixelMap 96×96 + displayWidth=24 → 画布上仍显示 24×24 但细节更丰富。
+   */
+  displayWidth?: number;
+  /** 同 displayWidth。缺省 = 源帧高 */
+  displayHeight?: number;
   /** 动画总帧数。缺省 / 1 = 静态 sprite；>1 时 pixels 宽度必须能被它整除 */
   frameCount?: number;
   /** 每帧停留毫秒。默认 100 */
@@ -126,12 +134,19 @@ export function loadTheme(json: ThemeJson): ThemeDefinition {
     if (sprite.scale !== 3) {
       scaleOverrides[name] = sprite.scale;
     }
-    if (sprite.frameCount && sprite.frameCount > 1) {
-      animations[name] = {
-        frameCount: sprite.frameCount,
-        frameDurationMs: sprite.frameDurationMs,
-        frameLoop: sprite.frameLoop,
-      };
+    const hasAnim = !!sprite.frameCount && sprite.frameCount > 1;
+    const hasDisplay =
+      typeof sprite.displayWidth === 'number' || typeof sprite.displayHeight === 'number';
+    if (hasAnim || hasDisplay) {
+      const meta: { frameCount?: number; frameDurationMs?: number; frameLoop?: boolean; displayWidth?: number; displayHeight?: number } = {};
+      if (hasAnim) {
+        meta.frameCount = sprite.frameCount;
+        if (typeof sprite.frameDurationMs === 'number') meta.frameDurationMs = sprite.frameDurationMs;
+        if (typeof sprite.frameLoop === 'boolean') meta.frameLoop = sprite.frameLoop;
+      }
+      if (typeof sprite.displayWidth === 'number') meta.displayWidth = sprite.displayWidth;
+      if (typeof sprite.displayHeight === 'number') meta.displayHeight = sprite.displayHeight;
+      animations[name] = meta;
     }
   }
 
@@ -155,7 +170,13 @@ export function loadTheme(json: ThemeJson): ThemeDefinition {
 export function pixelMapToSpriteJson(
   pixels: PixelMap,
   scale: number,
-  animation?: { frameCount?: number; frameDurationMs?: number; frameLoop?: boolean }
+  animation?: {
+    frameCount?: number;
+    frameDurationMs?: number;
+    frameLoop?: boolean;
+    displayWidth?: number;
+    displayHeight?: number;
+  }
 ): SpriteJson {
   if (pixels.length === 0) {
     throw new Error('PixelMap 为空，无法序列化');
@@ -195,10 +216,14 @@ export function pixelMapToSpriteJson(
   }
 
   const out: SpriteJson = { scale, palette, pixels: lines };
-  if (animation && animation.frameCount && animation.frameCount > 1) {
-    out.frameCount = animation.frameCount;
-    if (typeof animation.frameDurationMs === 'number') out.frameDurationMs = animation.frameDurationMs;
-    if (typeof animation.frameLoop === 'boolean') out.frameLoop = animation.frameLoop;
+  if (animation) {
+    if (animation.frameCount && animation.frameCount > 1) {
+      out.frameCount = animation.frameCount;
+      if (typeof animation.frameDurationMs === 'number') out.frameDurationMs = animation.frameDurationMs;
+      if (typeof animation.frameLoop === 'boolean') out.frameLoop = animation.frameLoop;
+    }
+    if (typeof animation.displayWidth === 'number') out.displayWidth = animation.displayWidth;
+    if (typeof animation.displayHeight === 'number') out.displayHeight = animation.displayHeight;
   }
   return out;
 }

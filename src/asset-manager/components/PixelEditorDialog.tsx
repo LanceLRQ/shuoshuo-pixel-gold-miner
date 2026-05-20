@@ -12,11 +12,13 @@ import {
 } from '@/components/ui/dialog';
 import { getSpriteLabel } from '../spriteLabels';
 
-/** 动画帧元信息（可选；frameCount 缺省/=1 表示静态 sprite） */
+/** sprite 元信息（可选；frameCount 缺省/=1 表示静态 sprite；displayWidth/Height 缺省 = 源帧 1:1 显示） */
 export interface AnimationMeta {
   frameCount?: number;
   frameDurationMs?: number;
   frameLoop?: boolean;
+  displayWidth?: number;
+  displayHeight?: number;
 }
 
 interface Props {
@@ -59,27 +61,40 @@ export function PixelEditorDialog({
       switch (msg.type) {
         case 'ready': {
           if (initialPixels && iframeRef.current?.contentWindow) {
-            // 把旧 sprite 的动画元信息一并 init 推给 iframe，便于用户 apply 时带回去
+            // 把旧 sprite 的动画元信息 + 显示尺寸一并 init 推给 iframe，便于用户 apply 时带回去
             const initMsg: Record<string, unknown> = { type: 'init', pixels: initialPixels };
             if (sprite?.frameCount && sprite.frameCount > 1) {
               initMsg.frameCount = sprite.frameCount;
               if (typeof sprite.frameDurationMs === 'number') initMsg.frameDurationMs = sprite.frameDurationMs;
               if (typeof sprite.frameLoop === 'boolean') initMsg.frameLoop = sprite.frameLoop;
             }
+            if (typeof sprite?.displayWidth === 'number') initMsg.displayWidth = sprite.displayWidth;
+            if (typeof sprite?.displayHeight === 'number') initMsg.displayHeight = sprite.displayHeight;
             iframeRef.current.contentWindow.postMessage(initMsg, location.origin);
           }
           break;
         }
         case 'apply': {
           if (Array.isArray(msg.pixels)) {
-            const meta: AnimationMeta | undefined =
-              typeof msg.frameCount === 'number' && msg.frameCount > 1
-                ? {
-                    frameCount: msg.frameCount,
-                    frameDurationMs: typeof msg.frameDurationMs === 'number' ? msg.frameDurationMs : undefined,
-                    frameLoop: typeof msg.frameLoop === 'boolean' ? msg.frameLoop : undefined,
-                  }
-                : undefined;
+            const hasAnim = typeof msg.frameCount === 'number' && msg.frameCount > 1;
+            const hasDisplay =
+              (typeof msg.displayWidth === 'number' && msg.displayWidth > 0) ||
+              (typeof msg.displayHeight === 'number' && msg.displayHeight > 0);
+            let meta: AnimationMeta | undefined;
+            if (hasAnim || hasDisplay) {
+              meta = {};
+              if (hasAnim) {
+                meta.frameCount = msg.frameCount;
+                if (typeof msg.frameDurationMs === 'number') meta.frameDurationMs = msg.frameDurationMs;
+                if (typeof msg.frameLoop === 'boolean') meta.frameLoop = msg.frameLoop;
+              }
+              if (typeof msg.displayWidth === 'number' && msg.displayWidth > 0) {
+                meta.displayWidth = msg.displayWidth;
+              }
+              if (typeof msg.displayHeight === 'number' && msg.displayHeight > 0) {
+                meta.displayHeight = msg.displayHeight;
+              }
+            }
             onApply(msg.pixels as PixelMap, meta);
           }
           break;

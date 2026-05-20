@@ -168,6 +168,19 @@ export class ThemeStore {
       if ('frameLoop' in s && typeof s.frameLoop !== 'boolean') {
         throw new Error(`sprite "${spriteName}".frameLoop 必须为布尔值`);
       }
+      // 显示尺寸校验（可选字段，缺省时走源帧 1:1 显示）
+      if ('displayWidth' in s) {
+        const dw = s.displayWidth;
+        if (typeof dw !== 'number' || dw <= 0) {
+          throw new Error(`sprite "${spriteName}".displayWidth 必须为 >0 的数字`);
+        }
+      }
+      if ('displayHeight' in s) {
+        const dh = s.displayHeight;
+        if (typeof dh !== 'number' || dh <= 0) {
+          throw new Error(`sprite "${spriteName}".displayHeight 必须为 >0 的数字`);
+        }
+      }
     }
 
     if (typeof o.background !== 'object' || o.background === null) {

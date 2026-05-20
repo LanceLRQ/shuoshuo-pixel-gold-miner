@@ -159,10 +159,20 @@ export class Mineral {
       ctx.save();
       ctx.translate(this.x, this.y);
       ctx.scale(-1, 1);
-      renderer.drawImageSlice(sprite, f.sx, f.sy, f.sw, f.sh, -f.sw / 2, -f.sh / 2);
+      renderer.drawImageSlice(sprite, f.sx, f.sy, f.sw, f.sh, -f.dw / 2, -f.dh / 2, f.dw, f.dh);
       ctx.restore();
     } else {
-      renderer.drawImageSlice(sprite, f.sx, f.sy, f.sw, f.sh, this.x - f.sw / 2, this.y - f.sh / 2);
+      renderer.drawImageSlice(
+        sprite,
+        f.sx,
+        f.sy,
+        f.sw,
+        f.sh,
+        this.x - f.dw / 2,
+        this.y - f.dh / 2,
+        f.dw,
+        f.dh
+      );
     }
   }
 
