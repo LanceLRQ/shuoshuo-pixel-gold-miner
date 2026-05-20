@@ -1123,8 +1123,8 @@ export class GameScene extends SceneBase {
     // 3) 金块保底：场上金块总额不足时按 largeWeightScale 加权追加 GOLD_SMALL/MEDIUM/LARGE
     this.ensureGoldBudget(goldBudget);
 
-    // 4) 场上总值超过 budget × cap 时强制降级最高价矿物（防过富）
-    this.downgradeMineralsToReachCap(goldBudget * this.difficulty.mineralBudgetCap);
+    // 4) 金块过富时降级最大金块（不破坏金块保底，只在金块品种间降级）
+    this.downgradeGoldToReachCap(goldBudget * this.difficulty.mineralBudgetCap);
 
     // 5) 章节末关：30% 概率插入章节专属收藏品（独立于预算系统的彩蛋）
     this.tryAddChapterCollectible();
@@ -1164,11 +1164,6 @@ export class GameScene extends SceneBase {
     }
   }
 
-  /** 当前所有矿物的原始总价值（不含 valueScale 缩放） */
-  private getCurrentMineralTotal(): number {
-    return this.minerals.reduce((sum, m) => sum + m.value, 0);
-  }
-
   /** 场上金块（GOLD_SMALL/MEDIUM/LARGE，不含钻石）的原始总价值 */
   private getCurrentGoldTotal(): number {
     return this.minerals
@@ -1201,28 +1196,30 @@ export class GameScene extends SceneBase {
   }
 
   /**
-   * 反向降级：场上总价值超过 budget × cap 时，将最高价矿物沿升级链降一级
-   * 让"刚好卡过线"难度可控（避免 weights 偶发生成出过富场地）
+   * 金块过富时降级：场上金块总值超过 goldBudget × cap 时，将最大金块降一级
+   * 只在金块品种之间降级（GOLD_LARGE → MEDIUM → SMALL），不降到非金块
+   * 防止"刚好卡过线"难度被偶发生成的过多大金块破坏
    */
-  private downgradeMineralsToReachCap(budgetCap: number): void {
+  private downgradeGoldToReachCap(goldCap: number): void {
+    const goldChainStart = VALUE_UPGRADE_CHAIN.indexOf(MineralType.GOLD_SMALL);
     for (let attempt = 0; attempt < BUDGET_UPGRADE_MAX_ATTEMPTS; attempt++) {
-      if (this.getCurrentMineralTotal() <= budgetCap) return;
+      if (this.getCurrentGoldTotal() <= goldCap) return;
 
-      // 找到当前价值最高的可降级矿物
+      // 找到当前价值最高的可降级金块（仅 GOLD_MEDIUM/LARGE 可降）
       let candidateIdx = -1;
       let candidateChainIdx = -1;
       let candidateValue = -Infinity;
       for (let i = 0; i < this.minerals.length; i++) {
         const m = this.minerals[i]!;
         const chainIdx = VALUE_UPGRADE_CHAIN.indexOf(m.config.type);
-        if (chainIdx <= 0) continue;  // 已是最低档或不在升级链
+        if (chainIdx <= goldChainStart) continue;  // 已是 GOLD_SMALL 或非金块
         if (m.value > candidateValue) {
           candidateValue = m.value;
           candidateIdx = i;
           candidateChainIdx = chainIdx;
         }
       }
-      if (candidateIdx < 0) return;  // 无可降级矿物
+      if (candidateIdx < 0) return;  // 所有金块都已是 GOLD_SMALL
 
       const oldMineral = this.minerals[candidateIdx]!;
       const prevType = VALUE_UPGRADE_CHAIN[candidateChainIdx - 1]!;

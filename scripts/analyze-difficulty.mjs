@@ -147,27 +147,27 @@ function simulateLevel(level, difficulty, seed, useCap = false) {
     append++;
   }
 
-  let totalValue = minerals.reduce((s, t) => s + (MINERAL_VALUES[t] || 0), 0);
-
-  // 4) cap 降级（仅在 useCap=true 时）：场上总值溢出 goldBudget × cap 时反向降级最高价矿物
+  // 4) 金块过富时降级最大金块（与 GameScene.downgradeGoldToReachCap 一致）
+  //    仅在金块品种之间降级（GOLD_LARGE→MEDIUM→SMALL），不破坏金块保底
   if (useCap) {
-    const budgetCap = goldBudget * (difficulty.cap ?? 1.10);
+    const goldCap = goldBudget * (difficulty.cap ?? 1.10);
+    const goldChainStart = UPGRADE_CHAIN.indexOf('GOLD_SMALL');
     let downgrades = 0;
-    while (totalValue > budgetCap && downgrades < 500) {
-      // 找到当前价值最高的矿物（不是升级链上的而是真实价值）
+    while (goldTotal(minerals) > goldCap && downgrades < 500) {
+      // 找到当前价值最高的可降级金块
       let maxVal = -Infinity;
       let maxIdx = -1;
       for (let i = 0; i < minerals.length; i++) {
-        const v = MINERAL_VALUES[minerals[i]];
         const ul = UPGRADE_CHAIN.indexOf(minerals[i]);
-        if (v > maxVal && ul > 0) { maxVal = v; maxIdx = i; }
+        if (ul <= goldChainStart) continue; // 已是 GOLD_SMALL 或非金块
+        const v = MINERAL_VALUES[minerals[i]];
+        if (v > maxVal) { maxVal = v; maxIdx = i; }
       }
       if (maxIdx < 0) break;
       const oldType = minerals[maxIdx];
       const oldLevel = UPGRADE_CHAIN.indexOf(oldType);
       const newType = UPGRADE_CHAIN[oldLevel - 1];
       minerals[maxIdx] = newType;
-      totalValue += MINERAL_VALUES[newType] - MINERAL_VALUES[oldType];
       downgrades++;
     }
   }
