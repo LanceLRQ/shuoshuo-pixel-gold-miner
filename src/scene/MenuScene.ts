@@ -8,7 +8,7 @@ import type { Renderer } from '../core/Renderer';
 import type { Input } from '../core/Input';
 import type { Game } from '../core/Game';
 import { GameState } from '../core/Game';
-import { drawText, drawTextCentered } from '../ui/PixelText';
+import { drawText, drawTextCentered, drawTextCenteredIn } from '../ui/PixelText';
 import { Button } from '../ui/Button';
 import { renderBackground } from '../assets/background';
 import { pointInRect } from '../utils/collision';
@@ -132,16 +132,16 @@ export class MenuScene extends SceneBase {
 
     // 标题（带动画浮动效果）
     const titleY = 120 + Math.sin(this.animTime * 2) * 8;
-    drawTextCentered(renderer, '黄金矿工', titleY, '#FFD700', 'TITLE');
-    drawTextCentered(renderer, 'H5', titleY + 45, '#FFA500', 'LARGE');
+    drawTextCentered(renderer, '水晶宝石国', titleY, '#FFD700', 'TITLE');
+    drawTextCentered(renderer, '猪猪传说', titleY + 45, '#FFA500', 'LARGE');
 
     // 最高分
     if (this.highScore > 0) {
-      drawTextCentered(renderer, `最高分: $${this.highScore}`, 240, '#FFFFFF', 'MEDIUM');
+      drawTextCentered(renderer, `最高分: $${this.highScore}`, 232, '#FFFFFF', 'MEDIUM');
     }
 
-    // 操作提示
-    drawTextCentered(renderer, this.hasProgress ? '按空格继续上次进度' : '按空格直接进入难度选择', 252, '#AAAAAA', 'SMALL');
+    // 操作提示（与最高分拉开 24px，避免 MEDIUM/SMALL 重叠）
+    drawTextCentered(renderer, this.hasProgress ? '按空格继续上次进度' : '按空格直接进入难度选择', 256, '#AAAAAA', 'SMALL');
 
     // 主按钮（disabled 状态已在 enter 时设定）
     this.continueButton.render(renderer);
@@ -173,7 +173,7 @@ export class MenuScene extends SceneBase {
     ctx.fillRect(x, y + h - 2, w, 2);
     ctx.fillRect(x, y, 2, h);
     ctx.fillRect(x + w - 2, y, 2, h);
-    drawText(renderer, '设置', x + 8, y + 6, '#FFFFFF', 'SMALL');
+    drawTextCenteredIn(renderer, '设置', { x, y, w, h }, '#FFFFFF', 'SMALL');
   }
 
   /** 绘制设置面板 */

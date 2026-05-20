@@ -22,7 +22,7 @@ import { ChapterId, getLevelEarning, isEndlessLevel, TOTAL_LEVELS } from '../lev
 import { ItemType, PERSISTENT_ITEM_TYPES } from '../scene/ShopScene';
 import type { SlotMeta } from '../core/Storage';
 import type { DifficultyConfig } from '../level/difficulty';
-import { drawText, drawTextCentered } from '../ui/PixelText';
+import { drawText, drawTextCentered, drawTextCenteredIn } from '../ui/PixelText';
 import { randomInt, weightedRandom } from '../utils/random';
 import { pointInRect } from '../utils/collision';
 import {
@@ -619,7 +619,7 @@ export class GameScene extends SceneBase {
     const x = (this.game.getRenderer().width - btnW) / 2;
     return [
       { rect: { x, y: startY, w: btnW, h: btnH }, label: '继续游戏', action: 'resume' },
-      { rect: { x, y: startY + (btnH + gap), w: btnW, h: btnH }, label: '💾 另存为...', action: 'saveAs' },
+      { rect: { x, y: startY + (btnH + gap), w: btnW, h: btnH }, label: '另存为...', action: 'saveAs' },
       { rect: { x, y: startY + (btnH + gap) * 2, w: btnW, h: btnH }, label: '返回主菜单', action: 'menu' },
     ];
   }
@@ -750,7 +750,7 @@ export class GameScene extends SceneBase {
       ctx.fillRect(btn.rect.x, btn.rect.y, btn.rect.w, btn.rect.h);
       ctx.fillStyle = '#6688CC';
       ctx.fillRect(btn.rect.x, btn.rect.y, btn.rect.w, 2);
-      drawText(renderer, btn.label, btn.rect.x + 60, btn.rect.y + 12, '#FFFFFF', 'MEDIUM');
+      drawTextCenteredIn(renderer, btn.label, btn.rect, '#FFFFFF', 'MEDIUM');
     }
   }
 
