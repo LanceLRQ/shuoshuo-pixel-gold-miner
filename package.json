@@ -3,15 +3,44 @@
   "version": "1.0.0",
   "description": "黄金矿工 H5 - 经典像素风复刻游戏",
   "type": "module",
+  "packageManager": "pnpm@10.28.2",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
-  "keywords": ["goldminer", "game", "html5", "canvas", "pixel"],
+  "keywords": [
+    "goldminer",
+    "game",
+    "html5",
+    "canvas",
+    "pixel"
+  ],
   "author": "",
   "license": "ISC",
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.2",
+    "@radix-ui/react-label": "^2.1.0",
+    "@radix-ui/react-scroll-area": "^1.2.1",
+    "@radix-ui/react-separator": "^1.1.0",
+    "@radix-ui/react-slot": "^1.1.0",
+    "@radix-ui/react-tabs": "^1.1.1",
+    "@radix-ui/react-tooltip": "^1.1.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.460.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^2.5.4"
+  },
   "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^6.0.2",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "tailwindcss-animate": "^1.0.7",
     "typescript": "^6.0.2",
     "vite": "^8.0.3"
   }
