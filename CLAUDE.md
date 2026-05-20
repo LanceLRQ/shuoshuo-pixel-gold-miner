@@ -86,3 +86,9 @@ tools/
 | 文档 | 路径 | 说明 |
 |------|------|------|
 | 章节系统 | `docs/design/20260519_chapter-system.md` | 3 章节 21 关骨架（水晶矿坑 / 蟹潮海湾 / 猪猪王座）+ 收藏品 + 过场剧情 |
+
+### 素材系统扩展（2026-05-20）
+
+| 文档 | 路径 | 说明 |
+|------|------|------|
+| GIF 动画 sprite 方案 | `docs/design/20260520_gif-animation-sprite.md` | 📋 探讨阶段：横向 spritesheet 拼帧方案 + pixel-converter GIF 解帧路径 |
