@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { getSpriteLabel } from '../spriteLabels';
+import { SPRITE_DEFAULT_DISPLAY, applyDisplayPreset } from '../spritePresets';
 
 /** sprite 元信息（可选；frameCount 缺省/=1 表示静态 sprite；displayWidth/Height 缺省 = 源帧 1:1 显示） */
 export interface AnimationMeta {
@@ -70,6 +71,12 @@ export function PixelEditorDialog({
             }
             if (typeof sprite?.displayWidth === 'number') initMsg.displayWidth = sprite.displayWidth;
             if (typeof sprite?.displayHeight === 'number') initMsg.displayHeight = sprite.displayHeight;
+            // 系统预设尺寸（独立于 sprite 自身字段）：pixel-converter 用作比例约束 + 默认填充值
+            const preset = SPRITE_DEFAULT_DISPLAY[spriteName];
+            if (preset) {
+              initMsg.presetDisplayWidth = preset.displayWidth;
+              initMsg.presetDisplayHeight = preset.displayHeight;
+            }
             iframeRef.current.contentWindow.postMessage(initMsg, location.origin);
           }
           break;
@@ -77,25 +84,22 @@ export function PixelEditorDialog({
         case 'apply': {
           if (Array.isArray(msg.pixels)) {
             const hasAnim = typeof msg.frameCount === 'number' && msg.frameCount > 1;
-            const hasDisplay =
-              (typeof msg.displayWidth === 'number' && msg.displayWidth > 0) ||
-              (typeof msg.displayHeight === 'number' && msg.displayHeight > 0);
-            let meta: AnimationMeta | undefined;
-            if (hasAnim || hasDisplay) {
-              meta = {};
-              if (hasAnim) {
-                meta.frameCount = msg.frameCount;
-                if (typeof msg.frameDurationMs === 'number') meta.frameDurationMs = msg.frameDurationMs;
-                if (typeof msg.frameLoop === 'boolean') meta.frameLoop = msg.frameLoop;
-              }
-              if (typeof msg.displayWidth === 'number' && msg.displayWidth > 0) {
-                meta.displayWidth = msg.displayWidth;
-              }
-              if (typeof msg.displayHeight === 'number' && msg.displayHeight > 0) {
-                meta.displayHeight = msg.displayHeight;
-              }
+            let meta: AnimationMeta = {};
+            if (hasAnim) {
+              meta.frameCount = msg.frameCount;
+              if (typeof msg.frameDurationMs === 'number') meta.frameDurationMs = msg.frameDurationMs;
+              if (typeof msg.frameLoop === 'boolean') meta.frameLoop = msg.frameLoop;
             }
-            onApply(msg.pixels as PixelMap, meta);
+            if (typeof msg.displayWidth === 'number' && msg.displayWidth > 0) {
+              meta.displayWidth = msg.displayWidth;
+            }
+            if (typeof msg.displayHeight === 'number' && msg.displayHeight > 0) {
+              meta.displayHeight = msg.displayHeight;
+            }
+            // 兜底：缺 displayWidth/Height 时按系统预设自动填充
+            meta = applyDisplayPreset(spriteName, meta);
+            const hasMeta = Object.keys(meta).length > 0;
+            onApply(msg.pixels as PixelMap, hasMeta ? meta : undefined);
           }
           break;
         }

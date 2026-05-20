@@ -4,6 +4,7 @@ import classicJson from '../../assets/themes/classic.json';
 import shuoshuoCrystalJson from '../../assets/themes/shuoshuo-crystal.json';
 import type { ThemeJson, SpriteJson } from '../../assets/themeLoader';
 import { SYSTEM_THEME_IDS, ThemeStore } from '../ThemeStore';
+import { applyDisplayPreset } from '../spritePresets';
 
 const SYSTEM_THEMES: ThemeJson[] = [
   classicJson as ThemeJson,
@@ -48,13 +49,14 @@ export function useThemeStore() {
     [storeRef, refresh]
   );
 
-  /** 在指定主题上替换单个 sprite，并持久化 */
+  /** 在指定主题上替换单个 sprite，并持久化（缺 displayWidth/Height 时按预设兜底） */
   const commitSprite = useCallback(
     (theme: ThemeJson, name: string, sprite: SpriteJson) => {
       if (isReadonly(theme.id)) return;
+      const safeSprite = applyDisplayPreset(name, sprite);
       addOrUpdate({
         ...theme,
-        sprites: { ...theme.sprites, [name]: sprite },
+        sprites: { ...theme.sprites, [name]: safeSprite },
       });
     },
     [addOrUpdate, isReadonly]

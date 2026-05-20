@@ -5,10 +5,29 @@
  * 自定义主题保存到 localStorage 的 `goldminer_custom_themes` 键下。
  */
 
-import type { ThemeJson } from '../assets/themeLoader';
+import type { ThemeJson, SpriteJson } from '../assets/themeLoader';
 import type { BackgroundColors } from '../assets/theme/types';
+import { applyDisplayPreset } from './spritePresets';
 
 const CUSTOM_THEMES_KEY = 'goldminer_custom_themes';
+
+/**
+ * lazy 迁移：遍历主题 sprites，对缺 displayWidth/Height 的预设 sprite 自动补齐。
+ *
+ * 仅作用于内存层；不写回 localStorage（避免静默改用户磁盘数据）。
+ * 修复 bug：老主题用 GIF 转换没填显示尺寸 → 老鼠 96×64 显示过大、碰撞抓不到。
+ * 用户下次 commitSprite 时自然持久化补全后的字段。
+ */
+function migrateDisplaySize(theme: ThemeJson): ThemeJson {
+  const migrated: Record<string, SpriteJson> = {};
+  let changed = false;
+  for (const [name, sprite] of Object.entries(theme.sprites)) {
+    const next = applyDisplayPreset(name, sprite);
+    if (next !== sprite) changed = true;
+    migrated[name] = next;
+  }
+  return changed ? { ...theme, sprites: migrated } : theme;
+}
 
 /** 系统主题 ID（只读、不可删/改） */
 export const SYSTEM_THEME_IDS: readonly string[] = ['classic', 'shuoshuo_crystal'];
@@ -28,21 +47,23 @@ export const BACKGROUND_COLOR_KEYS: ReadonlyArray<keyof BackgroundColors> = [
 ];
 
 export class ThemeStore {
-  /** 加载用户在素材管理页创建的所有自定义主题 */
+  /** 加载用户在素材管理页创建的所有自定义主题（含 displayWidth/Height lazy 迁移） */
   loadCustom(): ThemeJson[] {
     try {
       const raw = localStorage.getItem(CUSTOM_THEMES_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
-      return parsed.filter((t): t is ThemeJson => {
+      const valid: ThemeJson[] = [];
+      for (const t of parsed) {
         try {
           this.validateThemeJson(t);
-          return true;
+          valid.push(migrateDisplaySize(t as ThemeJson));
         } catch {
-          return false;
+          // 跳过无效项
         }
-      });
+      }
+      return valid;
     } catch {
       return [];
     }

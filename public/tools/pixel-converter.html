@@ -507,6 +507,13 @@
         const h = parseInt(customRatioH.value) || 1;
         return w / h;
       }
+      // embed 模式系统预设："preset:W:H" 格式，按 W/H 锁定比例
+      if (typeof v === 'string' && v.startsWith('preset:')) {
+        const [, ws, hs] = v.split(':');
+        const w = parseInt(ws) || 1;
+        const h = parseInt(hs) || 1;
+        return w / h;
+      }
       return parseFloat(v);
     }
 
@@ -1331,14 +1338,37 @@
             gifFrameCount = 1;
             setGifModeUI(false);
           }
-          // 透传宿主侧记录的显示尺寸（HD 精度方案），让用户重新转换时保留原显示尺寸
+          // 系统预设（HD 精度方案）：插入"系统预设 W:H"选项 + 锁定比例 + 预填显示尺寸
+          // 防止美术误产出"无法在游戏内正常工作"的 sprite（如老鼠 GIF 转出来 96×64 但碰撞 16）
+          const presetW = typeof msg.presetDisplayWidth === 'number' && msg.presetDisplayWidth > 0
+            ? msg.presetDisplayWidth : null;
+          const presetH = typeof msg.presetDisplayHeight === 'number' && msg.presetDisplayHeight > 0
+            ? msg.presetDisplayHeight : null;
+          if (presetW && presetH) {
+            // 移除任何已存在的 preset option（避免主题切换时重复插入）
+            Array.from(aspectRatioSel.options).forEach(o => {
+              if (o.value.startsWith('preset:')) aspectRatioSel.removeChild(o);
+            });
+            const opt = document.createElement('option');
+            opt.value = `preset:${presetW}:${presetH}`;
+            opt.textContent = `系统预设 (${presetW}:${presetH})`;
+            // 插入到下拉框顶部
+            aspectRatioSel.insertBefore(opt, aspectRatioSel.firstChild);
+            aspectRatioSel.value = opt.value;
+            customRatioRow.style.display = 'none';
+          }
+          // 透传宿主侧记录的显示尺寸；若 sprite 自身没有，则用 preset 兜底预填
           if (typeof msg.displayWidth === 'number' && msg.displayWidth > 0) {
             displayWidthInput.value = msg.displayWidth;
+          } else if (presetW) {
+            displayWidthInput.value = presetW;
           } else {
             displayWidthInput.value = '';
           }
           if (typeof msg.displayHeight === 'number' && msg.displayHeight > 0) {
             displayHeightInput.value = msg.displayHeight;
+          } else if (presetH) {
+            displayHeightInput.value = presetH;
           } else {
             displayHeightInput.value = '';
           }
