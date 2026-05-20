@@ -77,6 +77,12 @@ export class Game {
   /** 动画帧 ID，用于取消主循环 */
   private animFrameId: number = 0;
 
+  /** 外部 UI 弹窗（如矿物图鉴）打开时暂停游戏逻辑（仍保持渲染） */
+  private pausedByExternal: boolean = false;
+
+  /** 外部 UI 弹窗注入（main.ts 创建后调用 setCodexModal）— 用 unknown 避免 Game 强耦合 UI 层 */
+  private codexModal: { open(): void; close(): void; toggle(): void; isOpened(): boolean } | null = null;
+
   /** 当前关卡的金额信息（用于场景间传递） */
   private lastEarnedMoney: number = 0;
   private lastTargetMoney: number = 200;
@@ -417,6 +423,21 @@ export class Game {
     return this.currentMoney;
   }
 
+  /** 外部 UI（DOM 弹窗）暂停游戏逻辑 */
+  setPausedByExternal(paused: boolean): void {
+    this.pausedByExternal = paused;
+  }
+
+  /** 注入外部 UI 弹窗（main.ts 启动时调用一次） */
+  setCodexModal(modal: { open(): void; close(): void; toggle(): void; isOpened(): boolean }): void {
+    this.codexModal = modal;
+  }
+
+  /** 获取已注入的图鉴弹窗（GameScene 在 ? 按钮点击时调用） */
+  getCodexModal(): { open(): void; close(): void; toggle(): void; isOpened(): boolean } | null {
+    return this.codexModal;
+  }
+
   /**
    * 直接设置累计金额，并同步当前活跃场景的 HUD（god mode 调试用）。
    * GameScene 时立即在 HUD 上看到变化；其他场景下只更新底层累计金额。
@@ -496,10 +517,12 @@ export class Game {
       this.fpsTime = timestamp;
     }
 
-    // 更新当前场景
+    // 更新当前场景（外部 UI 弹窗暂停时只渲染、不接收输入和更新逻辑）
     if (this.currentScene) {
-      this.currentScene.handleInput(this.input);
-      this.currentScene.update(dt);
+      if (!this.pausedByExternal) {
+        this.currentScene.handleInput(this.input);
+        this.currentScene.update(dt);
+      }
       this.currentScene.render(this.renderer);
     }
 

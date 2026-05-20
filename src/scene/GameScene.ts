@@ -462,9 +462,9 @@ export class GameScene extends SceneBase {
         return;
       }
 
-      // 教程按钮
+      // 帮助按钮 → 打开矿物图鉴 DOM 弹窗（操作说明 + 矿物图鉴 Tab）
       if (pointInRect(pos.x, pos.y, tutorialRect)) {
-        this.showTutorial = true;
+        this.game.getCodexModal()?.open();
         return;
       }
 
