@@ -173,6 +173,8 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
     height: 12,
   },
   // ========== 木箱抽奖箱 ==========
+  // 注意：石头 STONE 在运行时按 STONE_VARIANTS 权重抽小/中/大档（见下方），
+  // 关卡数据无需新增 type，21 关 mineralWeights 数组结构不变。
   [MineralType.WOODEN_BOX]: {
     type: MineralType.WOODEN_BOX,
     value: 0, // 真实价值由 Mineral 构造时按 BoxContent 随机
@@ -183,6 +185,28 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
     height: 8,
   },
 };
+
+/**
+ * 石头档位变体 — STONE 在 Mineral 构造时按 weight 随机抽一档，
+ * 实例的 spriteName / value / radius 由抽中的档位覆盖。
+ *
+ * 对齐经典版黄金矿工的"大中小石头"视觉层次（小石头多/价值低，大石头少/价值高）。
+ */
+export interface StoneVariant {
+  spriteName: string;
+  /** [min, max] 价值随机区间（含两端） */
+  valueRange: [number, number];
+  /** 碰撞半径（圆形） */
+  radius: number;
+  /** 抽取权重 */
+  weight: number;
+}
+
+export const STONE_VARIANTS: readonly StoneVariant[] = [
+  { spriteName: 'STONE_SMALL_SPRITE', valueRange: [5, 10],  radius: 20, weight: 0.5 },
+  { spriteName: 'STONE_SPRITE',       valueRange: [10, 20], radius: 28, weight: 0.3 },
+  { spriteName: 'STONE_LARGE_SPRITE', valueRange: [25, 45], radius: 36, weight: 0.2 },
+];
 
 /** 游戏数值配置常量（横屏 800x540 布局） */
 export const GAME_CONFIG = {

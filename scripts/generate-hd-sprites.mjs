@@ -900,7 +900,10 @@ const SPRITES_TO_GENERATE = {
   GOLD_MEDIUM:        () => toSpriteJson(makeGoldNugget(HD, HD, GOLD_PALETTE), 1, 36, 36),
   GOLD_LARGE:         () => toSpriteJson(makeGoldNugget(HD, HD, GOLD_PALETTE), 1, 48, 48),
   DIAMOND_SPRITE:     () => toSpriteJson(makeDiamond(HD, HD), 1, 24, 24),
+  // 石头三档：复用同一个 makeStone 算法，displayWidth/Height 决定画布上显示尺寸
+  STONE_SMALL_SPRITE: () => toSpriteJson(makeStone(HD, HD), 1, 24, 24),
   STONE_SPRITE:       () => toSpriteJson(makeStone(HD, HD), 1, 36, 36),
+  STONE_LARGE_SPRITE: () => toSpriteJson(makeStone(HD, HD), 1, 48, 48),
   CRYSTAL_ORE_SPRITE: () => toSpriteJson(makeCrystalOre(HD, HD), 1, 24, 24),
   CRAB_SHELL_SPRITE:  () => toSpriteJson(makeCrabShell(HD, HD), 1, 30, 30),
   PIGGY_GEM_SPRITE:   () => toSpriteJson(makePiggyGem(HD, HD), 1, 36, 36),
@@ -922,15 +925,13 @@ const stats = [];
 
 for (const [name, generator] of Object.entries(SPRITES_TO_GENERATE)) {
   const sprite = generator();
-  if (!classicJson.sprites[name]) {
-    console.warn(`⚠️  ${name} 不在 classic.json 中，跳过`);
-    continue;
-  }
+  const isNew = !classicJson.sprites[name];
   classicJson.sprites[name] = sprite;
   stats.push({
     name,
     size: `${sprite.pixels[0].length}×${sprite.pixels.length}`,
     colors: Object.keys(sprite.palette).length,
+    isNew,
   });
 }
 
@@ -938,26 +939,31 @@ fs.writeFileSync(CLASSIC_JSON, JSON.stringify(classicJson, null, 2));
 
 console.log('✅ HD 精灵已写入 classic.json:');
 for (const s of stats) {
-  console.log(`  ${s.name.padEnd(18)} ${s.size.padEnd(8)} ${s.colors} 色`);
+  const tag = s.isNew ? ' (新增)' : '';
+  console.log(`  ${s.name.padEnd(18)} ${s.size.padEnd(8)} ${s.colors} 色${tag}`);
 }
 
-// ==================== 同步到 shuoshuo-crystal.json（保留矿工 5 态） ====================
+// ==================== 同步到 shuoshuo-crystal.json（仅补齐缺失的 sprite） ====================
+//
+// shuoshuo-crystal.json 是美术组交付的精美素材，绝大多数 sprite 不应被脚本覆盖。
+// 仅当 crystal 主题缺少某个 sprite 时（如新增 STONE_SMALL/LARGE_SPRITE），才从
+// classic.json 拷贝一份占位，方便后续美术单独替换。
 
 const CRYSTAL_JSON = path.join(ROOT, 'src/assets/themes/shuoshuo-crystal.json');
-const MINER_KEYS = ['MINER_IDLE', 'MINER_PULL', 'MINER_HAPPY', 'MINER_SAD', 'MINER_STRAIN'];
 
 const crystalJson = JSON.parse(fs.readFileSync(CRYSTAL_JSON, 'utf-8'));
-const preservedMiners = {};
-for (const k of MINER_KEYS) {
-  if (crystalJson.sprites[k]) preservedMiners[k] = crystalJson.sprites[k];
-}
-
-// 用 classic.json 的所有 sprite 覆盖（深拷贝避免共享引用）
-crystalJson.sprites = JSON.parse(JSON.stringify(classicJson.sprites));
-// 恢复矿工 5 态
-for (const [k, v] of Object.entries(preservedMiners)) {
-  crystalJson.sprites[k] = v;
+const added = [];
+for (const [name, sprite] of Object.entries(classicJson.sprites)) {
+  if (!crystalJson.sprites[name]) {
+    crystalJson.sprites[name] = JSON.parse(JSON.stringify(sprite));
+    added.push(name);
+  }
 }
 
 fs.writeFileSync(CRYSTAL_JSON, JSON.stringify(crystalJson, null, 2));
-console.log(`\n🔄 shuoshuo-crystal.json 已同步 ${Object.keys(classicJson.sprites).length - MINER_KEYS.length} 个非矿工精灵（矿工 5 态保留）`);
+if (added.length > 0) {
+  console.log(`\n🔄 shuoshuo-crystal.json 已补齐 ${added.length} 个缺失 sprite: ${added.join(', ')}`);
+  console.log('   美术可在 asset-manager 单独替换为水晶宝石国风格的素材');
+} else {
+  console.log('\n🔄 shuoshuo-crystal.json 已有全部 sprite，无需补齐');
+}

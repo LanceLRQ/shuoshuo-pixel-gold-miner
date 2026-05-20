@@ -7,7 +7,7 @@ import type { Renderer } from '../core/Renderer';
 import type { SpriteCacheMap } from '../assets/types';
 import { getSpriteFrame } from '../assets/animation';
 import type { SpriteMetaProvider } from './Miner';
-import { MineralType, MINERAL_CONFIGS, type MineralConfig } from './types';
+import { MineralType, MINERAL_CONFIGS, STONE_VARIANTS, type MineralConfig } from './types';
 import { randomInt, pickWeightedContent } from '../utils/random';
 
 /** 神秘袋内容类型 */
@@ -78,6 +78,8 @@ export class Mineral {
   moveRight: number = 0;
   /** 鼹鼠是否带着钻石 */
   hasDiamond: boolean = false;
+  /** 实际渲染用的 sprite 名（默认 = config.spriteName；STONE 时按 variant 覆盖为小/中/大档） */
+  effectiveSpriteName: string;
   /** 精灵缓存引用 */
   private spriteCache: SpriteCacheMap;
   /** sprite 动画元数据查询函数（无则视为全部静态） */
@@ -94,6 +96,7 @@ export class Mineral {
     this.y = y;
     this.config = MINERAL_CONFIGS[type];
     this.radius = this.config.radius;
+    this.effectiveSpriteName = this.config.spriteName;
     this.spriteCache = spriteCache;
     this.metaProvider = metaProvider;
 
@@ -128,8 +131,11 @@ export class Mineral {
         this.value = 0;
       }
     } else if (type === MineralType.STONE) {
-      // 石头价值随机 $10-$20
-      this.value = randomInt(10, 20);
+      // 石头三档（小/中/大）：按权重抽 variant，覆盖 sprite/价值/碰撞 radius
+      const variant = pickWeightedContent(STONE_VARIANTS) ?? STONE_VARIANTS[1]!;
+      this.effectiveSpriteName = variant.spriteName;
+      this.radius = variant.radius;
+      this.value = randomInt(variant.valueRange[0], variant.valueRange[1]);
     } else {
       this.value = this.config.value;
     }
@@ -148,9 +154,9 @@ export class Mineral {
 
   /** 内部绘制精灵（以中心点为锚点） */
   private drawSprite(renderer: Renderer): void {
-    const sprite = this.spriteCache.get(this.config.spriteName);
+    const sprite = this.spriteCache.get(this.effectiveSpriteName);
     if (!sprite) return;
-    const meta = this.metaProvider?.(this.config.spriteName);
+    const meta = this.metaProvider?.(this.effectiveSpriteName);
     const f = getSpriteFrame(sprite, meta, performance.now());
     // 移动小动物按 vx 方向翻转：sprite 默认朝右，vx<0 时水平翻转
     const flip = this.config.flipOnDirection === true && this.vx < 0;
