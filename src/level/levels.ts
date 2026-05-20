@@ -104,7 +104,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 200,
     mineralCount: 10,
     timeLimit: 60,
-    mineralWeights: [28, 10, 8, 2, 22, 4, 6, 8, 6, 6],
+    mineralWeights: [18, 16, 12, 2, 22, 4, 6, 8, 6, 6],
   },
   {
     level: 2,
@@ -112,7 +112,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 450,
     mineralCount: 12,
     timeLimit: 60,
-    mineralWeights: [26, 10, 8, 3, 22, 5, 7, 7, 6, 6],
+    mineralWeights: [16, 16, 12, 3, 22, 5, 7, 7, 6, 6],
   },
   {
     level: 3,
@@ -120,7 +120,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 750,
     mineralCount: 13,
     timeLimit: 60,
-    mineralWeights: [24, 10, 8, 4, 24, 6, 7, 6, 6, 5],
+    mineralWeights: [15, 16, 11, 4, 24, 6, 7, 6, 6, 5],
   },
   {
     level: 4,
@@ -128,7 +128,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 1100,
     mineralCount: 14,
     timeLimit: 55,
-    mineralWeights: [22, 10, 8, 5, 26, 7, 7, 5, 5, 5],
+    mineralWeights: [14, 15, 11, 5, 26, 7, 7, 5, 5, 5],
   },
   {
     level: 5,
@@ -136,7 +136,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 1500,
     mineralCount: 15,
     timeLimit: 55,
-    mineralWeights: [20, 10, 8, 5, 28, 8, 7, 5, 5, 4],
+    mineralWeights: [13, 15, 10, 5, 28, 8, 7, 5, 5, 4],
   },
   {
     level: 6,
@@ -144,7 +144,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 1950,
     mineralCount: 16,
     timeLimit: 55,
-    mineralWeights: [18, 8, 8, 6, 30, 9, 6, 5, 5, 5],
+    mineralWeights: [11, 13, 10, 6, 30, 9, 6, 5, 5, 5],
   },
   {
     level: 7,
@@ -152,7 +152,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 2450,
     mineralCount: 17,
     timeLimit: 50,
-    mineralWeights: [16, 8, 8, 6, 32, 10, 6, 5, 5, 4],
+    mineralWeights: [10, 12, 10, 6, 32, 10, 6, 5, 5, 4],
     isChapterFinale: true, // 水晶矿石 +30% 倾斜
   },
 
@@ -163,7 +163,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 3050,
     mineralCount: 18,
     timeLimit: 55,
-    mineralWeights: [14, 8, 8, 7, 32, 11, 6, 5, 5, 4],
+    mineralWeights: [9, 11, 10, 7, 32, 11, 6, 5, 5, 4],
   },
   {
     level: 9,
@@ -171,7 +171,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 3700,
     mineralCount: 18,
     timeLimit: 55,
-    mineralWeights: [13, 7, 7, 8, 33, 12, 6, 5, 5, 4],
+    mineralWeights: [8, 10, 9, 8, 33, 12, 6, 5, 5, 4],
   },
   {
     level: 10,
@@ -179,7 +179,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 4400,
     mineralCount: 19,
     timeLimit: 55,
-    mineralWeights: [12, 7, 7, 8, 34, 12, 7, 5, 4, 4],
+    mineralWeights: [7, 10, 9, 8, 34, 12, 7, 5, 4, 4],
   },
   {
     level: 11,
@@ -187,7 +187,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 5150,
     mineralCount: 19,
     timeLimit: 50,
-    mineralWeights: [11, 7, 7, 9, 34, 13, 7, 5, 4, 3],
+    mineralWeights: [7, 10, 8, 9, 34, 13, 7, 5, 4, 3],
   },
   {
     level: 12,
@@ -195,7 +195,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 5950,
     mineralCount: 20,
     timeLimit: 50,
-    mineralWeights: [10, 6, 6, 9, 35, 14, 7, 5, 4, 4],
+    mineralWeights: [6, 9, 7, 9, 35, 14, 7, 5, 4, 4],
   },
   {
     level: 13,
@@ -203,7 +203,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 6800,
     mineralCount: 20,
     timeLimit: 50,
-    mineralWeights: [9, 6, 6, 10, 35, 14, 7, 5, 4, 4],
+    mineralWeights: [5, 9, 7, 10, 35, 14, 7, 5, 4, 4],
   },
   {
     level: 14,
@@ -211,7 +211,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 7750,
     mineralCount: 21,
     timeLimit: 45,
-    mineralWeights: [8, 5, 5, 11, 36, 15, 7, 5, 4, 4],
+    mineralWeights: [5, 7, 6, 11, 36, 15, 7, 5, 4, 4],
     isChapterFinale: true, // 水晶蟹甲 +30% 倾斜
   },
 
@@ -222,7 +222,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 8750,
     mineralCount: 21,
     timeLimit: 50,
-    mineralWeights: [8, 6, 7, 12, 35, 14, 8, 4, 3, 3],
+    mineralWeights: [5, 8, 8, 12, 35, 14, 8, 4, 3, 3],
   },
   {
     level: 16,
@@ -230,7 +230,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 9850,
     mineralCount: 22,
     timeLimit: 50,
-    mineralWeights: [7, 6, 7, 13, 35, 15, 8, 4, 3, 2],
+    mineralWeights: [4, 8, 8, 13, 35, 15, 8, 4, 3, 2],
   },
   {
     level: 17,
@@ -238,7 +238,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 11050,
     mineralCount: 22,
     timeLimit: 45,
-    mineralWeights: [6, 5, 8, 14, 35, 15, 8, 4, 3, 2],
+    mineralWeights: [3, 7, 9, 14, 35, 15, 8, 4, 3, 2],
   },
   {
     level: 18,
@@ -246,7 +246,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 12350,
     mineralCount: 22,
     timeLimit: 45,
-    mineralWeights: [6, 5, 8, 15, 35, 16, 7, 4, 2, 2],
+    mineralWeights: [3, 7, 9, 15, 35, 16, 7, 4, 2, 2],
   },
   {
     level: 19,
@@ -254,7 +254,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 13750,
     mineralCount: 23,
     timeLimit: 45,
-    mineralWeights: [5, 5, 9, 15, 36, 16, 7, 3, 2, 2],
+    mineralWeights: [3, 7, 9, 15, 36, 16, 7, 3, 2, 2],
   },
   {
     level: 20,
@@ -262,7 +262,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 15250,
     mineralCount: 23,
     timeLimit: 40,
-    mineralWeights: [4, 4, 9, 16, 37, 17, 7, 3, 2, 1],
+    mineralWeights: [2, 6, 9, 16, 37, 17, 7, 3, 2, 1],
   },
   {
     level: 21,
@@ -270,7 +270,7 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 17000,
     mineralCount: 24,
     timeLimit: 40,
-    mineralWeights: [3, 4, 10, 17, 37, 18, 7, 2, 1, 1],
+    mineralWeights: [1, 6, 10, 17, 37, 18, 7, 2, 1, 1],
     isChapterFinale: true, // 猪猪粉宝石 +30% 倾斜（终极关）
   },
 ];
