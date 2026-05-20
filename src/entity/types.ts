@@ -59,7 +59,7 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
     type: MineralType.GOLD_MEDIUM,
     value: 250,
     // 中金块比小金块明显沉一些（拉满更慢），玩家瞄准前需思考成本
-    weight: 0.9,
+    weight: 1.2,
     radius: 30,
     spriteName: 'GOLD_MEDIUM',
     width: 12,
@@ -68,8 +68,8 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
   [MineralType.GOLD_LARGE]: {
     type: MineralType.GOLD_LARGE,
     value: 500,
-    // 大金疙瘩超沉 — 比大石头(1.5)还重，体现"高风险高收益"的金块梯度
-    weight: 1.8,
+    // 大金疙瘩超沉 — 远超大石头(1.5)，拖一颗要 ~8s 占关卡 13%，需精准决策
+    weight: 2.5,
     radius: 42,
     spriteName: 'GOLD_LARGE',
     width: 16,
