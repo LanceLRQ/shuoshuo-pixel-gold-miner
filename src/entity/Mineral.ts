@@ -152,7 +152,18 @@ export class Mineral {
     if (!sprite) return;
     const meta = this.metaProvider?.(this.config.spriteName);
     const f = getSpriteFrame(sprite, meta, performance.now());
-    renderer.drawImageSlice(sprite, f.sx, f.sy, f.sw, f.sh, this.x - f.sw / 2, this.y - f.sh / 2);
+    // 移动小动物按 vx 方向翻转：sprite 默认朝右，vx<0 时水平翻转
+    const flip = this.config.flipOnDirection === true && this.vx < 0;
+    if (flip) {
+      const ctx = renderer.getContext();
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.scale(-1, 1);
+      renderer.drawImageSlice(sprite, f.sx, f.sy, f.sw, f.sh, -f.sw / 2, -f.sh / 2);
+      ctx.restore();
+    } else {
+      renderer.drawImageSlice(sprite, f.sx, f.sy, f.sw, f.sh, this.x - f.sw / 2, this.y - f.sh / 2);
+    }
   }
 
   /** 更新移动矿物位置 */

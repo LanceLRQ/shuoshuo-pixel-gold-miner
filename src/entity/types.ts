@@ -31,6 +31,8 @@ export interface MineralConfig {
   spriteName: string;
   width: number;
   height: number;
+  /** 是否根据 vx 方向水平翻转精灵（移动小动物专用，默认 false） */
+  flipOnDirection?: boolean;
 }
 
 /** 矿物配置表（碰撞半径已放大，更容易抓取） */
@@ -115,6 +117,7 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
     spriteName: 'MOUSE_SPRITE',
     width: 12,
     height: 8,
+    flipOnDirection: true,
   },
   [MineralType.MOLE]: {
     type: MineralType.MOLE,
@@ -124,6 +127,7 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
     spriteName: 'MOLE_SPRITE',
     width: 12,
     height: 10,
+    flipOnDirection: true,
   },
   // ========== 章节专属收藏品 ==========
   [MineralType.CRYSTAL_ORE]: {
