@@ -260,7 +260,7 @@
       </div>
 
       <div style="margin-top:10px">
-        <button class="btn btn-primary" id="convertBtn">转换</button>
+        <button class="btn" id="convertBtn">预览</button>
         <button class="btn" id="resetBtn">全部重置</button>
       </div>
 
@@ -1455,8 +1455,13 @@
       });
 
       $('embedApplyBtn').onclick = () => {
+        // "应用"工作流：先转换（基于最新参数 + 选区），再 postMessage apply
+        // 用户不需要先点"预览"再点"应用"两步；如果有源图就走一次 convert
+        if (sourceImage) {
+          convert();
+        }
         if (!currentPixelMap) {
-          alert('请先上传图片并转换，或修改当前像素后再应用');
+          alert('请先上传图片');
           return;
         }
         // apply 消息带帧元信息 + 显示尺寸；缺省字段省略以保持向后兼容
