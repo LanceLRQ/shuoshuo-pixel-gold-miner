@@ -23,9 +23,11 @@ interface Props {
   theme: ThemeJson;
   readonly: boolean;
   onCommitSprite: (name: string, sprite: SpriteJson) => void;
+  /** 一次性提交多个 sprite（批量复制场景下避免闭包覆盖） */
+  onCommitSprites: (updates: Record<string, SpriteJson>) => void;
 }
 
-export function SpriteGrid({ theme, readonly, onCommitSprite }: Props) {
+export function SpriteGrid({ theme, readonly, onCommitSprite, onCommitSprites }: Props) {
   const [filter, setFilter] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [copying, setCopying] = useState<string | null>(null);
@@ -122,9 +124,12 @@ export function SpriteGrid({ theme, readonly, onCommitSprite }: Props) {
         theme={theme}
         onClose={() => setCopying(null)}
         onCopy={(targets, makeSprite) => {
+          // 一次性批量提交：避免循环调 onCommitSprite 时基于旧闭包 theme 互相覆盖
+          const updates: Record<string, SpriteJson> = {};
           for (const t of targets) {
-            onCommitSprite(t, makeSprite(t));
+            updates[t] = makeSprite(t);
           }
+          onCommitSprites(updates);
           setCopying(null);
         }}
       />

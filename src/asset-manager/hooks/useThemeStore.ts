@@ -62,6 +62,24 @@ export function useThemeStore() {
     [addOrUpdate, isReadonly]
   );
 
+  /**
+   * 一次性替换多个 sprite，并持久化。
+   *
+   * 单次提交避免连续调用 commitSprite 时闭包覆盖：循环调 commitSprite 时每次都基于
+   * 闭包里的旧 theme.sprites 拼新对象，前 N-1 次的更新会被最后一次的"...旧 sprites"覆盖。
+   */
+  const commitSprites = useCallback(
+    (theme: ThemeJson, updates: Record<string, SpriteJson>) => {
+      if (isReadonly(theme.id)) return;
+      const newSprites = { ...theme.sprites };
+      for (const [name, sprite] of Object.entries(updates)) {
+        newSprites[name] = applyDisplayPreset(name, sprite);
+      }
+      addOrUpdate({ ...theme, sprites: newSprites });
+    },
+    [addOrUpdate, isReadonly]
+  );
+
   /** 替换主题背景色，并持久化 */
   const commitBackground = useCallback(
     (theme: ThemeJson, background: ThemeJson['background']) => {
@@ -80,6 +98,7 @@ export function useThemeStore() {
     addOrUpdate,
     remove,
     commitSprite,
+    commitSprites,
     commitBackground,
   };
 }

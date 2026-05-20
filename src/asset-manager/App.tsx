@@ -104,6 +104,9 @@ export function App() {
                 onCommitSprite={(name, sprite) =>
                   themeStore.commitSprite(currentTheme, name, sprite)
                 }
+                onCommitSprites={(updates) =>
+                  themeStore.commitSprites(currentTheme, updates)
+                }
               />
             ) : (
               <BackgroundEditor
