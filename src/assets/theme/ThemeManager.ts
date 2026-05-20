@@ -6,13 +6,15 @@
 import type { ThemeDefinition, BackgroundColors } from './types';
 import type { SpriteCacheMap } from '../types';
 import { createSpriteCacheMap } from '../types';
+import type { SpriteAnimationMeta } from '../animation';
 
 /** localStorage 存储键 */
 const THEME_STORAGE_KEY = 'goldminer_theme';
 
 export class ThemeManager {
   private themes: Map<string, ThemeDefinition> = new Map();
-  private currentThemeId: string = 'classic';
+  /** 默认主题：说说Crystal（HD 矿物 + 替换矿工形象） */
+  private currentThemeId: string = 'shuoshuo_crystal';
   private currentCache: SpriteCacheMap | null = null;
 
   /** 注册主题 */
@@ -48,7 +50,12 @@ export class ThemeManager {
   /** 获取当前主题的精灵缓存（懒构建） */
   getSpriteCache(): SpriteCacheMap {
     if (!this.currentCache) {
-      this.currentCache = createSpriteCacheMap(this.getTheme().sprites);
+      const theme = this.getTheme();
+      this.currentCache = createSpriteCacheMap(
+        theme.sprites,
+        3,
+        theme.spriteScaleOverrides
+      );
     }
     return this.currentCache;
   }
@@ -56,6 +63,11 @@ export class ThemeManager {
   /** 获取当前主题的背景颜色 */
   getBackgroundColors(): BackgroundColors {
     return this.getTheme().backgroundColors;
+  }
+
+  /** 获取 sprite 动画元数据。静态 sprite 返回 undefined */
+  getSpriteMeta(name: string): SpriteAnimationMeta | undefined {
+    return this.getTheme().spriteAnimations?.[name];
   }
 
   /** 获取所有已注册主题列表 */

@@ -8,13 +8,16 @@ import type { Renderer } from '../core/Renderer';
 /** 像素字体配置 */
 const PIXEL_FONT_FAMILY = 'monospace';
 
-/** 字体大小映射 */
-const FONT_SIZES = {
+/** 字体大小映射（统一权威定义，禁止在其他文件重新声明） */
+export const FONT_SIZES = {
   SMALL: 12,
   MEDIUM: 16,
   LARGE: 24,
   TITLE: 32,
 } as const;
+
+/** 字体大小键名类型 */
+export type FontSize = keyof typeof FONT_SIZES;
 
 /**
  * 渲染像素文本
@@ -83,12 +86,42 @@ export function drawTextCentered(
   text: string,
   y: number,
   color: string = '#FFFFFF',
-  size: keyof typeof FONT_SIZES = 'MEDIUM'
+  size: FontSize = 'MEDIUM'
+): void {
+  drawTextCenteredAt(renderer, text, renderer.width / 2, y, color, size);
+}
+
+/**
+ * 在指定 X 中心点水平居中绘制文本
+ */
+export function drawTextCenteredAt(
+  renderer: Renderer,
+  text: string,
+  centerX: number,
+  y: number,
+  color: string = '#FFFFFF',
+  size: FontSize = 'MEDIUM'
 ): void {
   const fontSize = FONT_SIZES[size];
   const ctx = renderer.getContext();
   ctx.font = `bold ${fontSize}px "${PIXEL_FONT_FAMILY}"`;
-  const metrics = ctx.measureText(text);
-  const x = (renderer.width - metrics.width) / 2;
-  drawText(renderer, text, x, y, color, size);
+  const width = ctx.measureText(text).width;
+  drawText(renderer, text, centerX - width / 2, y, color, size);
+}
+
+/**
+ * 在矩形区域内双轴居中绘制文本
+ */
+export function drawTextCenteredIn(
+  renderer: Renderer,
+  text: string,
+  rect: { x: number; y: number; w: number; h: number },
+  color: string = '#FFFFFF',
+  size: FontSize = 'MEDIUM'
+): void {
+  const fontSize = FONT_SIZES[size];
+  const ctx = renderer.getContext();
+  ctx.font = `bold ${fontSize}px "${PIXEL_FONT_FAMILY}"`;
+  const width = ctx.measureText(text).width;
+  drawText(renderer, text, rect.x + (rect.w - width) / 2, rect.y + (rect.h - fontSize) / 2 - 2, color, size);
 }

@@ -29,6 +29,11 @@ const BUTTON_COLORS = {
     border: '#1E3A6F',
     text: '#DDDDDD',
   },
+  DISABLED: {
+    bg: '#555566',
+    border: '#33333F',
+    text: '#888899',
+  },
 } as const;
 
 export class Button {
@@ -43,6 +48,9 @@ export class Button {
 
   /** 当前状态 */
   state: ButtonState = ButtonState.NORMAL;
+
+  /** 禁用状态（置灰、不响应点击/悬停） */
+  disabled: boolean = false;
 
   /** 是否被点击 */
   private clicked: boolean = false;
@@ -69,6 +77,12 @@ export class Button {
   update(tapX: number, tapY: number, isTapped: boolean): boolean {
     this.clicked = false;
 
+    // 禁用态：不响应任何交互，强制保持 NORMAL
+    if (this.disabled) {
+      this.state = ButtonState.NORMAL;
+      return false;
+    }
+
     const isInside = this.containsPoint(tapX, tapY);
 
     if (isTapped && isInside) {
@@ -90,7 +104,7 @@ export class Button {
 
   /** 渲染按钮 */
   render(renderer: Renderer): void {
-    const colors = BUTTON_COLORS[this.state];
+    const colors = this.disabled ? BUTTON_COLORS.DISABLED : BUTTON_COLORS[this.state];
     const ctx = renderer.getContext();
 
     // 按钮背景
@@ -104,8 +118,8 @@ export class Button {
     ctx.fillRect(this.x, this.y, 2, this.height);
     ctx.fillRect(this.x + this.width - 2, this.y, 2, this.height);
 
-    // 高亮效果（顶部亮边）
-    if (this.state === ButtonState.NORMAL || this.state === ButtonState.HOVER) {
+    // 高亮效果（禁用态不显示亮边）
+    if (!this.disabled && (this.state === ButtonState.NORMAL || this.state === ButtonState.HOVER)) {
       ctx.fillStyle = this.state === ButtonState.HOVER ? '#88AAFF' : '#6688CC';
       ctx.fillRect(this.x + 2, this.y + 2, this.width - 4, 2);
     }

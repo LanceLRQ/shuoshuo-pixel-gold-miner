@@ -9,18 +9,29 @@ import { SceneBase } from '../scene/SceneBase';
 import { MenuScene } from '../scene/MenuScene';
 import { GameScene } from '../scene/GameScene';
 import { ResultScene } from '../scene/ResultScene';
-import { ShopScene, ItemType } from '../scene/ShopScene';
+import { ShopScene, ItemType, PERSISTENT_ITEM_TYPES } from '../scene/ShopScene';
 import { GameOverScene } from '../scene/GameOverScene';
-import { Storage } from './Storage';
+import { DifficultyScene } from '../scene/DifficultyScene';
+import { SlotSelectScene } from '../scene/SlotSelectScene';
+import { ChapterScene } from '../scene/ChapterScene';
+import { Storage, type GameProgress, AUTO_SLOT_ID } from './Storage';
 import { LevelManager } from '../level/LevelManager';
 import { Audio } from './Audio';
 import { ThemeManager } from '../assets/theme/ThemeManager';
 import { CLASSIC_THEME } from '../assets/theme/classic';
 import { SHUOSHUO_CRYSTAL_THEME } from '../assets/theme/shuoshuo-crystal';
+import { loadTheme } from '../assets/themeLoader';
+import { initAnimation } from '../assets/animation';
+import { ThemeStore } from '../asset-manager/ThemeStore';
+import { Difficulty, DEFAULT_DIFFICULTY, getDifficultyConfig, type DifficultyConfig } from '../level/difficulty';
+import { isChapterFirstLevel, getChapterByLevel } from '../level/levels';
 
 /** 游戏全局状态枚举 */
 export enum GameState {
   MENU = 'MENU',
+  SLOT_SELECT = 'SLOT_SELECT',           // 槽位选择（Phase C 实现场景）
+  DIFFICULTY_SELECT = 'DIFFICULTY_SELECT', // 难度选择（Phase C 实现场景）
+  CHAPTER_TRANSITION = 'CHAPTER_TRANSITION', // 章节过场（Phase E #9，进入 L1/L8/L15 前）
   READY = 'READY',
   PLAYING = 'PLAYING',
   REELING = 'REELING',
@@ -29,14 +40,6 @@ export enum GameState {
   GAME_OVER = 'GAME_OVER',
 }
 
-/** 当局有效道具（关卡结束时清除） */
-const LEVEL_BUFF_ITEMS: ItemType[] = [
-  ItemType.STRENGTH_POTION,
-  ItemType.LUCKY_CLOVER,
-  ItemType.STONE_BOOK,
-  ItemType.MOUSE_POISON,
-  ItemType.DIAMOND_OIL,
-];
 
 /** FPS 统计更新间隔（毫秒） */
 const FPS_UPDATE_INTERVAL = 1000;
@@ -56,6 +59,12 @@ export class Game {
   /** 当前游戏状态 */
   private state: GameState = GameState.MENU;
 
+  /** 当前难度（影响金额/时间/重量/商店/道具等所有玩法参数） */
+  private currentDifficulty: Difficulty = DEFAULT_DIFFICULTY;
+
+  /** 当前活跃槽位（始终是自动槽位 AUTO_SLOT_ID；手动槽位被加载时会复制到自动槽位） */
+  private activeSlot: number = AUTO_SLOT_ID;
+
   /** 已注册的场景映射 */
   private scenes: Map<GameState, SceneBase> = new Map();
 
@@ -68,10 +77,22 @@ export class Game {
   /** 动画帧 ID，用于取消主循环 */
   private animFrameId: number = 0;
 
+  /** 外部 UI 弹窗（如矿物图鉴）打开时暂停游戏逻辑（仍保持渲染） */
+  private pausedByExternal: boolean = false;
+
+  /** 外部 UI 弹窗注入（main.ts 创建后调用 setCodexModal）— 用 unknown 避免 Game 强耦合 UI 层 */
+  private codexModal: { open(): void; close(): void; toggle(): void; isOpened(): boolean } | null = null;
+
   /** 当前关卡的金额信息（用于场景间传递） */
   private lastEarnedMoney: number = 0;
   private lastTargetMoney: number = 200;
   private currentMoney: number = 0;
+
+  /** 标记关卡结算是否已通过 commitLevelResult 累加，避免 SHOP 进入时重复加 */
+  private bonusAlreadyCommitted: boolean = false;
+
+  /** 失败重试标记：retryCurrentLevel 设置后 changeScene 跳过 nextLevel + 金额累加 + 章节过场 */
+  private isRetrying: boolean = false;
 
   // FPS 统计
   private frameCount: number = 0;
@@ -89,15 +110,25 @@ export class Game {
       renderer.height
     );
 
-    // 初始化主题管理器
+    // 初始化主题管理器（默认 shuoshuo_crystal，详见 ThemeManager 默认值）
     this.themeManager = new ThemeManager();
     this.themeManager.register(CLASSIC_THEME);
     this.themeManager.register(SHUOSHUO_CRYSTAL_THEME);
-    this.themeManager.restoreTheme();
-    // 默认使用说说Crystal主题
-    if (!localStorage.getItem('goldminer_theme')) {
-      this.themeManager.setTheme('shuoshuo_crystal');
+    // 加载用户在素材管理页（/tools/assets.html）创建的自定义主题
+    for (const json of new ThemeStore().loadCustom()) {
+      try {
+        this.themeManager.register(loadTheme(json));
+      } catch (e) {
+        console.error('[Game] 自定义主题加载失败', json.id, e);
+      }
     }
+    this.themeManager.restoreTheme();
+
+    // 加载用户音频设置
+    const settings = this.storage.loadSettings();
+    this.audio.setVolume(settings.volume);
+    this.audio.setMuted(settings.muted);
+    this.audio.setBgmEnabled(settings.bgmEnabled);
 
     // 切后台自动暂停
     document.addEventListener('visibilitychange', () => {
@@ -116,19 +147,19 @@ export class Game {
   changeScene(state: GameState): void {
     // 退出当前场景
     if (this.currentScene) {
-      // 如果从 GameScene 退出，保存金额数据
+      // 如果从 GameScene 退出，记录本关入账（不含起步累计，避免后续 += 时重复加）
       if (this.state === GameState.PLAYING && this.currentScene instanceof GameScene) {
-        this.lastEarnedMoney = this.currentScene.getMoney();
+        this.lastEarnedMoney = this.currentScene.getEarnedThisLevel();
         this.lastTargetMoney = this.currentScene.getTargetMoney();
-        this.currentMoney += this.lastEarnedMoney;
-        // 当局有效道具，关卡结束即失效
-        for (const item of LEVEL_BUFF_ITEMS) {
-          this.ownedItems.delete(item);
-        }
+        this.clearLevelBuffs();
       }
       // 如果从 ShopScene 退出，同步剩余金额
       if (this.state === GameState.SHOP && this.currentScene instanceof ShopScene) {
         this.currentMoney = this.currentScene.getMoney();
+      }
+      // 如果从 ResultScene 退出（达标后进入 SHOP/GAME_OVER），用最终金额覆盖
+      if (this.state === GameState.RESULT && this.currentScene instanceof ResultScene) {
+        this.lastEarnedMoney = this.currentScene.getTotalEarned();
       }
       this.currentScene.exit();
     }
@@ -138,6 +169,11 @@ export class Game {
 
     // 切换状态
     this.state = state;
+
+    // 进入 PLAYING 时停 BGM（避免干扰），其他场景由场景自身决定是否启动
+    if (state === GameState.PLAYING) {
+      this.audio.stopBgm();
+    }
 
     // 根据状态创建对应场景（动态创建，传递数据）
     let scene: SceneBase | null = null;
@@ -149,22 +185,65 @@ export class Game {
         this.levelManager.reset();
         this.ownedItems.clear();
         break;
-      case GameState.PLAYING:
-        // 从商店回来，进入下一关
-        if (previousState === GameState.SHOP) {
+      case GameState.DIFFICULTY_SELECT:
+        scene = new DifficultyScene(this);
+        break;
+      case GameState.SLOT_SELECT:
+        scene = new SlotSelectScene(this);
+        break;
+      case GameState.PLAYING: {
+        const retrying = this.isRetrying;
+        this.isRetrying = false;
+        if (retrying) {
+          // 失败重试：保持当前关卡，本关入账不并入 currentMoney
+          this.bonusAlreadyCommitted = false;
+        } else if (previousState === GameState.SHOP) {
+          // 商店分支：金额已在 SHOP case 累加，仅推进关卡
+          this.bonusAlreadyCommitted = false;
           this.levelManager.nextLevel();
+          this.persistProgress();
+        } else if (previousState === GameState.RESULT) {
+          // INFINITE 跳商店分支：此处补累加本关金额（若 Bonus 未即时提交）
+          if (!this.bonusAlreadyCommitted) {
+            this.currentMoney += this.lastEarnedMoney;
+          }
+          this.bonusAlreadyCommitted = false;
+          this.levelManager.nextLevel();
+          this.persistProgress();
+        }
+        // CHAPTER_TRANSITION 回流：金额/关卡已在首次进入时处理过，直接创建 GameScene
+        // 章节首关守卫：非 INFINITE 模式 + 非重试 时，进入 L1/L8/L15 走 ChapterScene 过场
+        if (!retrying
+            && previousState !== GameState.CHAPTER_TRANSITION
+            && !this.getDifficultyConfig().infiniteItems
+            && isChapterFirstLevel(this.levelManager.currentLevel)) {
+          this.state = GameState.CHAPTER_TRANSITION;
+          scene = new ChapterScene(this, getChapterByLevel(this.levelManager.currentLevel));
+          break;
         }
         scene = new GameScene(this, this.levelManager.getCurrentConfig());
         break;
+      }
       case GameState.RESULT:
         scene = new ResultScene(this, this.lastEarnedMoney, this.lastTargetMoney);
         break;
       case GameState.SHOP:
+        // 通关进商店：若 Bonus 已在 ResultScene 即时提交则不重复累加
+        if (!this.bonusAlreadyCommitted) {
+          this.currentMoney += this.lastEarnedMoney;
+        }
+        this.bonusAlreadyCommitted = false;
         scene = new ShopScene(this, this.currentMoney);
+        this.persistProgress();
         break;
       case GameState.GAME_OVER:
-        // 更新最高分
-        this.storage.updateHighScore(this.currentMoney);
+        if (!this.bonusAlreadyCommitted) {
+          this.currentMoney += this.lastEarnedMoney;
+        }
+        this.bonusAlreadyCommitted = false;
+        this.storage.updateAllHighScores(this.currentDifficulty, this.currentMoney);
+        this.storage.commitLeaderboardEntry(this.currentMoney, this.currentDifficulty, this.levelManager.currentLevel);
+        this.storage.resetAutoSlot();
         scene = new GameOverScene(this, this.currentMoney, this.levelManager.currentLevel);
         break;
     }
@@ -220,6 +299,177 @@ export class Game {
     this.ownedItems.clear();
   }
 
+  /**
+   * 关卡结束清理 buff（按难度门控）
+   * - INFINITE：保留所有道具（道具永久开启）
+   * - HARD/EXPERT：清除所有 persistent 道具（每关从零开始 buff）
+   * - NOVICE/NORMAL：保留 persistent 道具（跨关投资型决策）
+   */
+  private clearLevelBuffs(): void {
+    const cfg = this.getDifficultyConfig();
+    if (cfg.infiniteItems) return; // 无限火力不清
+
+    if (cfg.isHardcore) {
+      for (const itemType of PERSISTENT_ITEM_TYPES) {
+        this.ownedItems.delete(itemType);
+      }
+    }
+    // 新手/一般：保留 persistent，消耗品在使用时已 delete
+  }
+
+  /** 构造当前进度快照 */
+  private buildProgress(): GameProgress {
+    return {
+      currentMoney: this.currentMoney,
+      currentLevel: this.levelManager.currentLevel,
+      ownedItems: Array.from(this.ownedItems).map(item => item as string),
+    };
+  }
+
+  /** 自动存档到自动槽位（关键事件触发） */
+  private persistProgress(): void {
+    this.storage.autoSave(this.buildProgress(), this.currentDifficulty);
+  }
+
+  /**
+   * 关卡通过即时存档（确保 Bonus 不丢失）
+   * 由 ResultScene.enter() 在动画开始前调用
+   */
+  commitLevelResult(totalEarned: number): void {
+    this.currentMoney += totalEarned;
+    this.persistProgress();
+    this.storage.updateAllHighScores(this.currentDifficulty, this.currentMoney);
+    // 记录给后续场景使用（避免 SHOP 进入时再次累加）
+    this.lastEarnedMoney = totalEarned;
+    this.bonusAlreadyCommitted = true;
+  }
+
+  /** 从自动槽位恢复进度并直接进入游戏 */
+  restoreProgress(): boolean {
+    const save = this.storage.loadAutoSlot();
+    if (!save) return false;
+    this.currentMoney = save.progress.currentMoney;
+    this.currentDifficulty = save.meta.difficulty;
+    this.levelManager.setLevel(save.progress.currentLevel);
+    this.ownedItems.clear();
+    for (const itemStr of save.progress.ownedItems) {
+      this.ownedItems.add(itemStr as ItemType);
+    }
+    this.activeSlot = AUTO_SLOT_ID;
+    this.state = GameState.MENU; // 临时设回 MENU，让 changeScene 内部 previousState 为 MENU 不触发 nextLevel
+    this.changeScene(GameState.PLAYING);
+    return true;
+  }
+
+  /**
+   * 开新游戏（选定难度后调用）
+   * 重置自动槽位 + 设置难度 + 进入 PLAYING
+   */
+  startNewGame(difficulty: Difficulty): void {
+    this.storage.resetAutoSlot();
+    this.currentDifficulty = difficulty;
+    this.currentMoney = 0;
+    this.levelManager.reset();
+    this.ownedItems.clear();
+    this.activeSlot = AUTO_SLOT_ID;
+    this.state = GameState.MENU;
+    this.changeScene(GameState.PLAYING);
+  }
+
+  /**
+   * 玩家"另存为"：把自动槽位当前内容复制到指定手动槽位
+   * 返回是否成功
+   */
+  saveAsManualSlot(slotId: number): boolean {
+    return this.storage.saveToManualSlot(slotId) !== null;
+  }
+
+  /**
+   * 玩家加载手动槽位：复制到自动槽位 + 恢复内存状态 + 进入游戏
+   * 返回是否成功
+   */
+  loadFromManualSlot(slotId: number): boolean {
+    const save = this.storage.loadManualSlot(slotId);
+    if (!save) return false;
+    this.currentMoney = save.progress.currentMoney;
+    this.currentDifficulty = save.meta.difficulty;
+    this.levelManager.setLevel(save.progress.currentLevel);
+    this.ownedItems.clear();
+    for (const itemStr of save.progress.ownedItems) {
+      this.ownedItems.add(itemStr as ItemType);
+    }
+    this.activeSlot = AUTO_SLOT_ID;
+    this.state = GameState.MENU;
+    this.changeScene(GameState.PLAYING);
+    return true;
+  }
+
+  /** 清除进度存档（用于"清除存档"按钮，清自动槽位） */
+  clearProgress(): void {
+    this.storage.resetAutoSlot();
+  }
+
+  /** 获取当前难度 */
+  getDifficulty(): Difficulty {
+    return this.currentDifficulty;
+  }
+
+  /** 获取当前难度配置 */
+  getDifficultyConfig(): DifficultyConfig {
+    return getDifficultyConfig(this.currentDifficulty);
+  }
+
+  /** 获取当前累计金额（用于 GameScene 初始化 HUD + ResultScene 判断累计达标） */
+  getCurrentMoney(): number {
+    return this.currentMoney;
+  }
+
+  /** 外部 UI（DOM 弹窗）暂停游戏逻辑 */
+  setPausedByExternal(paused: boolean): void {
+    this.pausedByExternal = paused;
+  }
+
+  /** 注入外部 UI 弹窗（main.ts 启动时调用一次） */
+  setCodexModal(modal: { open(): void; close(): void; toggle(): void; isOpened(): boolean }): void {
+    this.codexModal = modal;
+  }
+
+  /** 获取已注入的图鉴弹窗（GameScene 在 ? 按钮点击时调用） */
+  getCodexModal(): { open(): void; close(): void; toggle(): void; isOpened(): boolean } | null {
+    return this.codexModal;
+  }
+
+  /**
+   * 直接设置累计金额，并同步当前活跃场景的 HUD（god mode 调试用）。
+   * GameScene 时立即在 HUD 上看到变化；其他场景下只更新底层累计金额。
+   */
+  setCurrentMoney(n: number): void {
+    this.currentMoney = Math.max(0, Math.floor(n));
+    const scene = this.currentScene as unknown as { hud?: { money: number } };
+    if (scene && scene.hud && typeof scene.hud.money === 'number') {
+      scene.hud.money = this.currentMoney;
+    }
+  }
+
+  /** 设置难度（在 DifficultyScene 选择后调用） */
+  setDifficulty(d: Difficulty): void {
+    this.currentDifficulty = d;
+  }
+
+  /** 获取当前活跃槽位 */
+  getActiveSlot(): number {
+    return this.activeSlot;
+  }
+
+  /** 失败重试当前关卡（保留累计金额和已购道具，本关入账丢弃） */
+  retryCurrentLevel(): void {
+    // 本关入账作废 + 设置 isRetrying 标记，让 changeScene 跳过 nextLevel/累加/章节过场
+    this.lastEarnedMoney = 0;
+    this.bonusAlreadyCommitted = false;
+    this.isRetrying = true;
+    this.changeScene(GameState.PLAYING);
+  }
+
   /** 获取全局音效实例 */
   getAudio(): Audio {
     return this.audio;
@@ -236,6 +486,8 @@ export class Game {
 
     this.lastTime = performance.now();
     this.fpsTime = this.lastTime;
+    // 全局动画 sprite 时间基准，所有动画从同一原点开始
+    initAnimation(this.lastTime);
     this.loop(this.lastTime);
   }
 
@@ -266,10 +518,12 @@ export class Game {
       this.fpsTime = timestamp;
     }
 
-    // 更新当前场景
+    // 更新当前场景（外部 UI 弹窗暂停时只渲染、不接收输入和更新逻辑）
     if (this.currentScene) {
-      this.currentScene.handleInput(this.input);
-      this.currentScene.update(dt);
+      if (!this.pausedByExternal) {
+        this.currentScene.handleInput(this.input);
+        this.currentScene.update(dt);
+      }
       this.currentScene.render(this.renderer);
     }
 

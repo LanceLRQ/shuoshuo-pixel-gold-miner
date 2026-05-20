@@ -1,102 +1,331 @@
 /**
  * 关卡数据配置
- * 至少 10 关，难度递增
+ * 21 关分 3 章节（详见 docs/design/20260519_chapter-system.md）
+ *  - Ch1 水晶矿坑（L1-L7）：友好引入段
+ *  - Ch2 蟹潮海湾（L8-L14）：进入硬核段
+ *  - Ch3 猪猪王座（L15-L21）：终极挑战段
  */
+
+/** 章节 ID */
+export enum ChapterId {
+  /** 水晶矿坑 L1-L7（矿洞地形，棕黄主调） */
+  CRYSTAL_MINE = 'CRYSTAL_MINE',
+  /** 蟹潮海湾 L8-L14（海洋地形，深蓝磷光） */
+  CRAB_BAY = 'CRAB_BAY',
+  /** 猪猪王座 L15-L21（粉色宫殿，公主吉祥物） */
+  PIGGY_THRONE = 'PIGGY_THRONE',
+}
+
+/** 章节元信息（边界 + 显示名 + 过场剧情 + 过场配色） */
+export interface ChapterInfo {
+  readonly firstLevel: number;
+  readonly lastLevel: number;
+  readonly displayName: string;
+  /** ChapterScene 过场显示的一句剧情 */
+  readonly intro: string;
+  /** ChapterScene 过场背景色（深色调，氛围底） */
+  readonly bgColor: string;
+  /** ChapterScene 过场强调色（章名 + 进度条） */
+  readonly accentColor: string;
+}
+
+/** 章节信息表（颜色与 background.ts 章节色板呼应） */
+export const CHAPTER_INFO: Record<ChapterId, ChapterInfo> = {
+  [ChapterId.CRYSTAL_MINE]: {
+    firstLevel: 1,
+    lastLevel: 7,
+    displayName: '水晶矿坑',
+    intro: '矿工老王听说这里能挖到水晶宝石国的入口……',
+    bgColor: '#2A1F14',     // 矿洞棕黑
+    accentColor: '#FFD27C', // 暖金黄
+  },
+  [ChapterId.CRAB_BAY]: {
+    firstLevel: 8,
+    lastLevel: 14,
+    displayName: '蟹潮海湾',
+    intro: '传说海湾深处有水晶蟹守卫着前往王城的通道。',
+    bgColor: '#0D1F35',     // 海湾深蓝
+    accentColor: '#7CD9FF', // 海湾青蓝
+  },
+  [ChapterId.PIGGY_THRONE]: {
+    firstLevel: 15,
+    lastLevel: 21,
+    displayName: '猪猪王座',
+    intro: '粉色宫殿深处，猪猪公主抱着粉宝石打盹。',
+    bgColor: '#3A2540',     // 王座紫暗
+    accentColor: '#FFB6E5', // 粉色公主
+  },
+};
+
+/** 章节展示顺序（用于按章节遍历） */
+export const CHAPTER_ORDER: readonly ChapterId[] = [
+  ChapterId.CRYSTAL_MINE,
+  ChapterId.CRAB_BAY,
+  ChapterId.PIGGY_THRONE,
+];
 
 /** 关卡配置接口 */
 export interface LevelConfig {
   /** 关卡编号（1-based） */
   level: number;
-  /** 目标金额 */
+  /** 所属章节 */
+  chapter: ChapterId;
+  /** 累计目标金额（原版风格：玩家从上关累计起步赚到这个数才能过关，HUD 显示累计 / 累计目标） */
   targetMoney: number;
   /** 矿物数量 */
   mineralCount: number;
   /** 时间限制（秒） */
   timeLimit: number;
-  /** 矿物权重覆盖（可选） */
+  /** 矿物权重覆盖（小金/中金/大金/钻/石/炸/袋/骨/鼠/鼹），不填用默认权重 */
   mineralWeights?: number[];
+  /** 是否章节末关：触发章节专属收藏品 +30% 概率倾斜 */
+  isChapterFinale?: boolean;
 }
 
-/** 全部关卡配置 */
+/**
+ * 全部关卡配置（21 关 3 章节，原版风格累计目标）
+ *
+ * targetMoney = 截止本关结束玩家累计应达到的金额（HUD 显示累计 / 累计目标）
+ * 本关增量 = targetMoney - 上关 targetMoney（由 getLevelEarning() 计算）
+ *
+ * 数值曲线（NORMAL 难度基准）：
+ *  Ch1 L1-L7  : 累计 200 → 2450  / 本关增量 200 → 500
+ *  Ch2 L8-L14 : 累计 3050 → 7750 / 本关增量 600 → 950
+ *  Ch3 L15-L21: 累计 8750 → 17000 / 本关增量 1000 → 1750
+ *
+ * 矿物预算按本关增量算（不是累计目标），保证关卡矿物量合理。
+ * 矿物权重总和恒定为 100，便于按比例直观调参。
+ */
 export const LEVELS: LevelConfig[] = [
+  // ============== Ch1 水晶矿坑（L1-L7）友好引入 ==============
   {
     level: 1,
-    targetMoney: 150,
+    chapter: ChapterId.CRYSTAL_MINE,
+    targetMoney: 200,
     mineralCount: 10,
     timeLimit: 60,
-    // 小金/中金/大金/钻/石/炸/袋/骨/鼠/鼹
-    mineralWeights: [28, 10, 8, 2, 22, 4, 6, 8, 6, 6], // 友好：多小金块少炸弹
+    mineralWeights: [18, 16, 12, 2, 22, 4, 6, 8, 6, 6],
   },
   {
     level: 2,
-    targetMoney: 300,
+    chapter: ChapterId.CRYSTAL_MINE,
+    targetMoney: 450,
     mineralCount: 12,
     timeLimit: 60,
-    mineralWeights: [26, 10, 8, 3, 22, 5, 7, 7, 6, 6],
+    mineralWeights: [16, 16, 12, 3, 22, 5, 7, 7, 6, 6],
   },
   {
     level: 3,
-    targetMoney: 450,
+    chapter: ChapterId.CRYSTAL_MINE,
+    targetMoney: 750,
     mineralCount: 13,
     timeLimit: 60,
-    mineralWeights: [24, 10, 8, 4, 24, 6, 7, 6, 6, 5],
+    mineralWeights: [15, 16, 11, 4, 24, 6, 7, 6, 6, 5],
   },
   {
     level: 4,
-    targetMoney: 650,
+    chapter: ChapterId.CRYSTAL_MINE,
+    targetMoney: 1100,
     mineralCount: 14,
     timeLimit: 55,
-    mineralWeights: [22, 10, 8, 5, 26, 7, 7, 5, 5, 5],
+    mineralWeights: [14, 15, 11, 5, 26, 7, 7, 5, 5, 5],
   },
   {
     level: 5,
-    targetMoney: 850,
+    chapter: ChapterId.CRYSTAL_MINE,
+    targetMoney: 1500,
     mineralCount: 15,
     timeLimit: 55,
-    mineralWeights: [20, 10, 8, 5, 28, 8, 7, 5, 5, 4],
+    mineralWeights: [13, 15, 10, 5, 28, 8, 7, 5, 5, 4],
   },
   {
     level: 6,
-    targetMoney: 1100,
+    chapter: ChapterId.CRYSTAL_MINE,
+    targetMoney: 1950,
     mineralCount: 16,
     timeLimit: 55,
-    mineralWeights: [18, 8, 8, 6, 30, 9, 6, 5, 5, 5], // 增加难度
+    mineralWeights: [11, 13, 10, 6, 30, 9, 6, 5, 5, 5],
   },
   {
     level: 7,
-    targetMoney: 1350,
+    chapter: ChapterId.CRYSTAL_MINE,
+    targetMoney: 2450,
     mineralCount: 17,
     timeLimit: 50,
-    mineralWeights: [16, 8, 8, 6, 32, 10, 6, 5, 5, 4],
+    mineralWeights: [10, 12, 10, 6, 32, 10, 6, 5, 5, 4],
+    isChapterFinale: true, // 水晶矿石 +30% 倾斜
   },
+
+  // ============== Ch2 蟹潮海湾（L8-L14）进入硬核 ==============
   {
     level: 8,
-    targetMoney: 1600,
+    chapter: ChapterId.CRAB_BAY,
+    targetMoney: 3050,
     mineralCount: 18,
-    timeLimit: 50,
-    mineralWeights: [14, 8, 8, 7, 32, 11, 6, 5, 5, 4],
+    timeLimit: 55,
+    mineralWeights: [9, 11, 10, 7, 32, 11, 6, 5, 5, 4],
   },
   {
     level: 9,
-    targetMoney: 1900,
-    mineralCount: 19,
-    timeLimit: 50,
-    mineralWeights: [12, 6, 6, 8, 34, 12, 7, 5, 5, 5], // 更难
+    chapter: ChapterId.CRAB_BAY,
+    targetMoney: 3700,
+    mineralCount: 18,
+    timeLimit: 55,
+    mineralWeights: [8, 10, 9, 8, 33, 12, 6, 5, 5, 4],
   },
   {
     level: 10,
-    targetMoney: 2300,
+    chapter: ChapterId.CRAB_BAY,
+    targetMoney: 4400,
+    mineralCount: 19,
+    timeLimit: 55,
+    mineralWeights: [7, 10, 9, 8, 34, 12, 7, 5, 4, 4],
+  },
+  {
+    level: 11,
+    chapter: ChapterId.CRAB_BAY,
+    targetMoney: 5150,
+    mineralCount: 19,
+    timeLimit: 50,
+    mineralWeights: [7, 10, 8, 9, 34, 13, 7, 5, 4, 3],
+  },
+  {
+    level: 12,
+    chapter: ChapterId.CRAB_BAY,
+    targetMoney: 5950,
     mineralCount: 20,
+    timeLimit: 50,
+    mineralWeights: [6, 9, 7, 9, 35, 14, 7, 5, 4, 4],
+  },
+  {
+    level: 13,
+    chapter: ChapterId.CRAB_BAY,
+    targetMoney: 6800,
+    mineralCount: 20,
+    timeLimit: 50,
+    mineralWeights: [5, 9, 7, 10, 35, 14, 7, 5, 4, 4],
+  },
+  {
+    level: 14,
+    chapter: ChapterId.CRAB_BAY,
+    targetMoney: 7750,
+    mineralCount: 21,
     timeLimit: 45,
-    mineralWeights: [10, 6, 6, 8, 36, 14, 6, 5, 5, 4], // 最终关
+    mineralWeights: [5, 7, 6, 11, 36, 15, 7, 5, 4, 4],
+    isChapterFinale: true, // 水晶蟹甲 +30% 倾斜
+  },
+
+  // ============== Ch3 猪猪王座（L15-L21）终极挑战 ==============
+  {
+    level: 15,
+    chapter: ChapterId.PIGGY_THRONE,
+    targetMoney: 8750,
+    mineralCount: 21,
+    timeLimit: 50,
+    mineralWeights: [5, 8, 8, 12, 35, 14, 8, 4, 3, 3],
+  },
+  {
+    level: 16,
+    chapter: ChapterId.PIGGY_THRONE,
+    targetMoney: 9850,
+    mineralCount: 22,
+    timeLimit: 50,
+    mineralWeights: [4, 8, 8, 13, 35, 15, 8, 4, 3, 2],
+  },
+  {
+    level: 17,
+    chapter: ChapterId.PIGGY_THRONE,
+    targetMoney: 11050,
+    mineralCount: 22,
+    timeLimit: 45,
+    mineralWeights: [3, 7, 9, 14, 35, 15, 8, 4, 3, 2],
+  },
+  {
+    level: 18,
+    chapter: ChapterId.PIGGY_THRONE,
+    targetMoney: 12350,
+    mineralCount: 22,
+    timeLimit: 45,
+    mineralWeights: [3, 7, 9, 15, 35, 16, 7, 4, 2, 2],
+  },
+  {
+    level: 19,
+    chapter: ChapterId.PIGGY_THRONE,
+    targetMoney: 13750,
+    mineralCount: 23,
+    timeLimit: 45,
+    mineralWeights: [3, 7, 9, 15, 36, 16, 7, 3, 2, 2],
+  },
+  {
+    level: 20,
+    chapter: ChapterId.PIGGY_THRONE,
+    targetMoney: 15250,
+    mineralCount: 23,
+    timeLimit: 40,
+    mineralWeights: [2, 6, 9, 16, 37, 17, 7, 3, 2, 1],
+  },
+  {
+    level: 21,
+    chapter: ChapterId.PIGGY_THRONE,
+    targetMoney: 17000,
+    mineralCount: 24,
+    timeLimit: 40,
+    mineralWeights: [1, 6, 10, 17, 37, 18, 7, 2, 1, 1],
+    isChapterFinale: true, // 猪猪粉宝石 +30% 倾斜（终极关）
   },
 ];
 
-/** 获取关卡配置（索引 0-based） */
+/** 总关卡数（正常 3 章节的最后一关） */
+export const TOTAL_LEVELS = LEVELS.length;
+
+/** 无尽模式判定：超过正常通关关卡数 */
+export function isEndlessLevel(level: number): boolean {
+  return level > TOTAL_LEVELS;
+}
+
+/**
+ * 无尽模式关卡配置（#19，超过 L21 后算法生成）
+ * 本关增量起步 2000，每关再 +250 递增；时间递减 1s（下限 25）；矿数 +1（上限 30）
+ * 累计目标公式：lastTarget + 2000×offset + 125×(offset-1)×offset
+ */
+function getEndlessLevelConfig(level: number): LevelConfig {
+  const last = LEVELS[LEVELS.length - 1]!;
+  const offset = level - TOTAL_LEVELS; // L22 起 offset=1
+  const cumulativeIncrease = 2000 * offset + 125 * (offset - 1) * offset;
+  return {
+    level,
+    chapter: last.chapter,
+    targetMoney: last.targetMoney + cumulativeIncrease,
+    mineralCount: Math.min(30, last.mineralCount + offset),
+    timeLimit: Math.max(25, last.timeLimit - offset + 1),
+    mineralWeights: last.mineralWeights, // 沿用 L21 高难度权重（多石头/炸弹）
+    isChapterFinale: false, // 无尽模式不算章节末关
+  };
+}
+
+/** 获取关卡配置（L1-L21 查表，L22+ 算法生成无尽模式配置） */
 export function getLevelConfig(level: number): LevelConfig {
-  const index = Math.min(level - 1, LEVELS.length - 1);
+  if (level > TOTAL_LEVELS) return getEndlessLevelConfig(level);
+  const index = Math.max(0, level - 1);
   return LEVELS[index]!;
 }
 
-/** 总关卡数 */
-export const TOTAL_LEVELS = LEVELS.length;
+/** 通过关卡号反查所属章节 */
+export function getChapterByLevel(level: number): ChapterId {
+  return getLevelConfig(level).chapter;
+}
+
+/** 是否章节首关（用于触发 ChapterScene 过场，无尽模式不触发） */
+export function isChapterFirstLevel(level: number): boolean {
+  return CHAPTER_ORDER.some(id => CHAPTER_INFO[id].firstLevel === level);
+}
+
+/**
+ * 本关增量：target(level) - target(level-1)，用于矿物预算计算
+ * L1 起步无上关，增量等于自身 target
+ * 无尽模式（L22+）由 getLevelConfig 自动返回算法值，无需特殊处理
+ */
+export function getLevelEarning(level: number): number {
+  if (level <= 1) return getLevelConfig(1).targetMoney;
+  return getLevelConfig(level).targetMoney - getLevelConfig(level - 1).targetMoney;
+}

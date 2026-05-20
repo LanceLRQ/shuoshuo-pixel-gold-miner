@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>像素转换工具 - Pixel Map Converter</title>
+  <!-- GIF 解帧库（动画 sprite 支持）。esm.sh 会自动处理 CJS → ESM 转换 -->
+  <script type="module">
+    try {
+      const mod = await import('https://esm.sh/gifuct-js@2.1.2');
+      window.__gifuct = { parseGIF: mod.parseGIF, decompressFrames: mod.decompressFrames, ready: true };
+      window.dispatchEvent(new Event('gifuct-ready'));
+    } catch (e) {
+      console.warn('gifuct-js 加载失败，将退化为 GIF 单帧模式', e);
+      window.__gifuct = { ready: false };
+    }
+  </script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', monospace;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    h1 { font-size: 20px; color: #ffd700; margin-bottom: 16px; text-align: center; }
+    .container {
+      display: flex; gap: 16px; max-width: 1400px; margin: 0 auto;
+      flex-wrap: wrap; justify-content: center;
+    }
+    .panel {
+      background: #16213e; border: 2px solid #0f3460;
+      border-radius: 8px; padding: 14px; flex: 1; min-width: 320px;
+    }
+    .panel h2 {
+      font-size: 13px; color: #4fc3f7; margin-bottom: 10px;
+      border-bottom: 1px solid #0f3460; padding-bottom: 5px;
+    }
+    /* 上传区 */
+    .drop-zone {
+      border: 2px dashed #4fc3f7; border-radius: 8px;
+      padding: 30px 20px; text-align: center; cursor: pointer;
+      transition: all 0.3s; margin-bottom: 10px;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: #ffd700; background: rgba(255, 215, 0, 0.05);
+    }
+    .drop-zone p { color: #888; font-size: 12px; margin-top: 6px; }
+    /* 控件 */
+    .controls { margin-bottom: 10px; }
+    .control-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .control-row label { font-size: 12px; color: #aaa; }
+    .control-row input[type="range"] { width: 110px; }
+    .control-row .val { font-size: 12px; color: #ffd700; width: 36px; text-align: right; }
+    .control-row input[type="checkbox"] { margin-right: 6px; }
+    .control-row select {
+      background: #0d1117; color: #e0e0e0; border: 1px solid #0f3460;
+      padding: 3px 6px; border-radius: 3px; font-family: inherit; font-size: 11px;
+    }
+    .control-row input[type="text"], .control-row input[type="number"] {
+      background: #0d1117; border: 1px solid #0f3460; color: #ffd700;
+      padding: 3px 6px; border-radius: 3px; font-family: inherit; font-size: 11px;
+      width: 80px;
+    }
+    /* 按钮 */
+    .btn {
+      background: #0f3460; color: #e0e0e0; border: 1px solid #1a4a8a;
+      padding: 6px 14px; border-radius: 4px; cursor: pointer;
+      font-family: inherit; font-size: 11px; transition: all 0.2s;
+      margin-right: 4px; margin-top: 6px;
+    }
+    .btn:hover { background: #1a4a8a; border-color: #4fc3f7; }
+    .btn-primary { background: #e94560; border-color: #ff6b6b; }
+    .btn-primary:hover { background: #ff6b6b; }
+    .btn-sm { padding: 4px 10px; font-size: 10px; }
+    .btn-warn { background: #8b6914; border-color: #c9981a; }
+    .btn-warn:hover { background: #c9981a; }
+    /* 源图裁剪画布 */
+    .crop-area {
+      position: relative; background: #0d1117; border-radius: 4px;
+      margin-bottom: 10px; overflow: hidden; display: flex;
+      justify-content: center; align-items: center; min-height: 200px;
+    }
+    .crop-area canvas { display: block; }
+    /* 棋盘格 */
+    .checker-bg {
+      background-image:
+        linear-gradient(45deg, #1a1a2e 25%, transparent 25%),
+        linear-gradient(-45deg, #1a1a2e 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #1a1a2e 75%),
+        linear-gradient(-45deg, transparent 75%, #1a1a2e 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    }
+    /* 预览区 */
+    .preview-area {
+      display: flex; justify-content: center; align-items: center;
+      min-height: 180px; background: #0d1117; border-radius: 4px;
+      margin-bottom: 10px; position: relative;
+      background-image:
+        linear-gradient(45deg, #1a1a2e 25%, transparent 25%),
+        linear-gradient(-45deg, #1a1a2e 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #1a1a2e 75%),
+        linear-gradient(-45deg, transparent 75%, #1a1a2e 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    }
+    .preview-area canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+    /* 调色板 */
+    .palette-row { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+    .palette-swatch {
+      width: 16px; height: 16px; border: 1px solid #333; border-radius: 2px;
+    }
+    /* 输出 */
+    .output {
+      width: 100%; min-height: 180px; background: #0d1117; color: #4fc3f7;
+      border: 1px solid #0f3460; border-radius: 4px; padding: 8px;
+      font-family: 'Courier New', monospace; font-size: 10px;
+      resize: vertical; white-space: pre; overflow: auto;
+    }
+    .info { font-size: 11px; color: #666; margin-top: 4px; }
+    .info-highlight { color: #ffd700; }
+    /* 颜色替换 */
+    .color-replace { margin-top: 8px; padding-top: 8px; border-top: 1px solid #0f3460; }
+    .color-replace h3 { font-size: 11px; color: #4fc3f7; margin-bottom: 6px; }
+    .color-row { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; font-size: 10px; }
+    .color-row input[type="color"] { width: 26px; height: 20px; border: none; background: none; cursor: pointer; }
+    .color-row .arrow { color: #ffd700; }
+    .color-row .hex { color: #888; width: 60px; }
+    /* 裁剪信息 */
+    .crop-info {
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      margin-bottom: 8px; font-size: 11px;
+    }
+    .crop-info span { color: #888; }
+    .crop-info .val { color: #ffd700; }
+    .btn-group { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+    .divider { border-top: 1px solid #0f3460; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>Pixel Map Converter - 图片转像素数据</h1>
+
+  <div class="container">
+    <!-- 左侧：源图 + 裁剪 -->
+    <div class="panel" style="max-width:480px">
+      <h2>1. 选择图片</h2>
+      <div class="drop-zone" id="dropZone">
+        <div>拖拽图片到这里，或点击选择文件</div>
+        <p>支持 PNG / JPG / GIF / WebP</p>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+      <div class="info" id="imageInfo">尚未选择图片</div>
+
+      <h2 style="margin-top:12px">2. 裁剪源图</h2>
+      <div class="control-row">
+        <label>比例约束</label>
+        <select id="aspectRatio">
+          <option value="0">自由裁剪</option>
+          <option value="1">1:1 正方形</option>
+          <option value="1.3333">4:3 横屏</option>
+          <option value="0.75">3:4 竖屏</option>
+          <option value="1.7778">16:9 宽屏</option>
+          <option value="0.5625">9:16 手机</option>
+          <option value="custom">自定义...</option>
+        </select>
+      </div>
+      <div class="control-row" id="customRatioRow" style="display:none">
+        <label>自定义 (宽:高)</label>
+        <input type="number" id="customRatioW" value="1" min="1" max="99" style="width:40px">
+        <span style="color:#888">:</span>
+        <input type="number" id="customRatioH" value="1" min="1" max="99" style="width:40px">
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-sm btn-warn" id="autoTrimBtn">自动抠图</button>
+        <button class="btn btn-sm" id="resetCropBtn">重置选区</button>
+        <button class="btn btn-sm" id="selectAllBtn">全选</button>
+      </div>
+      <div class="control-row">
+        <label>抠图阈值 (alpha)</label>
+        <input type="range" id="trimThreshold" min="1" max="254" value="10">
+        <span class="val" id="trimThresholdVal">10</span>
+      </div>
+      <div class="control-row">
+        <label>内缩边距 (px)</label>
+        <input type="range" id="trimPadding" min="0" max="50" value="2">
+        <span class="val" id="trimPaddingVal">2</span>
+      </div>
+      <!-- GIF 帧切换器（仅 GIF 模式可见） -->
+      <div id="gifFrameNav" style="display:none; align-items:center; gap:8px; margin-bottom:6px;">
+        <button class="btn" id="gifPrevFrame" type="button" style="padding:2px 10px">◀</button>
+        <span style="font-size:12px;color:#9aa">帧 <span id="gifFrameLabel">1/1</span></span>
+        <button class="btn" id="gifNextFrame" type="button" style="padding:2px 10px">▶</button>
+        <span style="font-size:11px;color:#6a7" id="gifFrameHint">右侧预览自动循环播放所有帧</span>
+      </div>
+      <div class="crop-area" id="cropArea">
+        <canvas id="cropCanvas" width="400" height="300"></canvas>
+      </div>
+      <!-- 坐标手动输入 -->
+      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px; font-size:12px;">
+        <label style="color:#9aa">X<input type="number" id="cropInputX" style="width:64px; margin-left:4px; padding:2px 4px; background:#16213e; color:#e0e0e0; border:1px solid #2a3a55; border-radius:3px;" min="0"></label>
+        <label style="color:#9aa">Y<input type="number" id="cropInputY" style="width:64px; margin-left:4px; padding:2px 4px; background:#16213e; color:#e0e0e0; border:1px solid #2a3a55; border-radius:3px;" min="0"></label>
+        <label style="color:#9aa">W<input type="number" id="cropInputW" style="width:64px; margin-left:4px; padding:2px 4px; background:#16213e; color:#e0e0e0; border:1px solid #2a3a55; border-radius:3px;" min="1"></label>
+        <label style="color:#9aa">H<input type="number" id="cropInputH" style="width:64px; margin-left:4px; padding:2px 4px; background:#16213e; color:#e0e0e0; border:1px solid #2a3a55; border-radius:3px;" min="1"></label>
+        <button class="btn" id="cropApplyInputs" type="button" style="padding:2px 10px">应用坐标</button>
+      </div>
+      <div class="crop-info" id="cropInfo">
+        <span>选区: <span class="val" id="cropRectText">无</span></span>
+        <span>尺寸: <span class="val" id="cropSizeText">-</span></span>
+      </div>
+      <div class="info" id="cropHint">在图片上拖拽鼠标进行裁剪选区</div>
+    </div>
+
+    <!-- 中间：参数 -->
+    <div class="panel" style="max-width:320px">
+      <h2>3. 转换参数</h2>
+      <div class="controls">
+        <!-- GIF 模式专用：单帧目标宽。隐藏静态 sprite 用的 targetWidth 滑块 -->
+        <div class="control-row" id="perFrameWidthRow" style="display:none">
+          <label>单帧目标宽</label>
+          <input type="range" id="perFrameWidth" min="4" max="128" value="96">
+          <span class="val" id="perFrameWidthVal">96</span>
+        </div>
+        <div class="control-row" id="targetWidthRow">
+          <label>输出像素宽</label>
+          <input type="range" id="targetWidth" min="4" max="4096" value="96">
+          <span class="val" id="targetWidthVal">96</span>
+        </div>
+        <!-- HD 精度方案：PixelMap 96 + displayWidth/Height 在游戏内显示成更小尺寸 -->
+        <div class="control-row">
+          <label>显示宽（游戏内）</label>
+          <input type="number" id="displayWidth" min="1" placeholder="自动" style="width:80px">
+        </div>
+        <div class="control-row">
+          <label>显示高（游戏内）</label>
+          <input type="number" id="displayHeight" min="1" placeholder="自动" style="width:80px">
+        </div>
+        <div class="control-row">
+          <label>颜色数量</label>
+          <input type="range" id="colorCount" min="2" max="64" value="16">
+          <span class="val" id="colorCountVal">16</span>
+        </div>
+        <div class="control-row">
+          <label>透明阈值</label>
+          <input type="range" id="alphaThreshold" min="0" max="255" value="128">
+          <span class="val" id="alphaThresholdVal">128</span>
+        </div>
+        <div class="control-row">
+          <label>去背景 (亮度)</label>
+          <input type="range" id="bgThreshold" min="0" max="255" value="0">
+          <span class="val" id="bgThresholdVal">0</span>
+        </div>
+        <div class="control-row">
+          <label><input type="checkbox" id="outlineMode"> 轮廓模式</label>
+        </div>
+      </div>
+
+      <div style="margin-top:10px">
+        <button class="btn" id="convertBtn">预览</button>
+        <button class="btn" id="resetBtn">全部重置</button>
+      </div>
+
+      <div class="divider"></div>
+      <h2>调色板</h2>
+      <div class="palette-row" id="palette"></div>
+      <div class="info">转换后自动生成</div>
+
+      <div class="color-replace" id="colorReplace" style="display:none">
+        <h3>颜色替换</h3>
+        <div id="colorReplaceList"></div>
+      </div>
+    </div>
+
+    <!-- 右侧：预览 & 输出 -->
+    <div class="panel" style="max-width:400px">
+      <h2>预览</h2>
+      <div class="preview-area">
+        <canvas id="previewCanvas" width="256" height="256"></canvas>
+      </div>
+      <div class="info" id="previewInfo">等待转换...</div>
+
+      <div id="standaloneExport">
+        <h2 style="margin-top:12px">4. 导出</h2>
+        <div class="control-row">
+          <label>变量名</label>
+          <input type="text" id="varName" value="SPRITE">
+        </div>
+        <div>
+          <button class="btn" id="copyBtn">复制代码</button>
+          <button class="btn" id="downloadBtn">下载 .ts</button>
+        </div>
+
+        <h2 style="margin-top:12px">输出代码</h2>
+        <textarea class="output" id="codeOutput" readonly></textarea>
+      </div>
+
+      <!-- 嵌入模式（?embed=1）：素材管理页用 iframe 加载时显示 -->
+      <div id="embedExport" style="display:none; margin-top:12px;">
+        <h2>应用到主题</h2>
+        <div class="info" id="embedInfo">编辑完成后点"应用"返回素材管理页</div>
+        <div style="margin-top:8px">
+          <button class="btn btn-primary" id="embedApplyBtn">✓ 应用</button>
+          <button class="btn" id="embedCancelBtn">✗ 取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========== 元素引用 ==========
+    const $ = id => document.getElementById(id);
+    const dropZone = $('dropZone');
+    const fileInput = $('fileInput');
+    const imageInfo = $('imageInfo');
+    const aspectRatioSel = $('aspectRatio');
+    const customRatioRow = $('customRatioRow');
+    const customRatioW = $('customRatioW');
+    const customRatioH = $('customRatioH');
+    const autoTrimBtn = $('autoTrimBtn');
+    const resetCropBtn = $('resetCropBtn');
+    const selectAllBtn = $('selectAllBtn');
+    const trimThresholdSlider = $('trimThreshold');
+    const trimThresholdVal = $('trimThresholdVal');
+    const trimPaddingSlider = $('trimPadding');
+    const trimPaddingVal = $('trimPaddingVal');
+    const cropCanvas = $('cropCanvas');
+    const cropCtx = cropCanvas.getContext('2d');
+    const cropRectText = $('cropRectText');
+    const cropSizeText = $('cropSizeText');
+    const targetWidthSlider = $('targetWidth');
+    const targetWidthVal = $('targetWidthVal');
+    const targetWidthRow = $('targetWidthRow');
+    const perFrameWidthSlider = $('perFrameWidth');
+    const perFrameWidthVal = $('perFrameWidthVal');
+    const perFrameWidthRow = $('perFrameWidthRow');
+    const gifFrameNav = $('gifFrameNav');
+    const gifFrameLabel = $('gifFrameLabel');
+    const gifPrevFrameBtn = $('gifPrevFrame');
+    const gifNextFrameBtn = $('gifNextFrame');
+    const cropHint = $('cropHint');
+    const cropInputX = $('cropInputX');
+    const cropInputY = $('cropInputY');
+    const cropInputW = $('cropInputW');
+    const cropInputH = $('cropInputH');
+    const cropApplyInputsBtn = $('cropApplyInputs');
+    const displayWidthInput = $('displayWidth');
+    const displayHeightInput = $('displayHeight');
+    const colorCountSlider = $('colorCount');
+    const colorCountVal = $('colorCountVal');
+    const alphaThresholdSlider = $('alphaThreshold');
+    const alphaThresholdVal = $('alphaThresholdVal');
+    const bgThresholdSlider = $('bgThreshold');
+    const bgThresholdVal = $('bgThresholdVal');
+    const outlineMode = $('outlineMode');
+    const convertBtn = $('convertBtn');
+    const resetBtn = $('resetBtn');
+    const previewCanvas = $('previewCanvas');
+    const previewCtx = previewCanvas.getContext('2d');
+    const previewInfo = $('previewInfo');
+    const paletteDiv = $('palette');
+    const codeOutput = $('codeOutput');
+    const copyBtn = $('copyBtn');
+    const downloadBtn = $('downloadBtn');
+    const varNameInput = $('varName');
+
+    // ========== 状态 ==========
+    let sourceImage = null;
+    let sourceImageData = null; // ImageData of full source
+    let currentPixelMap = null;
+    let colorMap = {};
+    // GIF 动画 sprite 元数据（普通图片时三者保持默认值）
+    let gifFrameCount = 1;
+    let gifFrameDurationMs = 100;
+    let gifFrameLoop = true;
+    /** GIF 模式下裁剪区当前显示帧索引；不影响转换（转换始终走全 spritesheet） */
+    let gifCurrentFrame = 0;
+    /** 右侧预览动画 rAF 句柄，切换 sprite 或重置时取消 */
+    let previewAnimRAF = 0;
+    /** 平移选区时记录起点信息 */
+    let moveDragStart = null;
+    /** 四角缩放：当前抓取的角（'nw'|'ne'|'sw'|'se'）或 null */
+    let resizeCorner = null;
+    /** 缩放时的对角锚点（源坐标系）— 缩放始终保持对角不动 */
+    let resizeAnchor = null;
+    /** 角 handle 命中半径（显示坐标系，px）；与渲染时 5px 方块匹配 + 余量 */
+    const CORNER_HIT_PX = 8;
+    /** 选区最小尺寸（较长边），低于此值算法上采样会模糊 */
+    const MIN_CROP_LONG_SIDE = 96;
+
+    // 裁剪选区（源图像素坐标系）
+    let cropRect = null; // { x, y, w, h }
+    // 显示坐标到源图坐标的缩放
+    let displayScale = 1;
+
+    // ========== 滑块联动 ==========
+    const sliderBindings = [
+      [targetWidthSlider, targetWidthVal],
+      [colorCountSlider, colorCountVal],
+      [alphaThresholdSlider, alphaThresholdVal],
+      [bgThresholdSlider, bgThresholdVal],
+      [trimThresholdSlider, trimThresholdVal],
+      [trimPaddingSlider, trimPaddingVal],
+    ];
+    sliderBindings.forEach(([s, v]) => s.oninput = () => v.textContent = s.value);
+
+    // ========== GIF 模式 UI 切换与帧切换 ==========
+    /** 进入/退出 GIF 模式时显示对应控件组 */
+    function setGifModeUI(isGif) {
+      if (isGif) {
+        gifFrameNav.style.display = 'flex';
+        perFrameWidthRow.style.display = 'flex';
+        targetWidthRow.style.display = 'none';
+        cropHint.textContent = 'GIF 模式：选区为单帧坐标，会应用到所有帧（比例约束/拖拽与普通图片一致）';
+      } else {
+        gifFrameNav.style.display = 'none';
+        perFrameWidthRow.style.display = 'none';
+        targetWidthRow.style.display = 'flex';
+        cropHint.textContent = '在图片上拖拽鼠标进行裁剪选区';
+      }
+    }
+
+    function updateGifFrameLabel() {
+      gifFrameLabel.textContent = `${gifCurrentFrame + 1}/${gifFrameCount}`;
+    }
+
+    gifPrevFrameBtn.onclick = () => {
+      if (gifFrameCount <= 1) return;
+      gifCurrentFrame = (gifCurrentFrame - 1 + gifFrameCount) % gifFrameCount;
+      updateGifFrameLabel();
+      renderCropCanvas();
+    };
+    gifNextFrameBtn.onclick = () => {
+      if (gifFrameCount <= 1) return;
+      gifCurrentFrame = (gifCurrentFrame + 1) % gifFrameCount;
+      updateGifFrameLabel();
+      renderCropCanvas();
+    };
+
+    // 选区交互：默认光标 = move（选区内拖拽平移；四角拖拽等比缩放；选区外忽略）
+    cropCanvas.style.cursor = 'move';
+
+    /** 把当前 cropRect 同步到 4 个坐标输入框（防止与用户输入冲突，仅当未聚焦时写回） */
+    function syncCropInputs() {
+      if (!cropRect) return;
+      const dim = getFrameDim();
+      const set = (el, v) => { if (document.activeElement !== el) el.value = v; };
+      set(cropInputX, cropRect.x);
+      set(cropInputY, cropRect.y);
+      set(cropInputW, cropRect.w);
+      set(cropInputH, cropRect.h);
+      // 上限提示（max 属性）
+      cropInputX.max = Math.max(0, dim.w - 1);
+      cropInputY.max = Math.max(0, dim.h - 1);
+      cropInputW.max = dim.w;
+      cropInputH.max = dim.h;
+    }
+
+    cropApplyInputsBtn.onclick = () => {
+      if (!sourceImage) return;
+      const x = parseInt(cropInputX.value) || 0;
+      const y = parseInt(cropInputY.value) || 0;
+      const w = parseInt(cropInputW.value) || 1;
+      const h = parseInt(cropInputH.value) || 1;
+      cropRect = clampCrop(x, y, w, h);
+      renderCropCanvas();
+    };
+    // Enter 触发应用
+    [cropInputX, cropInputY, cropInputW, cropInputH].forEach((el) => {
+      el.onkeydown = (e) => { if (e.key === 'Enter') cropApplyInputsBtn.click(); };
+    });
+
+    /** 单帧目标宽滑块联动：实时算总 tw = 单帧 × frameCount，回写到 targetWidth */
+    perFrameWidthSlider.oninput = () => {
+      const perFrame = parseInt(perFrameWidthSlider.value);
+      perFrameWidthVal.textContent = perFrame;
+      const tw = perFrame * Math.max(1, gifFrameCount);
+      // 确保不超过 slider max（4096）
+      targetWidthSlider.value = Math.min(tw, parseInt(targetWidthSlider.max));
+      targetWidthVal.textContent = targetWidthSlider.value;
+    };
+
+    // ========== 比例约束 ==========
+    aspectRatioSel.onchange = () => {
+      customRatioRow.style.display = aspectRatioSel.value === 'custom' ? 'flex' : 'none';
+    };
+
+    function getAspectRatio() {
+      const v = aspectRatioSel.value;
+      if (v === '0') return 0; // free
+      if (v === 'custom') {
+        const w = parseInt(customRatioW.value) || 1;
+        const h = parseInt(customRatioH.value) || 1;
+        return w / h;
+      }
+      // embed 模式系统预设："preset:W:H" 格式，按 W/H 锁定比例
+      if (typeof v === 'string' && v.startsWith('preset:')) {
+        const [, ws, hs] = v.split(':');
+        const w = parseInt(ws) || 1;
+        const h = parseInt(hs) || 1;
+        return w / h;
+      }
+      return parseFloat(v);
+    }
+
+    // ========== 文件上传 ==========
+    dropZone.onclick = () => fileInput.click();
+    dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add('dragover'); };
+    dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+    dropZone.ondrop = e => {
+      e.preventDefault(); dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) loadImage(e.dataTransfer.files[0]);
+    };
+    fileInput.onchange = e => { if (e.target.files.length) loadImage(e.target.files[0]); };
+
+    function loadImage(file) {
+      // 优先判断 GIF；gifuct 加载完成才走多帧路径，否则退化为单帧
+      if (file.type === 'image/gif' && window.__gifuct && window.__gifuct.ready) {
+        loadGifAsSpritesheet(file);
+        return;
+      }
+      // 普通图片 + 加载失败的 GIF 单帧回退
+      gifFrameCount = 1;
+      gifFrameDurationMs = 100;
+      gifFrameLoop = true;
+      gifCurrentFrame = 0;
+      setGifModeUI(false);
+      stopPreviewAnimation();
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          sourceImage = img;
+          // 读取全图像素数据
+          const tmp = document.createElement('canvas');
+          tmp.width = img.width; tmp.height = img.height;
+          const tctx = tmp.getContext('2d');
+          tctx.drawImage(img, 0, 0);
+          sourceImageData = tctx.getImageData(0, 0, img.width, img.height);
+
+          imageInfo.innerHTML = `已加载: <span class="info-highlight">${img.width} x ${img.height} px</span>`;
+
+          // 自动设置输出宽度：默认 96（HD 精度方案），但不超过源图宽度
+          const autoW = Math.min(96, img.width);
+          targetWidthSlider.value = autoW;
+          targetWidthVal.textContent = autoW;
+
+          // 默认全选
+          cropRect = { x: 0, y: 0, w: img.width, h: img.height };
+          renderCropCanvas();
+          // 选择图片后自动转换一次，立即看到预览效果
+          convert();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    /**
+     * GIF → 横向拼接 spritesheet
+     * 帧序列被绘制到一个宽 = 单帧宽 × N 的 canvas，作为 sourceImage 供后续 convert 处理。
+     * 关键约束：tw 会强制为 frameCount 的倍数，确保单帧宽整除。
+     */
+    async function loadGifAsSpritesheet(file) {
+      try {
+        const buf = await file.arrayBuffer();
+        const gif = window.__gifuct.parseGIF(buf);
+        const frames = window.__gifuct.decompressFrames(gif, true);
+        if (!frames.length) {
+          alert('GIF 无可解码帧');
+          return;
+        }
+        const N = frames.length;
+        const frameW = gif.lsd.width;
+        const frameH = gif.lsd.height;
+
+        // 还原每帧（GIF 帧 patch 是局部，需画到逻辑屏幕坐标）
+        const sheet = document.createElement('canvas');
+        sheet.width = frameW * N;
+        sheet.height = frameH;
+        const sctx = sheet.getContext('2d');
+        sctx.imageSmoothingEnabled = false;
+
+        // 单帧累积合成 canvas（处理 disposalType=0/1 帧间残留）
+        const tmp = document.createElement('canvas');
+        tmp.width = frameW;
+        tmp.height = frameH;
+        const tctx = tmp.getContext('2d');
+
+        let totalDelay = 0, validDelays = 0;
+
+        for (let i = 0; i < N; i++) {
+          const f = frames[i];
+          const patchCanvas = document.createElement('canvas');
+          patchCanvas.width = f.dims.width;
+          patchCanvas.height = f.dims.height;
+          const pctx = patchCanvas.getContext('2d');
+          const patchData = pctx.createImageData(f.dims.width, f.dims.height);
+          patchData.data.set(f.patch);
+          pctx.putImageData(patchData, 0, 0);
+
+          // disposalType=2 (restore to background) 时绘制前清屏
+          if (f.disposalType === 2) {
+            tctx.clearRect(0, 0, frameW, frameH);
+          }
+          tctx.drawImage(patchCanvas, f.dims.left, f.dims.top);
+
+          // 拷贝当前帧到 spritesheet 对应位置
+          sctx.drawImage(tmp, i * frameW, 0);
+
+          // gifuct-js 已将 delay 转换为毫秒
+          if (f.delay > 0) { totalDelay += f.delay; validDelays++; }
+        }
+
+        sourceImage = sheet;
+        sourceImageData = sctx.getImageData(0, 0, sheet.width, sheet.height);
+
+        gifFrameCount = N;
+        gifFrameDurationMs = validDelays > 0 ? Math.round(totalDelay / validDelays) : 100;
+        gifFrameLoop = true;
+        gifCurrentFrame = 0;
+
+        imageInfo.innerHTML = `已加载 GIF: <span class="info-highlight">${frameW}×${frameH} × ${N} 帧 @ ${gifFrameDurationMs}ms</span> → 拼接为 ${sheet.width}×${sheet.height} spritesheet`;
+
+        // 启用 GIF UI（单帧宽滑块、帧切换器）
+        setGifModeUI(true);
+        updateGifFrameLabel();
+
+        // 自动 perFrameWidth：默认 96（HD 精度方案），但不超过单帧源宽
+        const perFrameW = Math.min(96, frameW);
+        perFrameWidthSlider.value = perFrameW;
+        perFrameWidthVal.textContent = perFrameW;
+        const autoW = perFrameW * N;
+        targetWidthSlider.value = Math.min(autoW, parseInt(targetWidthSlider.max));
+        targetWidthVal.textContent = targetWidthSlider.value;
+
+        // GIF 模式 cropRect 使用单帧坐标（默认整帧全选；用户可在 cropCanvas 上拖拽框选）
+        cropRect = { x: 0, y: 0, w: frameW, h: frameH };
+        renderCropCanvas();
+        convert();
+      } catch (e) {
+        console.error('GIF 解析失败', e);
+        alert(`GIF 解析失败：${e && e.message ? e.message : e}`);
+      }
+    }
+
+    // ========== 裁剪画布渲染 ==========
+    function renderCropCanvas() {
+      if (!sourceImage) return;
+      const img = sourceImage;
+
+      // GIF 模式：只渲染当前选中帧；选区为单帧坐标，被应用到所有帧
+      if (gifFrameCount > 1) {
+        const frameW = img.width / gifFrameCount;
+        const frameH = img.height;
+        const maxW = 440, maxH = 360;
+        displayScale = Math.min(maxW / frameW, maxH / frameH, 1);
+        const dw = Math.round(frameW * displayScale);
+        const dh = Math.round(frameH * displayScale);
+        cropCanvas.width = dw;
+        cropCanvas.height = dh;
+        cropCtx.clearRect(0, 0, dw, dh);
+        cropCtx.imageSmoothingEnabled = true;
+        cropCtx.drawImage(img, gifCurrentFrame * frameW, 0, frameW, frameH, 0, 0, dw, dh);
+
+        // 在单帧画布上绘制选区遮罩（用户拖拽 cropRect 是单帧坐标系）
+        if (cropRect) {
+          const sx = cropRect.x * displayScale;
+          const sy = cropRect.y * displayScale;
+          const sw = cropRect.w * displayScale;
+          const sh = cropRect.h * displayScale;
+          cropCtx.fillStyle = 'rgba(0,0,0,0.55)';
+          cropCtx.fillRect(0, 0, dw, sy);
+          cropCtx.fillRect(0, sy + sh, dw, dh - sy - sh);
+          cropCtx.fillRect(0, sy, sx, sh);
+          cropCtx.fillRect(sx + sw, sy, dw - sx - sw, sh);
+          cropCtx.strokeStyle = '#ffd700';
+          cropCtx.lineWidth = 2;
+          cropCtx.setLineDash([4, 3]);
+          cropCtx.strokeRect(sx, sy, sw, sh);
+          cropCtx.setLineDash([]);
+          const cs = 5;
+          cropCtx.fillStyle = '#ffd700';
+          [[sx, sy], [sx + sw - cs, sy], [sx, sy + sh - cs], [sx + sw - cs, sy + sh - cs]]
+            .forEach(([cx, cy]) => cropCtx.fillRect(cx, cy, cs, cs));
+          cropRectText.textContent = `${cropRect.x}, ${cropRect.y} · 帧 ${gifCurrentFrame + 1}/${gifFrameCount}`;
+          cropSizeText.textContent = `${cropRect.w} × ${cropRect.h}（单帧）`;
+        }
+        syncCropInputs();
+        return;
+      }
+
+      // 计算显示缩放，适配容器宽度 440px
+      const maxW = 440, maxH = 360;
+      displayScale = Math.min(maxW / img.width, maxH / img.height, 1);
+      const dw = Math.round(img.width * displayScale);
+      const dh = Math.round(img.height * displayScale);
+      cropCanvas.width = dw;
+      cropCanvas.height = dh;
+
+      // 绘制原图
+      cropCtx.clearRect(0, 0, dw, dh);
+      cropCtx.drawImage(img, 0, 0, dw, dh);
+
+      // 绘制暗化遮罩 + 选区
+      if (cropRect) {
+        const sx = cropRect.x * displayScale;
+        const sy = cropRect.y * displayScale;
+        const sw = cropRect.w * displayScale;
+        const sh = cropRect.h * displayScale;
+
+        // 暗化选区外部
+        cropCtx.fillStyle = 'rgba(0,0,0,0.55)';
+        // 上
+        cropCtx.fillRect(0, 0, dw, sy);
+        // 下
+        cropCtx.fillRect(0, sy + sh, dw, dh - sy - sh);
+        // 左
+        cropCtx.fillRect(0, sy, sx, sh);
+        // 右
+        cropCtx.fillRect(sx + sw, sy, dw - sx - sw, sh);
+
+        // 选区边框
+        cropCtx.strokeStyle = '#ffd700';
+        cropCtx.lineWidth = 2;
+        cropCtx.setLineDash([4, 3]);
+        cropCtx.strokeRect(sx, sy, sw, sh);
+        cropCtx.setLineDash([]);
+
+        // 四角小方块
+        const cs = 5;
+        cropCtx.fillStyle = '#ffd700';
+        [[sx, sy], [sx + sw - cs, sy], [sx, sy + sh - cs], [sx + sw - cs, sy + sh - cs]]
+          .forEach(([cx, cy]) => cropCtx.fillRect(cx, cy, cs, cs));
+
+        // 更新信息
+        cropRectText.textContent = `${cropRect.x}, ${cropRect.y}`;
+        cropSizeText.textContent = `${cropRect.w} x ${cropRect.h}`;
+      }
+      syncCropInputs();
+    }
+
+    // ========== 裁剪拖拽交互 ==========
+    let isDragging = false;
+
+    function displayToSource(dx, dy) {
+      return { x: Math.round(dx / displayScale), y: Math.round(dy / displayScale) };
+    }
+
+    /** 当前模式下的"单帧"尺寸：GIF 用单帧宽高，静态图用整张源图 */
+    function getFrameDim() {
+      if (!sourceImage) return { w: 1, h: 1 };
+      if (gifFrameCount > 1) {
+        return { w: sourceImage.width / gifFrameCount, h: sourceImage.height };
+      }
+      return { w: sourceImage.width, h: sourceImage.height };
+    }
+
+    function clampCrop(x, y, w, h) {
+      if (!sourceImage) return { x, y, w, h };
+      const dim = getFrameDim();
+      x = Math.max(0, Math.round(x));
+      y = Math.max(0, Math.round(y));
+      w = Math.max(1, Math.round(Math.min(w, dim.w - x)));
+      h = Math.max(1, Math.round(Math.min(h, dim.h - y)));
+      return { x, y, w, h };
+    }
+
+    function applyAspectRatio(x, y, w, h) {
+      const ratio = getAspectRatio();
+      if (!ratio) return { x, y, w, h };
+      // 以选区中心为锚点调整
+      const cx = x + w / 2, cy = y + h / 2;
+      if (w / h > ratio) {
+        w = h * ratio;
+      } else {
+        h = w / ratio;
+      }
+      x = cx - w / 2;
+      y = cy - h / 2;
+      return clampCrop(x, y, w, h);
+    }
+
+    /**
+     * 检测显示坐标 (dx, dy) 是否落在 cropRect 某个角的 handle 区域内。
+     * 返回 'nw'|'ne'|'sw'|'se' 或 null。
+     */
+    function detectCornerHit(dx, dy) {
+      if (!cropRect) return null;
+      const sx = cropRect.x * displayScale;
+      const sy = cropRect.y * displayScale;
+      const sw = cropRect.w * displayScale;
+      const sh = cropRect.h * displayScale;
+      const corners = {
+        nw: { x: sx, y: sy },
+        ne: { x: sx + sw, y: sy },
+        sw: { x: sx, y: sy + sh },
+        se: { x: sx + sw, y: sy + sh },
+      };
+      for (const [name, c] of Object.entries(corners)) {
+        if (Math.abs(dx - c.x) <= CORNER_HIT_PX && Math.abs(dy - c.y) <= CORNER_HIT_PX) {
+          return name;
+        }
+      }
+      return null;
+    }
+
+    /** 根据 corner 返回对角的源坐标（缩放时此点不动） */
+    function getOppositeAnchor(corner) {
+      if (!cropRect) return null;
+      const { x, y, w, h } = cropRect;
+      switch (corner) {
+        case 'nw': return { x: x + w, y: y + h };
+        case 'ne': return { x: x,     y: y + h };
+        case 'sw': return { x: x + w, y: y     };
+        case 'se': return { x: x,     y: y     };
+      }
+      return null;
+    }
+
+    function cursorForCorner(corner) {
+      return corner === 'nw' || corner === 'se' ? 'nwse-resize' : 'nesw-resize';
+    }
+
+    /**
+     * 判断显示坐标 (dx, dy) 是否在 cropRect 内部
+     */
+    function pointInCropRect(dx, dy) {
+      if (!cropRect) return false;
+      const sx = cropRect.x * displayScale;
+      const sy = cropRect.y * displayScale;
+      return dx >= sx && dx <= sx + cropRect.w * displayScale
+          && dy >= sy && dy <= sy + cropRect.h * displayScale;
+    }
+
+    cropCanvas.onmousedown = e => {
+      if (!sourceImage || !cropRect) return;
+      const rect = cropCanvas.getBoundingClientRect();
+      const dx = e.clientX - rect.left;
+      const dy = e.clientY - rect.top;
+      const src = displayToSource(dx, dy);
+      // 四角缩放优先
+      const corner = detectCornerHit(dx, dy);
+      if (corner) {
+        resizeCorner = corner;
+        resizeAnchor = getOppositeAnchor(corner);
+        isDragging = true;
+        cropCanvas.style.cursor = cursorForCorner(corner);
+        return;
+      }
+      // 选区内 = 平移；选区外忽略（防止误操作丢失现有选区）
+      if (pointInCropRect(dx, dy)) {
+        moveDragStart = { mouseX: src.x, mouseY: src.y, rectX: cropRect.x, rectY: cropRect.y };
+        isDragging = true;
+        cropCanvas.style.cursor = 'grabbing';
+      }
+    };
+
+    cropCanvas.onmousemove = e => {
+      const rect = cropCanvas.getBoundingClientRect();
+      const dx = e.clientX - rect.left;
+      const dy = e.clientY - rect.top;
+
+      // 未拖拽时按 hover 落点更新光标提示
+      if (!isDragging) {
+        if (cropRect) {
+          const hover = detectCornerHit(dx, dy);
+          if (hover) {
+            cropCanvas.style.cursor = cursorForCorner(hover);
+            return;
+          }
+          cropCanvas.style.cursor = pointInCropRect(dx, dy) ? 'move' : 'default';
+        } else {
+          cropCanvas.style.cursor = 'default';
+        }
+        return;
+      }
+      const cur = displayToSource(dx, dy);
+
+      // 四角等比缩放
+      if (resizeCorner && resizeAnchor) {
+        let newW = Math.abs(cur.x - resizeAnchor.x);
+        let newH = Math.abs(cur.y - resizeAnchor.y);
+        const ratio = getAspectRatio();
+        if (ratio) {
+          // 等比锁定：取主导边保比例
+          if (newW / Math.max(newH, 1) > ratio) {
+            newH = newW / ratio;
+          } else {
+            newW = newH * ratio;
+          }
+        }
+        // 较长边不得小于 MIN_CROP_LONG_SIDE，防止过度缩小导致输出模糊
+        const longSide = Math.max(newW, newH);
+        if (longSide < MIN_CROP_LONG_SIDE) {
+          const scale = MIN_CROP_LONG_SIDE / longSide;
+          newW *= scale;
+          newH *= scale;
+        }
+        // 'w' = 左边在动 → x 跟随；'n' = 上边在动 → y 跟随
+        const newX = resizeCorner.includes('w') ? resizeAnchor.x - newW : resizeAnchor.x;
+        const newY = resizeCorner.includes('n') ? resizeAnchor.y - newH : resizeAnchor.y;
+        cropRect = clampCrop(newX, newY, newW, newH);
+        renderCropCanvas();
+        return;
+      }
+
+      // 平移
+      if (moveDragStart && cropRect) {
+        const nx = moveDragStart.rectX + (cur.x - moveDragStart.mouseX);
+        const ny = moveDragStart.rectY + (cur.y - moveDragStart.mouseY);
+        cropRect = clampCrop(nx, ny, cropRect.w, cropRect.h);
+        renderCropCanvas();
+      }
+    };
+
+    function endCropDrag() {
+      isDragging = false;
+      moveDragStart = null;
+      resizeCorner = null;
+      resizeAnchor = null;
+      cropCanvas.style.cursor = 'move';
+    }
+    cropCanvas.onmouseup = endCropDrag;
+    cropCanvas.onmouseleave = endCropDrag;
+
+    // 触摸支持
+    cropCanvas.ontouchstart = e => {
+      e.preventDefault();
+      const t = e.touches[0];
+      cropCanvas.onmousedown({ clientX: t.clientX, clientY: t.clientY });
+    };
+    cropCanvas.ontouchmove = e => {
+      e.preventDefault();
+      const t = e.touches[0];
+      cropCanvas.onmousemove({ clientX: t.clientX, clientY: t.clientY });
+    };
+    cropCanvas.ontouchend = () => { isDragging = false; };
+
+    // ========== 自动抠图 ==========
+    autoTrimBtn.onclick = () => {
+      if (!sourceImage || !sourceImageData) { alert('请先选择图片！'); return; }
+      const alphaTh = parseInt(trimThresholdSlider.value);
+      const padding = parseInt(trimPaddingSlider.value);
+
+      // GIF 模式：在所有帧中取非透明像素的"并集"边界（用单帧坐标系）
+      let data, w, h, frameXOffset;
+      if (gifFrameCount > 1) {
+        const dim = getFrameDim();
+        w = dim.w; h = dim.h;
+        data = sourceImageData.data;
+        frameXOffset = -1; // 标记为多帧扫描
+      } else {
+        data = sourceImageData.data;
+        w = sourceImage.width;
+        h = sourceImage.height;
+        frameXOffset = 0;
+      }
+
+      let top = h, bottom = 0, left = w, right = 0;
+      const sheetW = sourceImage.width;
+      const scanFrames = gifFrameCount > 1 ? gifFrameCount : 1;
+      const frameSheetW = gifFrameCount > 1 ? sheetW / gifFrameCount : sheetW;
+      for (let f = 0; f < scanFrames; f++) {
+        const xOff = f * frameSheetW;
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const i = (y * sheetW + (xOff + x)) * 4;
+            if (data[i + 3] > alphaTh) {
+              if (y < top) top = y;
+              if (y > bottom) bottom = y;
+              if (x < left) left = x;
+              if (x > right) right = x;
+            }
+          }
+        }
+      }
+      void frameXOffset;
+
+      if (top > bottom || left > right) {
+        alert('未检测到有效内容，请检查抠图阈值');
+        return;
+      }
+
+      // 内缩边距
+      left = Math.max(0, left - padding);
+      top = Math.max(0, top - padding);
+      right = Math.min(w - 1, right + padding);
+      bottom = Math.min(h - 1, bottom + padding);
+
+      let cw = right - left + 1;
+      let ch = bottom - top + 1;
+
+      // 应用比例约束
+      const result = applyAspectRatio(left, top, cw, ch);
+      cropRect = result;
+      renderCropCanvas();
+    };
+
+    // ========== 重置选区 / 全选 ==========
+    resetCropBtn.onclick = () => {
+      if (sourceImage) {
+        const dim = getFrameDim();
+        cropRect = { x: 0, y: 0, w: dim.w, h: dim.h };
+        renderCropCanvas();
+      }
+    };
+
+    selectAllBtn.onclick = () => {
+      if (sourceImage) {
+        const dim = getFrameDim();
+        cropRect = { x: 0, y: 0, w: dim.w, h: dim.h };
+        renderCropCanvas();
+      }
+    };
+
+    // ========== 颜色工具 ==========
+    function rgbToHex(r, g, b) {
+      return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+    }
+    function hexToRgb(hex) {
+      const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+      return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : null;
+    }
+    function colorDistance(c1, c2) {
+      return Math.sqrt((c1.r - c2.r) ** 2 + (c1.g - c2.g) ** 2 + (c1.b - c2.b) ** 2);
+    }
+
+    // ========== 颜色量化 ==========
+    function quantizeColors(pixels, numColors) {
+      if (pixels.length === 0) return [];
+      if (numColors >= pixels.length) return [...new Set(pixels.map(p => rgbToHex(p.r, p.g, p.b)))];
+      let boxes = [pixels.slice()];
+      while (boxes.length < numColors) {
+        let maxRange = -1, maxIdx = 0;
+        for (let i = 0; i < boxes.length; i++) {
+          if (boxes[i].length < 2) continue;
+          const range = getColorRange(boxes[i]);
+          if (range.maxRange > maxRange) { maxRange = range.maxRange; maxIdx = i; }
+        }
+        if (maxRange <= 0) break;
+        const box = boxes[maxIdx];
+        const range = getColorRange(box);
+        box.sort((a, b) => a[range.channel] - b[range.channel]);
+        const mid = Math.floor(box.length / 2);
+        boxes.splice(maxIdx, 1, box.slice(0, mid), box.slice(mid));
+      }
+      return boxes.map(box => {
+        const avg = { r: 0, g: 0, b: 0 };
+        box.forEach(p => { avg.r += p.r; avg.g += p.g; avg.b += p.b; });
+        avg.r = Math.round(avg.r / box.length);
+        avg.g = Math.round(avg.g / box.length);
+        avg.b = Math.round(avg.b / box.length);
+        return rgbToHex(avg.r, avg.g, avg.b);
+      });
+    }
+
+    function getColorRange(pixels) {
+      let rMin = 255, rMax = 0, gMin = 255, gMax = 0, bMin = 255, bMax = 0;
+      pixels.forEach(p => {
+        rMin = Math.min(rMin, p.r); rMax = Math.max(rMax, p.r);
+        gMin = Math.min(gMin, p.g); gMax = Math.max(gMax, p.g);
+        bMin = Math.min(bMin, p.b); bMax = Math.max(bMax, p.b);
+      });
+      const ranges = { r: rMax - rMin, g: gMax - gMin, b: bMax - bMin };
+      const channel = ranges.r >= ranges.g && ranges.r >= ranges.b ? 'r'
+        : ranges.g >= ranges.b ? 'g' : 'b';
+      return { channel, maxRange: ranges[channel] };
+    }
+
+    function findNearestColor(r, g, b, palette) {
+      let minDist = Infinity, nearest = palette[0];
+      for (const hex of palette) {
+        const c = hexToRgb(hex);
+        const d = colorDistance({ r, g, b }, c);
+        if (d < minDist) { minDist = d; nearest = hex; }
+      }
+      return nearest;
+    }
+
+    // ========== 轮廓提取 ==========
+    function extractOutline(data, width, height) {
+      const result = new Uint8ClampedArray(data.length);
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 4;
+          if (data[i + 3] < 128) continue;
+          let isEdge = false;
+          for (const [dx, dy] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || nx >= width || ny < 0 || ny >= height) { isEdge = true; break; }
+            if (data[(ny * width + nx) * 4 + 3] < 128) { isEdge = true; break; }
+          }
+          if (isEdge) {
+            result[i] = data[i]; result[i+1] = data[i+1];
+            result[i+2] = data[i+2]; result[i+3] = 255;
+          }
+        }
+      }
+      return result;
+    }
+
+    // ========== 主转换 ==========
+    function convert() {
+      if (!sourceImage) { alert('请先选择一张图片！'); return; }
+      if (!cropRect) { alert('请先在源图上选择裁剪区域！'); return; }
+
+      let tw = parseInt(targetWidthSlider.value);
+      // GIF spritesheet 模式：强制 tw 是 frameCount 的整数倍，保证单帧宽对齐
+      if (gifFrameCount > 1 && tw % gifFrameCount !== 0) {
+        tw = Math.max(gifFrameCount, Math.round(tw / gifFrameCount) * gifFrameCount);
+        targetWidthSlider.value = tw;
+        targetWidthVal.textContent = tw;
+      }
+      const numColors = parseInt(colorCountSlider.value);
+      const alphaThresh = parseInt(alphaThresholdSlider.value);
+      const bgThresh = parseInt(bgThresholdSlider.value);
+      const isOutline = outlineMode.checked;
+      const cr = cropRect;
+
+      // 计算目标高度（基于裁剪区域比例）
+      const cropRatio = cr.h / cr.w;
+
+      // 离屏 canvas
+      const offscreen = document.createElement('canvas');
+      const ctx = offscreen.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'medium';
+
+      let th;
+      if (gifFrameCount > 1) {
+        // GIF：cr 是单帧坐标，遍历所有帧把对应区域拼成新 spritesheet
+        const sheetFrameW = sourceImage.width / gifFrameCount;
+        const perFrameTw = tw / gifFrameCount;
+        const perFrameTh = Math.max(1, Math.round(perFrameTw * cropRatio));
+        th = perFrameTh;
+        offscreen.width = tw;
+        offscreen.height = th;
+        for (let i = 0; i < gifFrameCount; i++) {
+          ctx.drawImage(
+            sourceImage,
+            i * sheetFrameW + cr.x, cr.y, cr.w, cr.h,
+            i * perFrameTw, 0, perFrameTw, perFrameTh
+          );
+        }
+      } else {
+        // 静态图：原路径，cr 即源图坐标
+        th = Math.max(1, Math.round(tw * cropRatio));
+        offscreen.width = tw;
+        offscreen.height = th;
+        ctx.drawImage(sourceImage, cr.x, cr.y, cr.w, cr.h, 0, 0, tw, th);
+      }
+
+      const imageData = ctx.getImageData(0, 0, tw, th);
+      const data = imageData.data;
+
+      if (isOutline) {
+        const outlined = extractOutline(data, tw, th);
+        for (let i = 0; i < data.length; i++) data[i] = outlined[i];
+      }
+
+      // 收集有效像素
+      const opaquePixels = [];
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+        if (a < alphaThresh) continue;
+        if (bgThresh > 0 && r > bgThresh && g > bgThresh && b > bgThresh) continue;
+        opaquePixels.push({ r, g, b });
+      }
+
+      const palette = quantizeColors(opaquePixels, numColors);
+      const finalPalette = palette.map(hex => colorMap[hex] || hex);
+
+      // 构建像素矩阵
+      const pixelMap = [];
+      for (let y = 0; y < th; y++) {
+        const row = [];
+        for (let x = 0; x < tw; x++) {
+          const i = (y * tw + x) * 4;
+          const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+          if (a < alphaThresh || (bgThresh > 0 && r > bgThresh && g > bgThresh && b > bgThresh)) {
+            row.push(0);
+          } else {
+            const original = findNearestColor(r, g, b, palette);
+            row.push(colorMap[original] || original);
+          }
+        }
+        pixelMap.push(row);
+      }
+
+      currentPixelMap = pixelMap;
+      renderPreview(pixelMap, tw, th);
+      renderPalette(finalPalette);
+      renderColorReplace(palette);
+      generateCode(pixelMap);
+      const animSuffix = gifFrameCount > 1
+        ? ` | 动画 ${gifFrameCount} 帧 @ ${gifFrameDurationMs}ms（单帧 ${tw / gifFrameCount}px）`
+        : '';
+      previewInfo.textContent = `${tw} x ${th} px | ${finalPalette.length} 色 | 裁剪区域 ${cr.w}x${cr.h}${animSuffix}`;
+    }
+
+    function renderPreview(pixelMap, tw, th) {
+      // 中断进行中的动画循环（即将重新调度或仅静态绘制）
+      stopPreviewAnimation();
+
+      // GIF 动画 sprite：拼帧后 tw 是整个 spritesheet 宽，按单帧 frameW 渲染并按 frameDurationMs 循环
+      if (gifFrameCount > 1) {
+        const frameW = Math.floor(tw / gifFrameCount);
+        const baseScale = Math.max(1, Math.min(Math.floor(300 / Math.max(frameW, th)), 12));
+        previewCanvas.width = frameW * baseScale;
+        previewCanvas.height = th * baseScale;
+        previewCtx.imageSmoothingEnabled = false;
+        const drawFrame = (idx) => {
+          previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+          const xOffset = idx * frameW;
+          for (let y = 0; y < th; y++) {
+            const row = pixelMap[y];
+            if (!row) continue;
+            for (let x = 0; x < frameW; x++) {
+              const c = row[xOffset + x];
+              if (c) {
+                previewCtx.fillStyle = c;
+                previewCtx.fillRect(x * baseScale, y * baseScale, baseScale, baseScale);
+              }
+            }
+          }
+        };
+        let idx = 0;
+        let lastTick = performance.now();
+        drawFrame(idx);
+        const dur = gifFrameDurationMs > 0 ? gifFrameDurationMs : 100;
+        const tick = (now) => {
+          if (now - lastTick >= dur) {
+            idx = (idx + 1) % gifFrameCount;
+            drawFrame(idx);
+            lastTick = now;
+          }
+          previewAnimRAF = requestAnimationFrame(tick);
+        };
+        previewAnimRAF = requestAnimationFrame(tick);
+        return;
+      }
+
+      // 静态 sprite：原全图绘制
+      const scale = Math.max(1, Math.min(Math.floor(300 / Math.max(tw, th)), 12));
+      previewCanvas.width = tw * scale;
+      previewCanvas.height = th * scale;
+      previewCtx.imageSmoothingEnabled = false;
+      previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      for (let y = 0; y < th; y++) {
+        for (let x = 0; x < tw; x++) {
+          if (pixelMap[y][x]) {
+            previewCtx.fillStyle = pixelMap[y][x];
+            previewCtx.fillRect(x * scale, y * scale, scale, scale);
+          }
+        }
+      }
+    }
+
+    function stopPreviewAnimation() {
+      if (previewAnimRAF) {
+        cancelAnimationFrame(previewAnimRAF);
+        previewAnimRAF = 0;
+      }
+    }
+
+    function renderPalette(palette) {
+      paletteDiv.innerHTML = '';
+      palette.forEach(hex => {
+        const d = document.createElement('div');
+        d.className = 'palette-swatch';
+        d.style.background = hex;
+        d.title = hex;
+        paletteDiv.appendChild(d);
+      });
+    }
+
+    function renderColorReplace(palette) {
+      const container = $('colorReplaceList');
+      const wrapper = $('colorReplace');
+      container.innerHTML = '';
+      palette.forEach(originalHex => {
+        const row = document.createElement('div');
+        row.className = 'color-row';
+        const swatch = document.createElement('input');
+        swatch.type = 'color';
+        swatch.value = colorMap[originalHex] || originalHex;
+        const hexLabel = document.createElement('span');
+        hexLabel.className = 'hex';
+        hexLabel.textContent = originalHex;
+        const arrow = document.createElement('span');
+        arrow.className = 'arrow';
+        arrow.textContent = '→';
+        const resultLabel = document.createElement('span');
+        resultLabel.className = 'hex';
+        resultLabel.textContent = swatch.value;
+        swatch.oninput = () => {
+          if (swatch.value === originalHex) delete colorMap[originalHex];
+          else colorMap[originalHex] = swatch.value;
+          resultLabel.textContent = swatch.value;
+          convert();
+        };
+        row.append(swatch, hexLabel, arrow, resultLabel);
+        container.appendChild(row);
+      });
+      wrapper.style.display = 'block';
+    }
+
+    function generateCode(pixelMap) {
+      const name = varNameInput.value.trim() || 'SPRITE';
+      const lines = pixelMap.map(row => {
+        const cells = row.map(c => c ? `'${c}'` : '0');
+        return '  [' + cells.join(', ') + ']';
+      });
+      // GIF 动画 sprite：在 TS 代码顶部加帧元信息注释，便于使用方手动写入 SpriteJson
+      const animHeader = gifFrameCount > 1
+        ? `// 动画 sprite — frameCount: ${gifFrameCount}, frameDurationMs: ${gifFrameDurationMs}, frameLoop: ${gifFrameLoop}\n`
+        : '';
+      // HD 精度方案：用户填了显示尺寸时输出提示，方便手动写入 SpriteJson.displayWidth/Height
+      const dw = parseInt(displayWidthInput.value, 10);
+      const dh = parseInt(displayHeightInput.value, 10);
+      const displayHeader = (dw > 0 || dh > 0)
+        ? `// 显示尺寸 — displayWidth: ${dw > 0 ? dw : '(缺省)'}, displayHeight: ${dh > 0 ? dh : '(缺省)'}\n`
+        : '';
+      codeOutput.value = `${animHeader}${displayHeader}export const ${name}: PixelMap = [\n${lines.join(',\n')}\n];\n`;
+    }
+
+    // ========== 按钮事件 ==========
+    convertBtn.onclick = convert;
+
+    resetBtn.onclick = () => {
+      sourceImage = null; sourceImageData = null; currentPixelMap = null; colorMap = {};
+      cropRect = null;
+      gifFrameCount = 1; gifFrameDurationMs = 100; gifFrameLoop = true; gifCurrentFrame = 0;
+      setGifModeUI(false);
+      stopPreviewAnimation();
+      imageInfo.textContent = '尚未选择图片';
+      codeOutput.value = '';
+      paletteDiv.innerHTML = '';
+      $('colorReplace').style.display = 'none';
+      previewInfo.textContent = '等待转换...';
+      previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+      cropRectText.textContent = '无'; cropSizeText.textContent = '-';
+      displayWidthInput.value = '';
+      displayHeightInput.value = '';
+      fileInput.value = '';
+    };
+
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(codeOutput.value).then(() => {
+        copyBtn.textContent = '已复制!';
+        setTimeout(() => copyBtn.textContent = '复制代码', 1500);
+      });
+    };
+
+    downloadBtn.onclick = () => {
+      const name = varNameInput.value.trim() || 'sprite';
+      const blob = new Blob([codeOutput.value], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${name}.ts`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+
+    varNameInput.oninput = () => { if (currentPixelMap) generateCode(currentPixelMap); };
+    displayWidthInput.oninput = () => { if (currentPixelMap) generateCode(currentPixelMap); };
+    displayHeightInput.oninput = () => { if (currentPixelMap) generateCode(currentPixelMap); };
+
+    // ========== 嵌入模式（素材管理页通过 iframe + postMessage 通信） ==========
+    const EMBED_MODE = new URLSearchParams(location.search).get('embed') === '1';
+    if (EMBED_MODE) {
+      $('standaloneExport').style.display = 'none';
+      $('embedExport').style.display = 'block';
+      const embedInfo = $('embedInfo');
+      const params = new URLSearchParams(location.search);
+      const spriteName = params.get('sprite') || '';
+      const spriteLabel = params.get('label') || '';
+      if (spriteName) {
+        const display = spriteLabel ? `${spriteName}（${spriteLabel}）` : spriteName;
+        // 替换页面标题，让正在编辑的素材一目了然
+        document.title = `编辑 ${display} - Pixel Map Converter`;
+        document.querySelector('h1').textContent = `正在编辑：${display}`;
+        embedInfo.textContent = `编辑完成后点"应用"将更新主题中的 ${spriteName}`;
+      }
+
+      // 接收宿主页推送的初始 PixelMap：渲染到右侧预览
+      window.addEventListener('message', (ev) => {
+        if (ev.origin !== location.origin) return;
+        const msg = ev.data;
+        if (msg && msg.type === 'init' && Array.isArray(msg.pixels) && msg.pixels.length) {
+          currentPixelMap = msg.pixels;
+          const th = msg.pixels.length;
+          const tw = msg.pixels[0].length;
+          // 透传宿主侧记录的动画元数据，便于用户点 apply 时把旧值带回去
+          if (typeof msg.frameCount === 'number' && msg.frameCount > 1) {
+            gifFrameCount = msg.frameCount;
+            gifFrameDurationMs = typeof msg.frameDurationMs === 'number' ? msg.frameDurationMs : 100;
+            gifFrameLoop = msg.frameLoop !== false;
+            gifCurrentFrame = 0;
+            // 启用 GIF UI 以便用户调整单帧宽 / 切换帧；右侧预览将循环播放
+            setGifModeUI(true);
+            updateGifFrameLabel();
+          } else {
+            gifFrameCount = 1;
+            setGifModeUI(false);
+          }
+          // 系统预设（HD 精度方案）：插入"系统预设 W:H"选项 + 锁定比例 + 预填显示尺寸
+          // 防止美术误产出"无法在游戏内正常工作"的 sprite（如老鼠 GIF 转出来 96×64 但碰撞 16）
+          const presetW = typeof msg.presetDisplayWidth === 'number' && msg.presetDisplayWidth > 0
+            ? msg.presetDisplayWidth : null;
+          const presetH = typeof msg.presetDisplayHeight === 'number' && msg.presetDisplayHeight > 0
+            ? msg.presetDisplayHeight : null;
+          if (presetW && presetH) {
+            // 强制锁定为系统预设比例：移除其他选项 + 禁用下拉框
+            // 防止美术误产出"水平细长的老鼠"这类无法在游戏内正常工作的 sprite
+            while (aspectRatioSel.firstChild) aspectRatioSel.removeChild(aspectRatioSel.firstChild);
+            const opt = document.createElement('option');
+            opt.value = `preset:${presetW}:${presetH}`;
+            opt.textContent = `系统预设 (${presetW}:${presetH}) — 锁定`;
+            aspectRatioSel.appendChild(opt);
+            aspectRatioSel.value = opt.value;
+            aspectRatioSel.disabled = true;
+            aspectRatioSel.title = 'embed 模式下比例锁定为系统预设，确保 sprite 能在游戏内正常工作';
+            customRatioRow.style.display = 'none';
+          }
+          // 透传宿主侧记录的显示尺寸；若 sprite 自身没有，则用 preset 兜底预填
+          if (typeof msg.displayWidth === 'number' && msg.displayWidth > 0) {
+            displayWidthInput.value = msg.displayWidth;
+          } else if (presetW) {
+            displayWidthInput.value = presetW;
+          } else {
+            displayWidthInput.value = '';
+          }
+          if (typeof msg.displayHeight === 'number' && msg.displayHeight > 0) {
+            displayHeightInput.value = msg.displayHeight;
+          } else if (presetH) {
+            displayHeightInput.value = presetH;
+          } else {
+            displayHeightInput.value = '';
+          }
+          renderPreview(currentPixelMap, tw, th);
+          const animSuffix = gifFrameCount > 1
+            ? `，动画 ${gifFrameCount} 帧 @ ${gifFrameDurationMs}ms`
+            : '';
+          const dispSuffix = (displayWidthInput.value || displayHeightInput.value)
+            ? `，显示 ${displayWidthInput.value || '?'}×${displayHeightInput.value || '?'}`
+            : '';
+          previewInfo.textContent = `当前内容：${tw}×${th}（上传新图后将自动转换覆盖）${animSuffix}${dispSuffix}`;
+        }
+      });
+
+      $('embedApplyBtn').onclick = () => {
+        // "应用"工作流：先转换（基于最新参数 + 选区），再 postMessage apply
+        // 用户不需要先点"预览"再点"应用"两步；如果有源图就走一次 convert
+        if (sourceImage) {
+          convert();
+        }
+        if (!currentPixelMap) {
+          alert('请先上传图片');
+          return;
+        }
+        // apply 消息带帧元信息 + 显示尺寸；缺省字段省略以保持向后兼容
+        const payload = {
+          type: 'apply',
+          pixels: currentPixelMap,
+          sprite: spriteName,
+        };
+        if (gifFrameCount > 1) {
+          payload.frameCount = gifFrameCount;
+          payload.frameDurationMs = gifFrameDurationMs;
+          payload.frameLoop = gifFrameLoop;
+        }
+        const dw = parseInt(displayWidthInput.value, 10);
+        const dh = parseInt(displayHeightInput.value, 10);
+        if (dw > 0) payload.displayWidth = dw;
+        if (dh > 0) payload.displayHeight = dh;
+        parent.postMessage(payload, location.origin);
+      };
+
+      $('embedCancelBtn').onclick = () => {
+        parent.postMessage({ type: 'cancel' }, location.origin);
+      };
+
+      // 通知宿主页 iframe 已就绪
+      parent.postMessage({ type: 'ready' }, location.origin);
+    }
+  </script>
+</body>
+</html>

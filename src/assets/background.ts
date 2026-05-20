@@ -7,6 +7,51 @@
 
 import type { Renderer } from '../core/Renderer';
 import type { BackgroundColors } from './theme/types';
+import { ChapterId } from '../level/levels';
+
+/**
+ * 章节色板覆盖表
+ *  - Ch1 水晶矿坑：保留主题基础色（贴近经典矿坑感）
+ *  - Ch2 蟹潮海湾：深蓝磷光海底调
+ *  - Ch3 猪猪王座：粉白宫殿萌系调
+ * 详见 docs/design/20260519_chapter-system.md §三
+ */
+const CHAPTER_COLOR_OVERRIDES: Record<ChapterId, Partial<BackgroundColors> | null> = {
+  [ChapterId.CRYSTAL_MINE]: null, // 保持主题原色
+  [ChapterId.CRAB_BAY]: {
+    skyTop: '#0D1F35',
+    skyBottom: '#1E3A5F',
+    groundColor: '#1A3550',
+    groundDark: '#0F2440',
+    groundLight: '#5AA5CC',
+    dirtLight: '#2A5470',
+    dirtMid: '#3A7090',
+    dirtDark: '#0E2540',
+    rockColor: '#5AA5CC',
+    rockDark: '#2A5070',
+  },
+  [ChapterId.PIGGY_THRONE]: {
+    skyTop: '#FFE5F0',
+    skyBottom: '#FFB6E5',
+    groundColor: '#D87FAF',
+    groundDark: '#B85F8F',
+    groundLight: '#FFD0E5',
+    dirtLight: '#FFD0E5',
+    dirtMid: '#FFA0CC',
+    dirtDark: '#A87090',
+    rockColor: '#FFC0DC',
+    rockDark: '#8F6080',
+  },
+};
+
+/**
+ * 根据章节叠加色板覆盖，返回实际渲染使用的颜色集
+ * Ch1 直接返回基础色，Ch2/Ch3 覆盖关键色字段
+ */
+export function getChapterBackgroundColors(chapter: ChapterId, base: BackgroundColors): BackgroundColors {
+  const override = CHAPTER_COLOR_OVERRIDES[chapter];
+  return override ? { ...base, ...override } : base;
+}
 
 /** 地表 Y 坐标（下移给天空更大空间） */
 export const GROUND_Y = 140;

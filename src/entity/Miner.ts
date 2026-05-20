@@ -5,6 +5,10 @@
 
 import type { Renderer } from '../core/Renderer';
 import type { SpriteCacheMap } from '../assets/types';
+import { getSpriteFrame, type SpriteAnimationMeta } from '../assets/animation';
+
+/** 查询 sprite 动画元数据的回调（缺省/静态 sprite 返回 undefined） */
+export type SpriteMetaProvider = (name: string) => SpriteAnimationMeta | undefined;
 
 /** 矿工动画状态 */
 export enum MinerState {
@@ -12,6 +16,8 @@ export enum MinerState {
   PULL = 'PULL',
   HAPPY = 'HAPPY',
   SAD = 'SAD',
+  /** 拉重物用力态（Phase F #15）：涨红脸 + 咬牙，由 GameScene 按 hook.grabbedMineral.weight 阈值切换 */
+  STRAIN = 'STRAIN',
 }
 
 /** 矿工状态到精灵名称映射 */
@@ -20,6 +26,7 @@ const STATE_SPRITE_MAP: Record<MinerState, string> = {
   [MinerState.PULL]: 'MINER_PULL',
   [MinerState.HAPPY]: 'MINER_HAPPY',
   [MinerState.SAD]: 'MINER_SAD',
+  [MinerState.STRAIN]: 'MINER_STRAIN',
 };
 
 export class Miner {
@@ -28,19 +35,26 @@ export class Miner {
   state: MinerState = MinerState.IDLE;
   /** 精灵缓存引用 */
   private spriteCache: SpriteCacheMap;
+  /** sprite 动画元数据查询函数（无则视为全部静态） */
+  private metaProvider?: SpriteMetaProvider;
 
   /** 状态恢复计时器 */
   private stateTimer: number = 0;
   /** 状态恢复阈值（秒） */
   private static readonly STATE_RESET_TIME = 1.5;
 
-  constructor(x: number, y: number, spriteCache: SpriteCacheMap) {
+  constructor(x: number, y: number, spriteCache: SpriteCacheMap, metaProvider?: SpriteMetaProvider) {
     this.x = x;
     this.y = y;
     this.spriteCache = spriteCache;
+    this.metaProvider = metaProvider;
   }
 
-  /** 切换到临时状态（HAPPY/SAD 会自动恢复为 IDLE） */
+  /**
+   * 切换状态
+   * - HAPPY / SAD：临时态，1.5s 后自动回 IDLE
+   * - STRAIN / PULL / IDLE：持续态，由调用方控制何时退出
+   */
   setState(state: MinerState): void {
     this.state = state;
     if (state === MinerState.HAPPY || state === MinerState.SAD) {
@@ -63,9 +77,19 @@ export class Miner {
   render(renderer: Renderer): void {
     const spriteName = STATE_SPRITE_MAP[this.state];
     const sprite = this.spriteCache.get(spriteName);
-    if (sprite) {
-      // 精灵尺寸 16x16，缩放 2x 后为 32x32，以矿工位置为中心
-      renderer.drawImage(sprite, this.x - sprite.width / 2, this.y - sprite.height / 2);
-    }
+    if (!sprite) return;
+    const meta = this.metaProvider?.(spriteName);
+    const f = getSpriteFrame(sprite, meta, performance.now());
+    renderer.drawImageSlice(
+      sprite,
+      f.sx,
+      f.sy,
+      f.sw,
+      f.sh,
+      this.x - f.dw / 2,
+      this.y - f.dh / 2,
+      f.dw,
+      f.dh
+    );
   }
 }

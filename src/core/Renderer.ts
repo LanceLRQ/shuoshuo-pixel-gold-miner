@@ -86,6 +86,21 @@ export class Renderer {
     }
   }
 
+  /** 绘制图像切片（用于 spritesheet 动画帧） */
+  drawImageSlice(
+    image: HTMLCanvasElement | HTMLImageElement,
+    sx: number,
+    sy: number,
+    sw: number,
+    sh: number,
+    dx: number,
+    dy: number,
+    dw?: number,
+    dh?: number
+  ): void {
+    this.ctx.drawImage(image, sx, sy, sw, sh, dx, dy, dw ?? sw, dh ?? sh);
+  }
+
   /** 绘制文本 */
   fillText(text: string, x: number, y: number, color: string, font: string = '16px monospace'): void {
     this.ctx.fillStyle = color;

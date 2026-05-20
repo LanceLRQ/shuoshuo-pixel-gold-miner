@@ -10,19 +10,27 @@ import type { Game } from '../core/Game';
 import { GameState } from '../core/Game';
 import { drawTextCentered } from '../ui/PixelText';
 import { Button } from '../ui/Button';
+import { isEndlessLevel, TOTAL_LEVELS } from '../level/levels';
 
 export class GameOverScene extends SceneBase {
   private game: Game;
   private score: number;
-  private level: number;
   private button: Button;
+  /** 标题文案：无尽模式失败用"无尽挑战结束"（constructor 一次性算，避免 render 重复构造字符串） */
+  private readonly title: string;
+  /** 关卡显示文案：无尽模式显示"坚持到无尽第 N 关"，普通显示"到达关卡: 第 N 关" */
+  private readonly levelText: string;
 
   constructor(game: Game, score: number, level: number) {
     super();
     this.game = game;
     this.score = score;
-    this.level = level;
     this.button = new Button(330, 400, 140, 44, '重新开始');
+    const endless = isEndlessLevel(level);
+    this.title = endless ? '无尽挑战结束' : '游戏结束';
+    this.levelText = endless
+      ? `坚持到无尽第 ${level - TOTAL_LEVELS} 关`
+      : `到达关卡: 第 ${level} 关`;
   }
 
   enter(): void {}
@@ -47,14 +55,10 @@ export class GameOverScene extends SceneBase {
   render(renderer: Renderer): void {
     renderer.clear('#1a1a2e');
 
-    // 标题
-    drawTextCentered(renderer, '游戏结束', 80, '#FF4444', 'TITLE');
-
-    // 最终得分
+    // 标题 + 关卡显示（文案在 constructor 已算好，render 直读字段）
+    drawTextCentered(renderer, this.title, 80, '#FF4444', 'TITLE');
     drawTextCentered(renderer, `最终得分: $${this.score}`, 180, '#FFD700', 'LARGE');
-
-    // 到达关卡
-    drawTextCentered(renderer, `到达关卡: 第 ${this.level} 关`, 240, '#AAAAAA', 'MEDIUM');
+    drawTextCentered(renderer, this.levelText, 240, '#AAAAAA', 'MEDIUM');
 
     // 最高分
     const highScore = this.game.getStorage().getHighScore();
