@@ -27,7 +27,16 @@ export interface MineralConfig {
   type: MineralType;
   value: number;
   weight: number;
+  /** 圆形碰撞半径（向后兼容，所有矿物必填） */
   radius: number;
+  /**
+   * 椭圆碰撞水平半径（可选）。
+   * 设置后碰撞从圆形升级为椭圆，水平/垂直独立。
+   * 用于横向 sprite（如老鼠、鼹鼠），让水平 hitbox 与 sprite 视觉宽对齐。
+   */
+  radiusX?: number;
+  /** 椭圆碰撞垂直半径（可选，与 radiusX 配对使用） */
+  radiusY?: number;
   spriteName: string;
   width: number;
   height: number;
@@ -114,6 +123,9 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
     value: 20,
     weight: 0.3,
     radius: 16,
+    // 老鼠 sprite 36×24（横向），用椭圆让水平 hitbox 略超 sprite 宽便于抓头/尾
+    radiusX: 22,
+    radiusY: 14,
     spriteName: 'MOUSE_SPRITE',
     width: 12,
     height: 8,
@@ -124,6 +136,9 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
     value: 50,
     weight: 0.5,
     radius: 20,
+    // 鼹鼠 sprite 36×30（横向但较高），椭圆水平略宽
+    radiusX: 22,
+    radiusY: 17,
     spriteName: 'MOLE_SPRITE',
     width: 12,
     height: 10,

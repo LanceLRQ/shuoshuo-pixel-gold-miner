@@ -9,7 +9,7 @@ import { getSpriteFrame } from '../assets/animation';
 import type { SpriteMetaProvider } from './Miner';
 import type { Mineral } from './Mineral';
 import { GAME_CONFIG, MineralType } from './types';
-import { pointInCircle } from '../utils/collision';
+import { pointInCircle, pointInEllipse } from '../utils/collision';
 
 /** 摇晃饮料单次微调步长（弧度，约 2.86°） */
 const SHAKE_ANGLE_STEP = 0.05;
@@ -239,8 +239,12 @@ export class Hook {
 
     for (const mineral of minerals) {
       if (mineral.grabbed) continue;
-      // 碰撞判定: 钩爪尖端到矿物中心距离 < 矿物碰撞半径
-      if (pointInCircle(this.tipX, this.tipY, mineral.x, mineral.y, mineral.radius)) {
+      // 碰撞判定：椭圆（radiusX/radiusY 配置时）或圆形（fallback）
+      const cfg = mineral.config;
+      const hit = cfg.radiusX !== undefined && cfg.radiusY !== undefined
+        ? pointInEllipse(this.tipX, this.tipY, mineral.x, mineral.y, cfg.radiusX, cfg.radiusY)
+        : pointInCircle(this.tipX, this.tipY, mineral.x, mineral.y, mineral.radius);
+      if (hit) {
         // 炸药桶：碰到立即爆炸，不拉回
         if (mineral.config.type === MineralType.BOMB) {
           mineral.grabbed = true;
