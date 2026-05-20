@@ -18,12 +18,12 @@ export interface SpriteDisplayPreset {
 export const SPRITE_DEFAULT_DISPLAY: Record<string, SpriteDisplayPreset> = {
   // 矿物（来自 MineralConfig.width/height × 3）
   GOLD_SMALL:         { displayWidth: 24, displayHeight: 24 },
-  GOLD_MEDIUM:        { displayWidth: 36, displayHeight: 36 },
-  GOLD_LARGE:         { displayWidth: 48, displayHeight: 48 },
+  GOLD_MEDIUM:        { displayWidth: 40, displayHeight: 40 },
+  GOLD_LARGE:         { displayWidth: 60, displayHeight: 60 },
   DIAMOND_SPRITE:     { displayWidth: 24, displayHeight: 24 },
   STONE_SMALL_SPRITE: { displayWidth: 24, displayHeight: 24 },
-  STONE_SPRITE:       { displayWidth: 36, displayHeight: 36 },
-  STONE_LARGE_SPRITE: { displayWidth: 48, displayHeight: 48 },
+  STONE_SPRITE:       { displayWidth: 40, displayHeight: 40 },
+  STONE_LARGE_SPRITE: { displayWidth: 60, displayHeight: 60 },
   BOMB_SPRITE:        { displayWidth: 24, displayHeight: 24 },
   MYSTERY_BAG:        { displayWidth: 24, displayHeight: 24 },
   WOODEN_BOX_SPRITE:  { displayWidth: 24, displayHeight: 24 },

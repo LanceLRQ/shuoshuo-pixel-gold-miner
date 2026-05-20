@@ -60,7 +60,7 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
     value: 250,
     // 中金块比小金块明显沉一些（拉满更慢），玩家瞄准前需思考成本
     weight: 0.9,
-    radius: 26,
+    radius: 30,
     spriteName: 'GOLD_MEDIUM',
     width: 12,
     height: 12,
@@ -70,7 +70,7 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
     value: 500,
     // 大金疙瘩超沉 — 比大石头(1.5)还重，体现"高风险高收益"的金块梯度
     weight: 1.8,
-    radius: 32,
+    radius: 42,
     spriteName: 'GOLD_LARGE',
     width: 16,
     height: 16,
@@ -206,8 +206,8 @@ export interface StoneVariant {
 
 export const STONE_VARIANTS: readonly StoneVariant[] = [
   { spriteName: 'STONE_SMALL_SPRITE', valueRange: [5, 10],  radius: 20, weight: 0.5 },
-  { spriteName: 'STONE_SPRITE',       valueRange: [10, 20], radius: 28, weight: 0.3 },
-  { spriteName: 'STONE_LARGE_SPRITE', valueRange: [25, 45], radius: 36, weight: 0.2 },
+  { spriteName: 'STONE_SPRITE',       valueRange: [10, 20], radius: 30, weight: 0.3 },
+  { spriteName: 'STONE_LARGE_SPRITE', valueRange: [25, 45], radius: 42, weight: 0.2 },
 ];
 
 /** 游戏数值配置常量（横屏 800x540 布局） */

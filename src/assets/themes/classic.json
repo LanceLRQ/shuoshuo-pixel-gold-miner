@@ -623,8 +623,8 @@
         "...................................GCCCCCCCCCCCCCCCCCCCCCGGGGGGG................................",
         "....................................GCCCCCCCCCCCCCCGGGGGG......................................."
       ],
-      "displayWidth": 36,
-      "displayHeight": 36
+      "displayWidth": 40,
+      "displayHeight": 40
     },
     "GOLD_LARGE": {
       "scale": 1,
@@ -735,8 +735,8 @@
         "...................................GCCCCCCCCCCCCCCCCCCCCCGGGGGGG................................",
         "....................................GCCCCCCCCCCCCCCGGGGGG......................................."
       ],
-      "displayWidth": 48,
-      "displayHeight": 48
+      "displayWidth": 60,
+      "displayHeight": 60
     },
     "DIAMOND_SPRITE": {
       "scale": 1,
@@ -958,8 +958,8 @@
         "..............................FEAAAAAAAAAEF.................FFEEEFF.............................",
         "...............................FEAAAAAAAEF....................FFF..............................."
       ],
-      "displayWidth": 36,
-      "displayHeight": 36
+      "displayWidth": 40,
+      "displayHeight": 40
     },
     "BOMB_SPRITE": {
       "scale": 1,
@@ -2203,8 +2203,8 @@
         "..............................FEAAAAAAAAAEF.................FFEEEFF.............................",
         "...............................FEAAAAAAAEF....................FFF..............................."
       ],
-      "displayWidth": 48,
-      "displayHeight": 48
+      "displayWidth": 60,
+      "displayHeight": 60
     }
   },
   "background": {
