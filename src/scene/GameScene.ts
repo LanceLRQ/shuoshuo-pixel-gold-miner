@@ -9,7 +9,7 @@ import type { Input } from '../core/Input';
 import { GameState } from '../core/Game';
 import type { Game } from '../core/Game';
 import { GAME_CONFIG, MineralType } from '../entity/types';
-import { Miner, MinerState } from '../entity/Miner';
+import { Miner, MinerState, type SpriteMetaProvider } from '../entity/Miner';
 import { Hook, HookState } from '../entity/Hook';
 import { Mineral, MysteryContent } from '../entity/Mineral';
 import { HUD, HUD_HEIGHT } from '../ui/HUD';
@@ -195,6 +195,8 @@ export class GameScene extends SceneBase {
   /** 章节背景色板缓存（构造时一次性合成，避免每帧 spread 临时对象） */
   private readonly chapterColors: BackgroundColors;
   private spriteCache: SpriteCacheMap;
+  /** sprite 动画元数据查询函数，复用给 Miner / Hook / Mineral */
+  private spriteMetaProvider!: SpriteMetaProvider;
 
   /** 关卡配置 */
   private levelConfig: LevelConfig;
@@ -259,12 +261,14 @@ export class GameScene extends SceneBase {
     // 累计模式：本关起步金额 = 玩家进关时已累计的金额（含商店花费扣除后）
     this.levelStartMoney = game.getCurrentMoney();
 
-    // 从主题管理器获取精灵缓存
-    this.spriteCache = game.getThemeManager().getSpriteCache();
+    // 从主题管理器获取精灵缓存 + sprite 动画元数据查询函数
+    const themeManager = game.getThemeManager();
+    this.spriteCache = themeManager.getSpriteCache();
+    this.spriteMetaProvider = (name: string) => themeManager.getSpriteMeta(name);
 
     // 初始化矿工和钩爪（钩爪锚点在矿工底部，即地面位置）
-    this.miner = new Miner(GAME_CONFIG.MINER_X, GAME_CONFIG.MINER_Y, this.spriteCache);
-    this.hook = new Hook(GAME_CONFIG.MINER_X, GROUND_Y, this.spriteCache);
+    this.miner = new Miner(GAME_CONFIG.MINER_X, GAME_CONFIG.MINER_Y, this.spriteCache, this.spriteMetaProvider);
+    this.hook = new Hook(GAME_CONFIG.MINER_X, GROUND_Y, this.spriteCache, this.spriteMetaProvider);
 
     // 初始化 HUD（HUD.money 起步值 = levelStartMoney，使其与累计目标在同一参照系）
     this.hud = new HUD(this.spriteCache, this.targetMoney, this.levelConfig.timeLimit);
@@ -1223,7 +1227,7 @@ export class GameScene extends SceneBase {
 
       const oldMineral = this.minerals[candidateIdx]!;
       const prevType = VALUE_UPGRADE_CHAIN[candidateChainIdx - 1]!;
-      const newMineral = new Mineral(oldMineral.x, oldMineral.y, prevType, this.spriteCache);
+      const newMineral = new Mineral(oldMineral.x, oldMineral.y, prevType, this.spriteCache, this.spriteMetaProvider);
       if (oldMineral.vx !== 0) {
         newMineral.vx = oldMineral.vx;
         newMineral.moveLeft = oldMineral.moveLeft;
@@ -1238,7 +1242,7 @@ export class GameScene extends SceneBase {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const x = randomInt(GAME_CONFIG.MINERAL_AREA_LEFT, GAME_CONFIG.MINERAL_AREA_RIGHT);
       const y = randomInt(GAME_CONFIG.MINERAL_AREA_TOP, GAME_CONFIG.MINERAL_AREA_BOTTOM);
-      const mineral = new Mineral(x, y, type, this.spriteCache);
+      const mineral = new Mineral(x, y, type, this.spriteCache, this.spriteMetaProvider);
 
       // 移动矿物设置速度和边界
       if (type === MineralType.MOUSE || type === MineralType.MOLE) {

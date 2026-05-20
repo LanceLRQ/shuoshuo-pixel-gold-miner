@@ -21,6 +21,7 @@ import { ThemeManager } from '../assets/theme/ThemeManager';
 import { CLASSIC_THEME } from '../assets/theme/classic';
 import { SHUOSHUO_CRYSTAL_THEME } from '../assets/theme/shuoshuo-crystal';
 import { loadTheme } from '../assets/themeLoader';
+import { initAnimation } from '../assets/animation';
 import { ThemeStore } from '../asset-manager/ThemeStore';
 import { Difficulty, DEFAULT_DIFFICULTY, getDifficultyConfig, type DifficultyConfig } from '../level/difficulty';
 import { isChapterFirstLevel, getChapterByLevel } from '../level/levels';
@@ -107,7 +108,7 @@ export class Game {
     this.themeManager = new ThemeManager();
     this.themeManager.register(CLASSIC_THEME);
     this.themeManager.register(SHUOSHUO_CRYSTAL_THEME);
-    // 加载用户在素材管理页（/assets.html）创建的自定义主题
+    // 加载用户在素材管理页（/tools/assets.html）创建的自定义主题
     for (const json of new ThemeStore().loadCustom()) {
       try {
         this.themeManager.register(loadTheme(json));
@@ -451,6 +452,8 @@ export class Game {
 
     this.lastTime = performance.now();
     this.fpsTime = this.lastTime;
+    // 全局动画 sprite 时间基准，所有动画从同一原点开始
+    initAnimation(this.lastTime);
     this.loop(this.lastTime);
   }
 

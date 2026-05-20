@@ -4,6 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>像素转换工具 - Pixel Map Converter</title>
+  <!-- GIF 解帧库（动画 sprite 支持）。esm.sh 会自动处理 CJS → ESM 转换 -->
+  <script type="module">
+    try {
+      const mod = await import('https://esm.sh/gifuct-js@2.1.2');
+      window.__gifuct = { parseGIF: mod.parseGIF, decompressFrames: mod.decompressFrames, ready: true };
+      window.dispatchEvent(new Event('gifuct-ready'));
+    } catch (e) {
+      console.warn('gifuct-js 加载失败，将退化为 GIF 单帧模式', e);
+      window.__gifuct = { ready: false };
+    }
+  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -315,6 +326,10 @@
     let sourceImageData = null; // ImageData of full source
     let currentPixelMap = null;
     let colorMap = {};
+    // GIF 动画 sprite 元数据（普通图片时三者保持默认值）
+    let gifFrameCount = 1;
+    let gifFrameDurationMs = 100;
+    let gifFrameLoop = true;
 
     // 裁剪选区（源图像素坐标系）
     let cropRect = null; // { x, y, w, h }
@@ -359,6 +374,15 @@
     fileInput.onchange = e => { if (e.target.files.length) loadImage(e.target.files[0]); };
 
     function loadImage(file) {
+      // 优先判断 GIF；gifuct 加载完成才走多帧路径，否则退化为单帧
+      if (file.type === 'image/gif' && window.__gifuct && window.__gifuct.ready) {
+        loadGifAsSpritesheet(file);
+        return;
+      }
+      // 普通图片 + 加载失败的 GIF 单帧回退
+      gifFrameCount = 1;
+      gifFrameDurationMs = 100;
+      gifFrameLoop = true;
       const reader = new FileReader();
       reader.onload = e => {
         const img = new Image();
@@ -387,6 +411,86 @@
         img.src = e.target.result;
       };
       reader.readAsDataURL(file);
+    }
+
+    /**
+     * GIF → 横向拼接 spritesheet
+     * 帧序列被绘制到一个宽 = 单帧宽 × N 的 canvas，作为 sourceImage 供后续 convert 处理。
+     * 关键约束：tw 会强制为 frameCount 的倍数，确保单帧宽整除。
+     */
+    async function loadGifAsSpritesheet(file) {
+      try {
+        const buf = await file.arrayBuffer();
+        const gif = window.__gifuct.parseGIF(buf);
+        const frames = window.__gifuct.decompressFrames(gif, true);
+        if (!frames.length) {
+          alert('GIF 无可解码帧');
+          return;
+        }
+        const N = frames.length;
+        const frameW = gif.lsd.width;
+        const frameH = gif.lsd.height;
+
+        // 还原每帧（GIF 帧 patch 是局部，需画到逻辑屏幕坐标）
+        const sheet = document.createElement('canvas');
+        sheet.width = frameW * N;
+        sheet.height = frameH;
+        const sctx = sheet.getContext('2d');
+        sctx.imageSmoothingEnabled = false;
+
+        // 单帧累积合成 canvas（处理 disposalType=0/1 帧间残留）
+        const tmp = document.createElement('canvas');
+        tmp.width = frameW;
+        tmp.height = frameH;
+        const tctx = tmp.getContext('2d');
+
+        let totalDelay = 0, validDelays = 0;
+
+        for (let i = 0; i < N; i++) {
+          const f = frames[i];
+          const patchCanvas = document.createElement('canvas');
+          patchCanvas.width = f.dims.width;
+          patchCanvas.height = f.dims.height;
+          const pctx = patchCanvas.getContext('2d');
+          const patchData = pctx.createImageData(f.dims.width, f.dims.height);
+          patchData.data.set(f.patch);
+          pctx.putImageData(patchData, 0, 0);
+
+          // disposalType=2 (restore to background) 时绘制前清屏
+          if (f.disposalType === 2) {
+            tctx.clearRect(0, 0, frameW, frameH);
+          }
+          tctx.drawImage(patchCanvas, f.dims.left, f.dims.top);
+
+          // 拷贝当前帧到 spritesheet 对应位置
+          sctx.drawImage(tmp, i * frameW, 0);
+
+          // gifuct-js 已将 delay 转换为毫秒
+          if (f.delay > 0) { totalDelay += f.delay; validDelays++; }
+        }
+
+        sourceImage = sheet;
+        sourceImageData = sctx.getImageData(0, 0, sheet.width, sheet.height);
+
+        gifFrameCount = N;
+        gifFrameDurationMs = validDelays > 0 ? Math.round(totalDelay / validDelays) : 100;
+        gifFrameLoop = true;
+
+        imageInfo.innerHTML = `已加载 GIF: <span class="info-highlight">${frameW}×${frameH} × ${N} 帧 @ ${gifFrameDurationMs}ms</span> → 拼接为 ${sheet.width}×${sheet.height} spritesheet`;
+
+        // 自动 targetWidth = 单帧 / 4 × N（缩到合适像素粒度且保证整除）
+        const perFrameW = Math.min(Math.max(Math.round(frameW / 4), 8), 32);
+        const autoW = perFrameW * N;
+        targetWidthSlider.value = autoW;
+        targetWidthVal.textContent = autoW;
+
+        cropRect = { x: 0, y: 0, w: sheet.width, h: sheet.height };
+        renderCropCanvas();
+        convert();
+      } catch (e) {
+        console.error('GIF 解析失败', e);
+        alert(`GIF 解析失败：${e && e.message ? e.message : e}`);
+      }
     }
 
     // ========== 裁剪画布渲染 ==========
@@ -674,7 +778,13 @@
       if (!sourceImage) { alert('请先选择一张图片！'); return; }
       if (!cropRect) { alert('请先在源图上选择裁剪区域！'); return; }
 
-      const tw = parseInt(targetWidthSlider.value);
+      let tw = parseInt(targetWidthSlider.value);
+      // GIF spritesheet 模式：强制 tw 是 frameCount 的整数倍，保证单帧宽对齐
+      if (gifFrameCount > 1 && tw % gifFrameCount !== 0) {
+        tw = Math.max(gifFrameCount, Math.round(tw / gifFrameCount) * gifFrameCount);
+        targetWidthSlider.value = tw;
+        targetWidthVal.textContent = tw;
+      }
       const numColors = parseInt(colorCountSlider.value);
       const alphaThresh = parseInt(alphaThresholdSlider.value);
       const bgThresh = parseInt(bgThresholdSlider.value);
@@ -736,7 +846,10 @@
       renderPalette(finalPalette);
       renderColorReplace(palette);
       generateCode(pixelMap);
-      previewInfo.textContent = `${tw} x ${th} px | ${finalPalette.length} 色 | 裁剪区域 ${cr.w}x${cr.h}`;
+      const animSuffix = gifFrameCount > 1
+        ? ` | 动画 ${gifFrameCount} 帧 @ ${gifFrameDurationMs}ms（单帧 ${tw / gifFrameCount}px）`
+        : '';
+      previewInfo.textContent = `${tw} x ${th} px | ${finalPalette.length} 色 | 裁剪区域 ${cr.w}x${cr.h}${animSuffix}`;
     }
 
     function renderPreview(pixelMap, tw, th) {
@@ -803,7 +916,11 @@
         const cells = row.map(c => c ? `'${c}'` : '0');
         return '  [' + cells.join(', ') + ']';
       });
-      codeOutput.value = `export const ${name}: PixelMap = [\n${lines.join(',\n')}\n];\n`;
+      // GIF 动画 sprite：在 TS 代码顶部加帧元信息注释，便于使用方手动写入 SpriteJson
+      const animHeader = gifFrameCount > 1
+        ? `// 动画 sprite — frameCount: ${gifFrameCount}, frameDurationMs: ${gifFrameDurationMs}, frameLoop: ${gifFrameLoop}\n`
+        : '';
+      codeOutput.value = `${animHeader}export const ${name}: PixelMap = [\n${lines.join(',\n')}\n];\n`;
     }
 
     // ========== 按钮事件 ==========
@@ -812,6 +929,7 @@
     resetBtn.onclick = () => {
       sourceImage = null; sourceImageData = null; currentPixelMap = null; colorMap = {};
       cropRect = null;
+      gifFrameCount = 1; gifFrameDurationMs = 100; gifFrameLoop = true;
       imageInfo.textContent = '尚未选择图片';
       codeOutput.value = '';
       paletteDiv.innerHTML = '';
@@ -867,8 +985,19 @@
           currentPixelMap = msg.pixels;
           const th = msg.pixels.length;
           const tw = msg.pixels[0].length;
+          // 透传宿主侧记录的动画元数据，便于用户点 apply 时把旧值带回去
+          if (typeof msg.frameCount === 'number' && msg.frameCount > 1) {
+            gifFrameCount = msg.frameCount;
+            gifFrameDurationMs = typeof msg.frameDurationMs === 'number' ? msg.frameDurationMs : 100;
+            gifFrameLoop = msg.frameLoop !== false;
+          } else {
+            gifFrameCount = 1;
+          }
           renderPreview(currentPixelMap, tw, th);
-          previewInfo.textContent = `当前内容：${tw}×${th}（上传新图后将自动转换覆盖）`;
+          const animSuffix = gifFrameCount > 1
+            ? `，动画 ${gifFrameCount} 帧 @ ${gifFrameDurationMs}ms`
+            : '';
+          previewInfo.textContent = `当前内容：${tw}×${th}（上传新图后将自动转换覆盖）${animSuffix}`;
         }
       });
 
@@ -877,11 +1006,18 @@
           alert('请先上传图片并转换，或修改当前像素后再应用');
           return;
         }
-        parent.postMessage({
+        // apply 消息带帧元信息；frameCount=1 时省略，确保静态 sprite 协议向后兼容
+        const payload = {
           type: 'apply',
           pixels: currentPixelMap,
           sprite: spriteName,
-        }, location.origin);
+        };
+        if (gifFrameCount > 1) {
+          payload.frameCount = gifFrameCount;
+          payload.frameDurationMs = gifFrameDurationMs;
+          payload.frameLoop = gifFrameLoop;
+        }
+        parent.postMessage(payload, location.origin);
       };
 
       $('embedCancelBtn').onclick = () => {

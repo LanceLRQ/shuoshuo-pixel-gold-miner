@@ -19,8 +19,14 @@ export interface SpriteJson {
   scale: number;
   /** 局部调色板：单字符 → '#RRGGBB' hex 颜色 */
   palette: Record<string, string>;
-  /** 像素数据：每行一个字符串，每字符代表一个像素（'.' = 透明） */
+  /** 像素数据：每行一个字符串，每字符代表一个像素（'.' = 透明）；动画 sprite 时为横向拼帧 spritesheet */
   pixels: string[];
+  /** 动画总帧数。缺省 / 1 = 静态 sprite；>1 时 pixels 宽度必须能被它整除 */
+  frameCount?: number;
+  /** 每帧停留毫秒。默认 100 */
+  frameDurationMs?: number;
+  /** 是否循环播放。默认 true；false = 播完停在最后一帧 */
+  frameLoop?: boolean;
 }
 
 /** 完整主题 JSON 结构 */
@@ -107,6 +113,7 @@ export function spriteJsonToPixelMap(name: string, sprite: SpriteJson): PixelMap
 export function loadTheme(json: ThemeJson): ThemeDefinition {
   const sprites: Record<string, PixelMap> = {};
   const scaleOverrides: Record<string, number> = {};
+  const animations: Record<string, { frameCount?: number; frameDurationMs?: number; frameLoop?: boolean }> = {};
 
   for (const [name, sprite] of Object.entries(json.sprites)) {
     try {
@@ -119,6 +126,13 @@ export function loadTheme(json: ThemeJson): ThemeDefinition {
     if (sprite.scale !== 3) {
       scaleOverrides[name] = sprite.scale;
     }
+    if (sprite.frameCount && sprite.frameCount > 1) {
+      animations[name] = {
+        frameCount: sprite.frameCount,
+        frameDurationMs: sprite.frameDurationMs,
+        frameLoop: sprite.frameLoop,
+      };
+    }
   }
 
   return {
@@ -128,6 +142,7 @@ export function loadTheme(json: ThemeJson): ThemeDefinition {
     sprites,
     backgroundColors: json.background,
     spriteScaleOverrides: Object.keys(scaleOverrides).length > 0 ? scaleOverrides : undefined,
+    spriteAnimations: Object.keys(animations).length > 0 ? animations : undefined,
   };
 }
 
@@ -137,7 +152,11 @@ export function loadTheme(json: ThemeJson): ThemeDefinition {
  * - 透明像素（0）输出为 '.'
  * @throws 当颜色数超过 PALETTE_CHARS.length 时（需升级 v2 双字符或减色）
  */
-export function pixelMapToSpriteJson(pixels: PixelMap, scale: number): SpriteJson {
+export function pixelMapToSpriteJson(
+  pixels: PixelMap,
+  scale: number,
+  animation?: { frameCount?: number; frameDurationMs?: number; frameLoop?: boolean }
+): SpriteJson {
   if (pixels.length === 0) {
     throw new Error('PixelMap 为空，无法序列化');
   }
@@ -175,7 +194,13 @@ export function pixelMapToSpriteJson(pixels: PixelMap, scale: number): SpriteJso
     lines.push(line);
   }
 
-  return { scale, palette, pixels: lines };
+  const out: SpriteJson = { scale, palette, pixels: lines };
+  if (animation && animation.frameCount && animation.frameCount > 1) {
+    out.frameCount = animation.frameCount;
+    if (typeof animation.frameDurationMs === 'number') out.frameDurationMs = animation.frameDurationMs;
+    if (typeof animation.frameLoop === 'boolean') out.frameLoop = animation.frameLoop;
+  }
+  return out;
 }
 
 /**
@@ -184,9 +209,10 @@ export function pixelMapToSpriteJson(pixels: PixelMap, scale: number): SpriteJso
 export function themeDefinitionToJson(theme: ThemeDefinition): ThemeJson {
   const sprites: Record<string, SpriteJson> = {};
   const overrides = theme.spriteScaleOverrides ?? {};
+  const anims = theme.spriteAnimations ?? {};
   for (const [name, pixels] of Object.entries(theme.sprites)) {
     const scale = overrides[name] ?? 3;
-    sprites[name] = pixelMapToSpriteJson(pixels, scale);
+    sprites[name] = pixelMapToSpriteJson(pixels, scale, anims[name]);
   }
   return {
     id: theme.id,

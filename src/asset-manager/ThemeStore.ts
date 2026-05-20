@@ -144,6 +144,30 @@ export class ThemeStore {
           throw new Error(`sprite "${spriteName}".pixels[${i}] 必须为字符串`);
         }
       }
+      // 动画 sprite 的可选字段校验
+      if ('frameCount' in s) {
+        const fc = s.frameCount;
+        if (typeof fc !== 'number' || !Number.isInteger(fc) || fc < 1) {
+          throw new Error(`sprite "${spriteName}".frameCount 必须为 >=1 的整数`);
+        }
+        if (fc > 1) {
+          const firstRowLen = (s.pixels[0] as string).length;
+          if (firstRowLen % fc !== 0) {
+            throw new Error(
+              `sprite "${spriteName}" 宽度 ${firstRowLen} 不能被 frameCount=${fc} 整除`
+            );
+          }
+        }
+      }
+      if ('frameDurationMs' in s) {
+        const fd = s.frameDurationMs;
+        if (typeof fd !== 'number' || fd <= 0) {
+          throw new Error(`sprite "${spriteName}".frameDurationMs 必须为 >0 的数字`);
+        }
+      }
+      if ('frameLoop' in s && typeof s.frameLoop !== 'boolean') {
+        throw new Error(`sprite "${spriteName}".frameLoop 必须为布尔值`);
+      }
     }
 
     if (typeof o.background !== 'object' || o.background === null) {

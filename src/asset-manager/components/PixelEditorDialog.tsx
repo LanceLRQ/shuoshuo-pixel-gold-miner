@@ -12,12 +12,19 @@ import {
 } from '@/components/ui/dialog';
 import { getSpriteLabel } from '../spriteLabels';
 
+/** 动画帧元信息（可选；frameCount 缺省/=1 表示静态 sprite） */
+export interface AnimationMeta {
+  frameCount?: number;
+  frameDurationMs?: number;
+  frameLoop?: boolean;
+}
+
 interface Props {
   open: boolean;
   spriteName: string;
   sprite: SpriteJson | null;
   onClose: () => void;
-  onApply: (pixels: PixelMap) => void;
+  onApply: (pixels: PixelMap, meta?: AnimationMeta) => void;
 }
 
 /** 嵌入 pixel-converter.html 的全屏 iframe 编辑器，通过 postMessage 双向通信 */
@@ -52,16 +59,28 @@ export function PixelEditorDialog({
       switch (msg.type) {
         case 'ready': {
           if (initialPixels && iframeRef.current?.contentWindow) {
-            iframeRef.current.contentWindow.postMessage(
-              { type: 'init', pixels: initialPixels },
-              location.origin
-            );
+            // 把旧 sprite 的动画元信息一并 init 推给 iframe，便于用户 apply 时带回去
+            const initMsg: Record<string, unknown> = { type: 'init', pixels: initialPixels };
+            if (sprite?.frameCount && sprite.frameCount > 1) {
+              initMsg.frameCount = sprite.frameCount;
+              if (typeof sprite.frameDurationMs === 'number') initMsg.frameDurationMs = sprite.frameDurationMs;
+              if (typeof sprite.frameLoop === 'boolean') initMsg.frameLoop = sprite.frameLoop;
+            }
+            iframeRef.current.contentWindow.postMessage(initMsg, location.origin);
           }
           break;
         }
         case 'apply': {
           if (Array.isArray(msg.pixels)) {
-            onApply(msg.pixels as PixelMap);
+            const meta: AnimationMeta | undefined =
+              typeof msg.frameCount === 'number' && msg.frameCount > 1
+                ? {
+                    frameCount: msg.frameCount,
+                    frameDurationMs: typeof msg.frameDurationMs === 'number' ? msg.frameDurationMs : undefined,
+                    frameLoop: typeof msg.frameLoop === 'boolean' ? msg.frameLoop : undefined,
+                  }
+                : undefined;
+            onApply(msg.pixels as PixelMap, meta);
           }
           break;
         }
@@ -73,7 +92,7 @@ export function PixelEditorDialog({
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [open, initialPixels, onApply, onClose]);
+  }, [open, initialPixels, sprite, onApply, onClose]);
 
   const src = useMemo(() => {
     if (!spriteName) return '';

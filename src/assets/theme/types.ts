@@ -4,6 +4,7 @@
  */
 
 import type { PixelMap } from '../types';
+import type { SpriteAnimationMeta } from '../animation';
 
 /** 背景颜色配置 */
 export interface BackgroundColors {
@@ -33,4 +34,6 @@ export interface ThemeDefinition {
   backgroundColors: BackgroundColors;
   /** 按精灵名覆盖 cache scale（HD 高密度精灵用 scale=1，让数据维度等于显示维度） */
   spriteScaleOverrides?: Record<string, number>;
+  /** 按精灵名提供动画元数据（frameCount > 1 时为动画 sprite，pixels 为横向拼帧 spritesheet） */
+  spriteAnimations?: Record<string, SpriteAnimationMeta>;
 }

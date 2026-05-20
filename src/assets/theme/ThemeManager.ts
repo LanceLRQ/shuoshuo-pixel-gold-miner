@@ -6,6 +6,7 @@
 import type { ThemeDefinition, BackgroundColors } from './types';
 import type { SpriteCacheMap } from '../types';
 import { createSpriteCacheMap } from '../types';
+import type { SpriteAnimationMeta } from '../animation';
 
 /** localStorage 存储键 */
 const THEME_STORAGE_KEY = 'goldminer_theme';
@@ -62,6 +63,11 @@ export class ThemeManager {
   /** 获取当前主题的背景颜色 */
   getBackgroundColors(): BackgroundColors {
     return this.getTheme().backgroundColors;
+  }
+
+  /** 获取 sprite 动画元数据。静态 sprite 返回 undefined */
+  getSpriteMeta(name: string): SpriteAnimationMeta | undefined {
+    return this.getTheme().spriteAnimations?.[name];
   }
 
   /** 获取所有已注册主题列表 */

@@ -5,6 +5,8 @@
 
 import type { Renderer } from '../core/Renderer';
 import type { SpriteCacheMap } from '../assets/types';
+import { getSpriteFrame } from '../assets/animation';
+import type { SpriteMetaProvider } from './Miner';
 import type { Mineral } from './Mineral';
 import { GAME_CONFIG, MineralType } from './types';
 import { pointInCircle } from '../utils/collision';
@@ -74,14 +76,17 @@ export class Hook {
 
   /** 精灵缓存 */
   private spriteCache: SpriteCacheMap;
+  /** sprite 动画元数据查询函数（无则视为全部静态） */
+  private metaProvider?: SpriteMetaProvider;
 
   /** 爪子摆动初始方向（随机） */
   private readonly swingDirection: number;
 
-  constructor(anchorX: number, anchorY: number, spriteCache: SpriteCacheMap) {
+  constructor(anchorX: number, anchorY: number, spriteCache: SpriteCacheMap, metaProvider?: SpriteMetaProvider) {
     this.anchorX = anchorX;
     this.anchorY = anchorY;
     this.spriteCache = spriteCache;
+    this.metaProvider = metaProvider;
     // 随机初始摆动方向
     this.swingDirection = Math.random() > 0.5 ? 1 : -1;
   }
@@ -276,11 +281,13 @@ export class Hook {
     // 绘制钩爪精灵
     const sprite = this.spriteCache.get('HOOK_SPRITE');
     if (sprite) {
+      const meta = this.metaProvider?.('HOOK_SPRITE');
+      const f = getSpriteFrame(sprite, meta, performance.now());
       // 以绳索连接点（精灵顶部）为旋转中心，角度取反使爪子跟随绳索方向
       ctx.save();
       ctx.translate(this.tipX, this.tipY);
       ctx.rotate(-this.angle);
-      renderer.drawImage(sprite, -sprite.width / 2, 0);
+      renderer.drawImageSlice(sprite, f.sx, f.sy, f.sw, f.sh, -f.sw / 2, 0);
       ctx.restore();
     }
 

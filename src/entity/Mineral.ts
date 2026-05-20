@@ -5,6 +5,8 @@
 
 import type { Renderer } from '../core/Renderer';
 import type { SpriteCacheMap } from '../assets/types';
+import { getSpriteFrame } from '../assets/animation';
+import type { SpriteMetaProvider } from './Miner';
 import { MineralType, MINERAL_CONFIGS, type MineralConfig } from './types';
 import { randomInt, pickWeightedContent } from '../utils/random';
 
@@ -78,18 +80,22 @@ export class Mineral {
   hasDiamond: boolean = false;
   /** 精灵缓存引用 */
   private spriteCache: SpriteCacheMap;
+  /** sprite 动画元数据查询函数（无则视为全部静态） */
+  private metaProvider?: SpriteMetaProvider;
 
   constructor(
     x: number,
     y: number,
     type: MineralType,
-    spriteCache: SpriteCacheMap
+    spriteCache: SpriteCacheMap,
+    metaProvider?: SpriteMetaProvider
   ) {
     this.x = x;
     this.y = y;
     this.config = MINERAL_CONFIGS[type];
     this.radius = this.config.radius;
     this.spriteCache = spriteCache;
+    this.metaProvider = metaProvider;
 
     // 鼹鼠 30% 概率带钻石
     if (type === MineralType.MOLE) {
@@ -143,9 +149,10 @@ export class Mineral {
   /** 内部绘制精灵（以中心点为锚点） */
   private drawSprite(renderer: Renderer): void {
     const sprite = this.spriteCache.get(this.config.spriteName);
-    if (sprite) {
-      renderer.drawImage(sprite, this.x - sprite.width / 2, this.y - sprite.height / 2);
-    }
+    if (!sprite) return;
+    const meta = this.metaProvider?.(this.config.spriteName);
+    const f = getSpriteFrame(sprite, meta, performance.now());
+    renderer.drawImageSlice(sprite, f.sx, f.sy, f.sw, f.sh, this.x - f.sw / 2, this.y - f.sh / 2);
   }
 
   /** 更新移动矿物位置 */
