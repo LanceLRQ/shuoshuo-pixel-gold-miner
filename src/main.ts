@@ -18,3 +18,7 @@ const renderer = new Renderer(canvas, LOGICAL_WIDTH, LOGICAL_HEIGHT);
 // 初始化游戏主控
 const game = new Game(renderer);
 game.start();
+
+// 上帝模式调试入口（dev 自动启用 / prod 探测 whoisyourdaddy.html 启用）
+// 动态 import：prod 用户不需要时该 chunk 不下载
+void import('./dev/godMode').then(({ setupGodMode }) => setupGodMode(game));

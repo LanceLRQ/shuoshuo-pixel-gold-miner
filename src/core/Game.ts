@@ -417,6 +417,18 @@ export class Game {
     return this.currentMoney;
   }
 
+  /**
+   * 直接设置累计金额，并同步当前活跃场景的 HUD（god mode 调试用）。
+   * GameScene 时立即在 HUD 上看到变化；其他场景下只更新底层累计金额。
+   */
+  setCurrentMoney(n: number): void {
+    this.currentMoney = Math.max(0, Math.floor(n));
+    const scene = this.currentScene as unknown as { hud?: { money: number } };
+    if (scene && scene.hud && typeof scene.hud.money === 'number') {
+      scene.hud.money = this.currentMoney;
+    }
+  }
+
   /** 设置难度（在 DifficultyScene 选择后调用） */
   setDifficulty(d: Difficulty): void {
     this.currentDifficulty = d;
