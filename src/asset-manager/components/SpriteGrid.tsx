@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Film, ImageUp, Search } from 'lucide-react';
+import { Copy, Film, ImageUp, Search } from 'lucide-react';
 
 import {
   pixelMapToSpriteJson,
@@ -9,10 +9,12 @@ import {
 } from '../../assets/themeLoader';
 import { createSpriteCache } from '../../assets/types';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { getSpriteLabel } from '../spriteLabels';
+import { CopySpriteDialog } from './CopySpriteDialog';
 import { PixelEditorDialog } from './PixelEditorDialog';
 
 const THUMBNAIL_SIZE = 96;
@@ -26,6 +28,7 @@ interface Props {
 export function SpriteGrid({ theme, readonly, onCommitSprite }: Props) {
   const [filter, setFilter] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
+  const [copying, setCopying] = useState<string | null>(null);
 
   const names = useMemo(() => Object.keys(theme.sprites).sort(), [theme]);
   const keyword = filter.trim().toLowerCase();
@@ -43,6 +46,14 @@ export function SpriteGrid({ theme, readonly, onCommitSprite }: Props) {
       return;
     }
     setEditing(name);
+  };
+
+  const handleCopy = (name: string) => {
+    if (readonly) {
+      alert('系统主题只读，请先「复制」或「新建」一个自定义主题再编辑');
+      return;
+    }
+    setCopying(name);
   };
 
   const editingSprite =
@@ -80,6 +91,7 @@ export function SpriteGrid({ theme, readonly, onCommitSprite }: Props) {
               sprite={theme.sprites[name]!}
               readonly={readonly}
               onClick={() => handleClick(name)}
+              onCopy={() => handleCopy(name)}
             />
           ))}
         </div>
@@ -103,6 +115,19 @@ export function SpriteGrid({ theme, readonly, onCommitSprite }: Props) {
           setEditing(null);
         }}
       />
+
+      <CopySpriteDialog
+        open={copying !== null}
+        sourceName={copying ?? ''}
+        theme={theme}
+        onClose={() => setCopying(null)}
+        onCopy={(targets, makeSprite) => {
+          for (const t of targets) {
+            onCommitSprite(t, makeSprite(t));
+          }
+          setCopying(null);
+        }}
+      />
     </div>
   );
 }
@@ -112,9 +137,10 @@ interface CardProps {
   sprite: SpriteJson;
   readonly: boolean;
   onClick: () => void;
+  onCopy: () => void;
 }
 
-function SpriteCard({ name, sprite, readonly, onClick }: CardProps) {
+function SpriteCard({ name, sprite, readonly, onClick, onCopy }: CardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const label = getSpriteLabel(name);
   const frameCount = sprite.frameCount && sprite.frameCount > 1 ? sprite.frameCount : 1;
@@ -172,7 +198,7 @@ function SpriteCard({ name, sprite, readonly, onClick }: CardProps) {
         readonly && 'cursor-not-allowed opacity-70 hover:border-border hover:bg-card'
       )}
     >
-      <div className="bg-checkerboard relative flex h-24 w-24 items-center justify-center rounded">
+      <div className="bg-checkerboard group relative flex h-24 w-24 items-center justify-center rounded">
         <canvas
           ref={canvasRef}
           width={THUMBNAIL_SIZE}
@@ -188,6 +214,21 @@ function SpriteCard({ name, sprite, readonly, onClick }: CardProps) {
             <Film className="h-3 w-3" />
             {frameCount}
           </Badge>
+        )}
+        {/* 复制到其他 sprite 按钮：hover 时显现，不可读时不显示 */}
+        {!readonly && (
+          <Button
+            variant="secondary"
+            size="icon"
+            className="absolute bottom-1 right-1 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+            title="复制此素材到其他 sprite"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCopy();
+            }}
+          >
+            <Copy className="h-3 w-3" />
+          </Button>
         )}
       </div>
       <div className="w-full break-all text-center font-mono text-[11px] text-foreground">

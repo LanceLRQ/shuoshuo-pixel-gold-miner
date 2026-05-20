@@ -197,12 +197,6 @@
         <button class="btn" id="gifNextFrame" type="button" style="padding:2px 10px">▶</button>
         <span style="font-size:11px;color:#6a7" id="gifFrameHint">右侧预览自动循环播放所有帧</span>
       </div>
-      <!-- 选区操作模式切换 -->
-      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-        <span style="font-size:12px;color:#9aa">模式</span>
-        <button class="btn" id="cropModeDraw" type="button" style="padding:2px 10px">绘制选区</button>
-        <button class="btn" id="cropModeMove" type="button" style="padding:2px 10px">移动选区</button>
-      </div>
       <div class="crop-area" id="cropArea">
         <canvas id="cropCanvas" width="400" height="300"></canvas>
       </div>
@@ -348,8 +342,6 @@
     const gifPrevFrameBtn = $('gifPrevFrame');
     const gifNextFrameBtn = $('gifNextFrame');
     const cropHint = $('cropHint');
-    const cropModeDrawBtn = $('cropModeDraw');
-    const cropModeMoveBtn = $('cropModeMove');
     const cropInputX = $('cropInputX');
     const cropInputY = $('cropInputY');
     const cropInputW = $('cropInputW');
@@ -388,10 +380,16 @@
     let gifCurrentFrame = 0;
     /** 右侧预览动画 rAF 句柄，切换 sprite 或重置时取消 */
     let previewAnimRAF = 0;
-    /** 裁剪交互模式：draw=拖拽画选区；move=拖拽整体平移现有选区 */
-    let cropMode = 'draw';
-    /** move 模式时记录起点信息 */
+    /** 平移选区时记录起点信息 */
     let moveDragStart = null;
+    /** 四角缩放：当前抓取的角（'nw'|'ne'|'sw'|'se'）或 null */
+    let resizeCorner = null;
+    /** 缩放时的对角锚点（源坐标系）— 缩放始终保持对角不动 */
+    let resizeAnchor = null;
+    /** 角 handle 命中半径（显示坐标系，px）；与渲染时 5px 方块匹配 + 余量 */
+    const CORNER_HIT_PX = 8;
+    /** 选区最小尺寸（较长边），低于此值算法上采样会模糊 */
+    const MIN_CROP_LONG_SIDE = 96;
 
     // 裁剪选区（源图像素坐标系）
     let cropRect = null; // { x, y, w, h }
@@ -442,17 +440,8 @@
       renderCropCanvas();
     };
 
-    // ========== 选区操作模式切换 + 坐标输入 ==========
-    function setCropMode(mode) {
-      cropMode = mode === 'move' ? 'move' : 'draw';
-      // 用 btn-primary 高亮当前模式
-      cropModeDrawBtn.classList.toggle('btn-primary', cropMode === 'draw');
-      cropModeMoveBtn.classList.toggle('btn-primary', cropMode === 'move');
-      cropCanvas.style.cursor = cropMode === 'move' ? 'move' : 'crosshair';
-    }
-    cropModeDrawBtn.onclick = () => setCropMode('draw');
-    cropModeMoveBtn.onclick = () => setCropMode('move');
-    setCropMode('draw'); // 默认绘制模式
+    // 选区交互：默认光标 = move（选区内拖拽平移；四角拖拽等比缩放；选区外忽略）
+    cropCanvas.style.cursor = 'move';
 
     /** 把当前 cropRect 同步到 4 个坐标输入框（防止与用户输入冲突，仅当未聚焦时写回） */
     function syncCropInputs() {
@@ -756,7 +745,6 @@
 
     // ========== 裁剪拖拽交互 ==========
     let isDragging = false;
-    let dragStart = null; // 源图坐标
 
     function displayToSource(dx, dy) {
       return { x: Math.round(dx / displayScale), y: Math.round(dy / displayScale) };
@@ -796,65 +784,148 @@
       return clampCrop(x, y, w, h);
     }
 
+    /**
+     * 检测显示坐标 (dx, dy) 是否落在 cropRect 某个角的 handle 区域内。
+     * 返回 'nw'|'ne'|'sw'|'se' 或 null。
+     */
+    function detectCornerHit(dx, dy) {
+      if (!cropRect) return null;
+      const sx = cropRect.x * displayScale;
+      const sy = cropRect.y * displayScale;
+      const sw = cropRect.w * displayScale;
+      const sh = cropRect.h * displayScale;
+      const corners = {
+        nw: { x: sx, y: sy },
+        ne: { x: sx + sw, y: sy },
+        sw: { x: sx, y: sy + sh },
+        se: { x: sx + sw, y: sy + sh },
+      };
+      for (const [name, c] of Object.entries(corners)) {
+        if (Math.abs(dx - c.x) <= CORNER_HIT_PX && Math.abs(dy - c.y) <= CORNER_HIT_PX) {
+          return name;
+        }
+      }
+      return null;
+    }
+
+    /** 根据 corner 返回对角的源坐标（缩放时此点不动） */
+    function getOppositeAnchor(corner) {
+      if (!cropRect) return null;
+      const { x, y, w, h } = cropRect;
+      switch (corner) {
+        case 'nw': return { x: x + w, y: y + h };
+        case 'ne': return { x: x,     y: y + h };
+        case 'sw': return { x: x + w, y: y     };
+        case 'se': return { x: x,     y: y     };
+      }
+      return null;
+    }
+
+    function cursorForCorner(corner) {
+      return corner === 'nw' || corner === 'se' ? 'nwse-resize' : 'nesw-resize';
+    }
+
+    /**
+     * 判断显示坐标 (dx, dy) 是否在 cropRect 内部
+     */
+    function pointInCropRect(dx, dy) {
+      if (!cropRect) return false;
+      const sx = cropRect.x * displayScale;
+      const sy = cropRect.y * displayScale;
+      return dx >= sx && dx <= sx + cropRect.w * displayScale
+          && dy >= sy && dy <= sy + cropRect.h * displayScale;
+    }
+
     cropCanvas.onmousedown = e => {
-      if (!sourceImage) return;
+      if (!sourceImage || !cropRect) return;
       const rect = cropCanvas.getBoundingClientRect();
       const dx = e.clientX - rect.left;
       const dy = e.clientY - rect.top;
       const src = displayToSource(dx, dy);
-      if (cropMode === 'move') {
-        // 移动模式：记录当前光标相对 cropRect 原点的偏移；如无现有选区则无操作
-        if (!cropRect) return;
+      // 四角缩放优先
+      const corner = detectCornerHit(dx, dy);
+      if (corner) {
+        resizeCorner = corner;
+        resizeAnchor = getOppositeAnchor(corner);
+        isDragging = true;
+        cropCanvas.style.cursor = cursorForCorner(corner);
+        return;
+      }
+      // 选区内 = 平移；选区外忽略（防止误操作丢失现有选区）
+      if (pointInCropRect(dx, dy)) {
         moveDragStart = { mouseX: src.x, mouseY: src.y, rectX: cropRect.x, rectY: cropRect.y };
         isDragging = true;
-      } else {
-        // 绘制模式：原行为，从此点开始拉框
-        dragStart = src;
-        isDragging = true;
+        cropCanvas.style.cursor = 'grabbing';
       }
     };
 
     cropCanvas.onmousemove = e => {
-      if (!isDragging) return;
       const rect = cropCanvas.getBoundingClientRect();
       const dx = e.clientX - rect.left;
       const dy = e.clientY - rect.top;
+
+      // 未拖拽时按 hover 落点更新光标提示
+      if (!isDragging) {
+        if (cropRect) {
+          const hover = detectCornerHit(dx, dy);
+          if (hover) {
+            cropCanvas.style.cursor = cursorForCorner(hover);
+            return;
+          }
+          cropCanvas.style.cursor = pointInCropRect(dx, dy) ? 'move' : 'default';
+        } else {
+          cropCanvas.style.cursor = 'default';
+        }
+        return;
+      }
       const cur = displayToSource(dx, dy);
 
-      if (cropMode === 'move') {
-        if (!moveDragStart || !cropRect) return;
-        const nx = moveDragStart.rectX + (cur.x - moveDragStart.mouseX);
-        const ny = moveDragStart.rectY + (cur.y - moveDragStart.mouseY);
-        // 平移时保持 w/h 不变；clampCrop 会把 x/y 限到 [0, dim - w/h]
-        cropRect = clampCrop(nx, ny, cropRect.w, cropRect.h);
+      // 四角等比缩放
+      if (resizeCorner && resizeAnchor) {
+        let newW = Math.abs(cur.x - resizeAnchor.x);
+        let newH = Math.abs(cur.y - resizeAnchor.y);
+        const ratio = getAspectRatio();
+        if (ratio) {
+          // 等比锁定：取主导边保比例
+          if (newW / Math.max(newH, 1) > ratio) {
+            newH = newW / ratio;
+          } else {
+            newW = newH * ratio;
+          }
+        }
+        // 较长边不得小于 MIN_CROP_LONG_SIDE，防止过度缩小导致输出模糊
+        const longSide = Math.max(newW, newH);
+        if (longSide < MIN_CROP_LONG_SIDE) {
+          const scale = MIN_CROP_LONG_SIDE / longSide;
+          newW *= scale;
+          newH *= scale;
+        }
+        // 'w' = 左边在动 → x 跟随；'n' = 上边在动 → y 跟随
+        const newX = resizeCorner.includes('w') ? resizeAnchor.x - newW : resizeAnchor.x;
+        const newY = resizeCorner.includes('n') ? resizeAnchor.y - newH : resizeAnchor.y;
+        cropRect = clampCrop(newX, newY, newW, newH);
         renderCropCanvas();
         return;
       }
 
-      // 绘制模式
-      if (!dragStart) return;
-      let x = Math.min(dragStart.x, cur.x);
-      let y = Math.min(dragStart.y, cur.y);
-      let w = Math.abs(cur.x - dragStart.x);
-      let h = Math.abs(cur.y - dragStart.y);
-
-      // 应用比例约束
-      const ratio = getAspectRatio();
-      if (ratio) {
-        // 基于宽度调整高度
-        if (w / h > ratio) {
-          h = w / ratio;
-        } else {
-          w = h * ratio;
-        }
+      // 平移
+      if (moveDragStart && cropRect) {
+        const nx = moveDragStart.rectX + (cur.x - moveDragStart.mouseX);
+        const ny = moveDragStart.rectY + (cur.y - moveDragStart.mouseY);
+        cropRect = clampCrop(nx, ny, cropRect.w, cropRect.h);
+        renderCropCanvas();
       }
-
-      cropRect = clampCrop(x, y, w, h);
-      renderCropCanvas();
     };
 
-    cropCanvas.onmouseup = () => { isDragging = false; moveDragStart = null; };
-    cropCanvas.onmouseleave = () => { isDragging = false; moveDragStart = null; };
+    function endCropDrag() {
+      isDragging = false;
+      moveDragStart = null;
+      resizeCorner = null;
+      resizeAnchor = null;
+      cropCanvas.style.cursor = 'move';
+    }
+    cropCanvas.onmouseup = endCropDrag;
+    cropCanvas.onmouseleave = endCropDrag;
 
     // 触摸支持
     cropCanvas.ontouchstart = e => {
@@ -1345,16 +1416,16 @@
           const presetH = typeof msg.presetDisplayHeight === 'number' && msg.presetDisplayHeight > 0
             ? msg.presetDisplayHeight : null;
           if (presetW && presetH) {
-            // 移除任何已存在的 preset option（避免主题切换时重复插入）
-            Array.from(aspectRatioSel.options).forEach(o => {
-              if (o.value.startsWith('preset:')) aspectRatioSel.removeChild(o);
-            });
+            // 强制锁定为系统预设比例：移除其他选项 + 禁用下拉框
+            // 防止美术误产出"水平细长的老鼠"这类无法在游戏内正常工作的 sprite
+            while (aspectRatioSel.firstChild) aspectRatioSel.removeChild(aspectRatioSel.firstChild);
             const opt = document.createElement('option');
             opt.value = `preset:${presetW}:${presetH}`;
-            opt.textContent = `系统预设 (${presetW}:${presetH})`;
-            // 插入到下拉框顶部
-            aspectRatioSel.insertBefore(opt, aspectRatioSel.firstChild);
+            opt.textContent = `系统预设 (${presetW}:${presetH}) — 锁定`;
+            aspectRatioSel.appendChild(opt);
             aspectRatioSel.value = opt.value;
+            aspectRatioSel.disabled = true;
+            aspectRatioSel.title = 'embed 模式下比例锁定为系统预设，确保 sprite 能在游戏内正常工作';
             customRatioRow.style.display = 'none';
           }
           // 透传宿主侧记录的显示尺寸；若 sprite 自身没有，则用 preset 兜底预填
