@@ -39,6 +39,8 @@ export interface DifficultyConfig {
   infiniteItems: boolean;
   /** 是否硬核难度：关卡结束清除全部 persistent 道具 + 商店隐藏摇晃饮料 + 摇晃饮料效果强制 return */
   isHardcore: boolean;
+  /** 排行榜折算权重（总榜用，高手难度拿高分更难 → 系数更高） */
+  leaderboardWeight: number;
   /** UI 主色（卡片差异化展示） */
   color: string;
 }
@@ -59,6 +61,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     shopEnabled: true,
     infiniteItems: false,
     isHardcore: false,
+    leaderboardWeight: 0.4,
     color: '#7CFF7C',
   },
   [Difficulty.NORMAL]: {
@@ -74,6 +77,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     shopEnabled: true,
     infiniteItems: false,
     isHardcore: false,
+    leaderboardWeight: 1.0,
     color: '#7CC4FF',
   },
   [Difficulty.HARD]: {
@@ -89,6 +93,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     shopEnabled: true,
     infiniteItems: false,
     isHardcore: true,
+    leaderboardWeight: 2.5,
     color: '#FFD700',
   },
   [Difficulty.EXPERT]: {
@@ -104,6 +109,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     shopEnabled: true,
     infiniteItems: false,
     isHardcore: true,
+    leaderboardWeight: 3.5,
     color: '#FF6464',
   },
   [Difficulty.INFINITE]: {
@@ -119,6 +125,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     shopEnabled: false,
     infiniteItems: true,
     isHardcore: false,
+    leaderboardWeight: 0.3,
     color: '#C77CFF',
   },
 };

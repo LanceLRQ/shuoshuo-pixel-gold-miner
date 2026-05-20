@@ -6,10 +6,12 @@
  * 详见 docs/design/20260518_save-slot-system.md
  */
 
-import { Difficulty, DEFAULT_DIFFICULTY } from '../level/difficulty';
+import { Difficulty, DEFAULT_DIFFICULTY, getDifficultyConfig } from '../level/difficulty';
+import { signEntry, verifyEntry } from '../utils/hash';
+import { validateLeaderboardEntry } from '../utils/validation';
 
 /** 当前存档版本号（数据结构变更时递增） */
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 4;
 
 /** 自动槽位编号 */
 export const AUTO_SLOT_ID = 0;
@@ -60,6 +62,28 @@ export interface UserSettings {
   muted: boolean;
 }
 
+/** 排行榜条目 */
+export interface LeaderboardEntry {
+  /** 折算后的排行榜分数（rawMoney × leaderboardWeight） */
+  score: number;
+  /** 原始累计金额 */
+  rawMoney: number;
+  /** 难度 */
+  difficulty: Difficulty;
+  /** 到达关卡 */
+  level: number;
+  /** 时间戳 */
+  date: number;
+}
+
+/** 带签名的排行榜条目（持久化用） */
+interface SignedLeaderboardEntry extends LeaderboardEntry {
+  _sig: string;
+}
+
+/** 排行榜最大记录数 */
+const LEADERBOARD_MAX_ENTRIES = 50;
+
 /** 全局数据（跨槽位共享） */
 interface GlobalData {
   version: number;
@@ -67,6 +91,8 @@ interface GlobalData {
   globalHighScore: number;
   /** 按难度分组的跨槽位最高分 */
   highScoresByDifficulty: Partial<Record<Difficulty, number>>;
+  /** 排行榜历史记录（带签名） */
+  leaderboard: SignedLeaderboardEntry[];
 }
 
 /** 旧版（v2 及之前）主存档结构 */
@@ -303,6 +329,77 @@ export class Storage {
     }
   }
 
+  // ============== 排行榜 ==============
+
+  /**
+   * 提交排行榜记录
+   * 1. 合理性校验（数学硬上限）
+   * 2. 签名后写入
+   * 返回是否写入成功
+   */
+  async commitLeaderboardEntry(rawMoney: number, difficulty: Difficulty, level: number): Promise<boolean> {
+    // 合理性校验
+    const validation = validateLeaderboardEntry(rawMoney, difficulty, level);
+    if (!validation.valid) {
+      console.warn('[排行榜] 记录被拒绝:', validation.reason);
+      return false;
+    }
+
+    const diffConfig = getDifficultyConfig(difficulty);
+    const entry: LeaderboardEntry = {
+      score: Math.floor(rawMoney * diffConfig.leaderboardWeight),
+      rawMoney,
+      difficulty,
+      level,
+      date: Date.now(),
+    };
+
+    // 签名
+    const sig = await signEntry(entry.rawMoney, entry.difficulty, entry.level, entry.date);
+
+    const global = this.loadGlobal();
+    global.leaderboard.push({ ...entry, _sig: sig });
+
+    // 按分数降序排列，保留 Top N
+    global.leaderboard.sort((a, b) => b.score - a.score);
+    if (global.leaderboard.length > LEADERBOARD_MAX_ENTRIES) {
+      global.leaderboard = global.leaderboard.slice(0, LEADERBOARD_MAX_ENTRIES);
+    }
+
+    this.saveGlobal(global);
+    return true;
+  }
+
+  /**
+   * 读取排行榜（验签过滤）
+   * 签名不匹配的记录会被静默丢弃
+   */
+  async loadLeaderboard(): Promise<LeaderboardEntry[]> {
+    const global = this.loadGlobal();
+    const valid: LeaderboardEntry[] = [];
+    const validSigned: SignedLeaderboardEntry[] = [];
+    let tampered = false;
+
+    for (const entry of global.leaderboard) {
+      const isValid = await verifyEntry(entry.rawMoney, entry.difficulty, entry.level, entry.date, entry._sig);
+      if (isValid) {
+        const { _sig, ...rest } = entry;
+        valid.push(rest);
+        validSigned.push(entry);
+      } else {
+        console.warn('[排行榜] 检测到篡改记录，已丢弃', entry);
+        tampered = true;
+      }
+    }
+
+    if (tampered) {
+      global.leaderboard = validSigned;
+      this.saveGlobal(global);
+    }
+
+    return valid;
+  }
+
   // ============== 内部工具 ==============
 
   /** 读取槽位 meta（不存在返回 null） */
@@ -406,15 +503,16 @@ export class Storage {
   private loadGlobal(): GlobalData {
     try {
       const raw = localStorage.getItem(GLOBAL_KEY);
-      if (!raw) return { version: SAVE_VERSION, globalHighScore: 0, highScoresByDifficulty: {} };
+      if (!raw) return { version: SAVE_VERSION, globalHighScore: 0, highScoresByDifficulty: {}, leaderboard: [] };
       const data = JSON.parse(raw) as Partial<GlobalData>;
       return {
         version: data.version ?? SAVE_VERSION,
         globalHighScore: data.globalHighScore ?? 0,
         highScoresByDifficulty: data.highScoresByDifficulty ?? {},
+        leaderboard: data.leaderboard ?? [],
       };
     } catch {
-      return { version: SAVE_VERSION, globalHighScore: 0, highScoresByDifficulty: {} };
+      return { version: SAVE_VERSION, globalHighScore: 0, highScoresByDifficulty: {}, leaderboard: [] };
     }
   }
 

@@ -242,6 +242,7 @@ export class Game {
         }
         this.bonusAlreadyCommitted = false;
         this.storage.updateAllHighScores(this.currentDifficulty, this.currentMoney);
+        this.storage.commitLeaderboardEntry(this.currentMoney, this.currentDifficulty, this.levelManager.currentLevel);
         this.storage.resetAutoSlot();
         scene = new GameOverScene(this, this.currentMoney, this.levelManager.currentLevel);
         break;
