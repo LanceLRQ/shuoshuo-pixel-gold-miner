@@ -190,23 +190,50 @@
         <input type="range" id="trimPadding" min="0" max="50" value="2">
         <span class="val" id="trimPaddingVal">2</span>
       </div>
+      <!-- GIF 帧切换器（仅 GIF 模式可见） -->
+      <div id="gifFrameNav" style="display:none; align-items:center; gap:8px; margin-bottom:6px;">
+        <button class="btn" id="gifPrevFrame" type="button" style="padding:2px 10px">◀</button>
+        <span style="font-size:12px;color:#9aa">帧 <span id="gifFrameLabel">1/1</span></span>
+        <button class="btn" id="gifNextFrame" type="button" style="padding:2px 10px">▶</button>
+        <span style="font-size:11px;color:#6a7" id="gifFrameHint">右侧预览自动循环播放所有帧</span>
+      </div>
+      <!-- 选区操作模式切换 -->
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+        <span style="font-size:12px;color:#9aa">模式</span>
+        <button class="btn" id="cropModeDraw" type="button" style="padding:2px 10px">绘制选区</button>
+        <button class="btn" id="cropModeMove" type="button" style="padding:2px 10px">移动选区</button>
+      </div>
       <div class="crop-area" id="cropArea">
         <canvas id="cropCanvas" width="400" height="300"></canvas>
+      </div>
+      <!-- 坐标手动输入 -->
+      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px; font-size:12px;">
+        <label style="color:#9aa">X<input type="number" id="cropInputX" style="width:64px; margin-left:4px; padding:2px 4px; background:#16213e; color:#e0e0e0; border:1px solid #2a3a55; border-radius:3px;" min="0"></label>
+        <label style="color:#9aa">Y<input type="number" id="cropInputY" style="width:64px; margin-left:4px; padding:2px 4px; background:#16213e; color:#e0e0e0; border:1px solid #2a3a55; border-radius:3px;" min="0"></label>
+        <label style="color:#9aa">W<input type="number" id="cropInputW" style="width:64px; margin-left:4px; padding:2px 4px; background:#16213e; color:#e0e0e0; border:1px solid #2a3a55; border-radius:3px;" min="1"></label>
+        <label style="color:#9aa">H<input type="number" id="cropInputH" style="width:64px; margin-left:4px; padding:2px 4px; background:#16213e; color:#e0e0e0; border:1px solid #2a3a55; border-radius:3px;" min="1"></label>
+        <button class="btn" id="cropApplyInputs" type="button" style="padding:2px 10px">应用坐标</button>
       </div>
       <div class="crop-info" id="cropInfo">
         <span>选区: <span class="val" id="cropRectText">无</span></span>
         <span>尺寸: <span class="val" id="cropSizeText">-</span></span>
       </div>
-      <div class="info">在图片上拖拽鼠标进行裁剪选区</div>
+      <div class="info" id="cropHint">在图片上拖拽鼠标进行裁剪选区</div>
     </div>
 
     <!-- 中间：参数 -->
     <div class="panel" style="max-width:320px">
       <h2>3. 转换参数</h2>
       <div class="controls">
-        <div class="control-row">
+        <!-- GIF 模式专用：单帧目标宽。隐藏静态 sprite 用的 targetWidth 滑块 -->
+        <div class="control-row" id="perFrameWidthRow" style="display:none">
+          <label>单帧目标宽</label>
+          <input type="range" id="perFrameWidth" min="4" max="64" value="32">
+          <span class="val" id="perFrameWidthVal">32</span>
+        </div>
+        <div class="control-row" id="targetWidthRow">
           <label>输出像素宽</label>
-          <input type="range" id="targetWidth" min="4" max="64" value="32">
+          <input type="range" id="targetWidth" min="4" max="4096" value="32">
           <span class="val" id="targetWidthVal">32</span>
         </div>
         <div class="control-row">
@@ -303,6 +330,22 @@
     const cropSizeText = $('cropSizeText');
     const targetWidthSlider = $('targetWidth');
     const targetWidthVal = $('targetWidthVal');
+    const targetWidthRow = $('targetWidthRow');
+    const perFrameWidthSlider = $('perFrameWidth');
+    const perFrameWidthVal = $('perFrameWidthVal');
+    const perFrameWidthRow = $('perFrameWidthRow');
+    const gifFrameNav = $('gifFrameNav');
+    const gifFrameLabel = $('gifFrameLabel');
+    const gifPrevFrameBtn = $('gifPrevFrame');
+    const gifNextFrameBtn = $('gifNextFrame');
+    const cropHint = $('cropHint');
+    const cropModeDrawBtn = $('cropModeDraw');
+    const cropModeMoveBtn = $('cropModeMove');
+    const cropInputX = $('cropInputX');
+    const cropInputY = $('cropInputY');
+    const cropInputW = $('cropInputW');
+    const cropInputH = $('cropInputH');
+    const cropApplyInputsBtn = $('cropApplyInputs');
     const colorCountSlider = $('colorCount');
     const colorCountVal = $('colorCountVal');
     const alphaThresholdSlider = $('alphaThreshold');
@@ -330,6 +373,14 @@
     let gifFrameCount = 1;
     let gifFrameDurationMs = 100;
     let gifFrameLoop = true;
+    /** GIF 模式下裁剪区当前显示帧索引；不影响转换（转换始终走全 spritesheet） */
+    let gifCurrentFrame = 0;
+    /** 右侧预览动画 rAF 句柄，切换 sprite 或重置时取消 */
+    let previewAnimRAF = 0;
+    /** 裁剪交互模式：draw=拖拽画选区；move=拖拽整体平移现有选区 */
+    let cropMode = 'draw';
+    /** move 模式时记录起点信息 */
+    let moveDragStart = null;
 
     // 裁剪选区（源图像素坐标系）
     let cropRect = null; // { x, y, w, h }
@@ -346,6 +397,91 @@
       [trimPaddingSlider, trimPaddingVal],
     ];
     sliderBindings.forEach(([s, v]) => s.oninput = () => v.textContent = s.value);
+
+    // ========== GIF 模式 UI 切换与帧切换 ==========
+    /** 进入/退出 GIF 模式时显示对应控件组 */
+    function setGifModeUI(isGif) {
+      if (isGif) {
+        gifFrameNav.style.display = 'flex';
+        perFrameWidthRow.style.display = 'flex';
+        targetWidthRow.style.display = 'none';
+        cropHint.textContent = 'GIF 模式：选区为单帧坐标，会应用到所有帧（比例约束/拖拽与普通图片一致）';
+      } else {
+        gifFrameNav.style.display = 'none';
+        perFrameWidthRow.style.display = 'none';
+        targetWidthRow.style.display = 'flex';
+        cropHint.textContent = '在图片上拖拽鼠标进行裁剪选区';
+      }
+    }
+
+    function updateGifFrameLabel() {
+      gifFrameLabel.textContent = `${gifCurrentFrame + 1}/${gifFrameCount}`;
+    }
+
+    gifPrevFrameBtn.onclick = () => {
+      if (gifFrameCount <= 1) return;
+      gifCurrentFrame = (gifCurrentFrame - 1 + gifFrameCount) % gifFrameCount;
+      updateGifFrameLabel();
+      renderCropCanvas();
+    };
+    gifNextFrameBtn.onclick = () => {
+      if (gifFrameCount <= 1) return;
+      gifCurrentFrame = (gifCurrentFrame + 1) % gifFrameCount;
+      updateGifFrameLabel();
+      renderCropCanvas();
+    };
+
+    // ========== 选区操作模式切换 + 坐标输入 ==========
+    function setCropMode(mode) {
+      cropMode = mode === 'move' ? 'move' : 'draw';
+      // 用 btn-primary 高亮当前模式
+      cropModeDrawBtn.classList.toggle('btn-primary', cropMode === 'draw');
+      cropModeMoveBtn.classList.toggle('btn-primary', cropMode === 'move');
+      cropCanvas.style.cursor = cropMode === 'move' ? 'move' : 'crosshair';
+    }
+    cropModeDrawBtn.onclick = () => setCropMode('draw');
+    cropModeMoveBtn.onclick = () => setCropMode('move');
+    setCropMode('draw'); // 默认绘制模式
+
+    /** 把当前 cropRect 同步到 4 个坐标输入框（防止与用户输入冲突，仅当未聚焦时写回） */
+    function syncCropInputs() {
+      if (!cropRect) return;
+      const dim = getFrameDim();
+      const set = (el, v) => { if (document.activeElement !== el) el.value = v; };
+      set(cropInputX, cropRect.x);
+      set(cropInputY, cropRect.y);
+      set(cropInputW, cropRect.w);
+      set(cropInputH, cropRect.h);
+      // 上限提示（max 属性）
+      cropInputX.max = Math.max(0, dim.w - 1);
+      cropInputY.max = Math.max(0, dim.h - 1);
+      cropInputW.max = dim.w;
+      cropInputH.max = dim.h;
+    }
+
+    cropApplyInputsBtn.onclick = () => {
+      if (!sourceImage) return;
+      const x = parseInt(cropInputX.value) || 0;
+      const y = parseInt(cropInputY.value) || 0;
+      const w = parseInt(cropInputW.value) || 1;
+      const h = parseInt(cropInputH.value) || 1;
+      cropRect = clampCrop(x, y, w, h);
+      renderCropCanvas();
+    };
+    // Enter 触发应用
+    [cropInputX, cropInputY, cropInputW, cropInputH].forEach((el) => {
+      el.onkeydown = (e) => { if (e.key === 'Enter') cropApplyInputsBtn.click(); };
+    });
+
+    /** 单帧目标宽滑块联动：实时算总 tw = 单帧 × frameCount，回写到 targetWidth */
+    perFrameWidthSlider.oninput = () => {
+      const perFrame = parseInt(perFrameWidthSlider.value);
+      perFrameWidthVal.textContent = perFrame;
+      const tw = perFrame * Math.max(1, gifFrameCount);
+      // 确保不超过 slider max（4096）
+      targetWidthSlider.value = Math.min(tw, parseInt(targetWidthSlider.max));
+      targetWidthVal.textContent = targetWidthSlider.value;
+    };
 
     // ========== 比例约束 ==========
     aspectRatioSel.onchange = () => {
@@ -383,6 +519,9 @@
       gifFrameCount = 1;
       gifFrameDurationMs = 100;
       gifFrameLoop = true;
+      gifCurrentFrame = 0;
+      setGifModeUI(false);
+      stopPreviewAnimation();
       const reader = new FileReader();
       reader.onload = e => {
         const img = new Image();
@@ -475,16 +614,24 @@
         gifFrameCount = N;
         gifFrameDurationMs = validDelays > 0 ? Math.round(totalDelay / validDelays) : 100;
         gifFrameLoop = true;
+        gifCurrentFrame = 0;
 
         imageInfo.innerHTML = `已加载 GIF: <span class="info-highlight">${frameW}×${frameH} × ${N} 帧 @ ${gifFrameDurationMs}ms</span> → 拼接为 ${sheet.width}×${sheet.height} spritesheet`;
 
-        // 自动 targetWidth = 单帧 / 4 × N（缩到合适像素粒度且保证整除）
-        const perFrameW = Math.min(Math.max(Math.round(frameW / 4), 8), 32);
-        const autoW = perFrameW * N;
-        targetWidthSlider.value = autoW;
-        targetWidthVal.textContent = autoW;
+        // 启用 GIF UI（单帧宽滑块、帧切换器）
+        setGifModeUI(true);
+        updateGifFrameLabel();
 
-        cropRect = { x: 0, y: 0, w: sheet.width, h: sheet.height };
+        // 自动 perFrameWidth = clamp(frameW/4, 8, 32)；tw = perFrame × N
+        const perFrameW = Math.min(Math.max(Math.round(frameW / 4), 8), 32);
+        perFrameWidthSlider.value = perFrameW;
+        perFrameWidthVal.textContent = perFrameW;
+        const autoW = perFrameW * N;
+        targetWidthSlider.value = Math.min(autoW, parseInt(targetWidthSlider.max));
+        targetWidthVal.textContent = targetWidthSlider.value;
+
+        // GIF 模式 cropRect 使用单帧坐标（默认整帧全选；用户可在 cropCanvas 上拖拽框选）
+        cropRect = { x: 0, y: 0, w: frameW, h: frameH };
         renderCropCanvas();
         convert();
       } catch (e) {
@@ -497,6 +644,47 @@
     function renderCropCanvas() {
       if (!sourceImage) return;
       const img = sourceImage;
+
+      // GIF 模式：只渲染当前选中帧；选区为单帧坐标，被应用到所有帧
+      if (gifFrameCount > 1) {
+        const frameW = img.width / gifFrameCount;
+        const frameH = img.height;
+        const maxW = 440, maxH = 360;
+        displayScale = Math.min(maxW / frameW, maxH / frameH, 1);
+        const dw = Math.round(frameW * displayScale);
+        const dh = Math.round(frameH * displayScale);
+        cropCanvas.width = dw;
+        cropCanvas.height = dh;
+        cropCtx.clearRect(0, 0, dw, dh);
+        cropCtx.imageSmoothingEnabled = true;
+        cropCtx.drawImage(img, gifCurrentFrame * frameW, 0, frameW, frameH, 0, 0, dw, dh);
+
+        // 在单帧画布上绘制选区遮罩（用户拖拽 cropRect 是单帧坐标系）
+        if (cropRect) {
+          const sx = cropRect.x * displayScale;
+          const sy = cropRect.y * displayScale;
+          const sw = cropRect.w * displayScale;
+          const sh = cropRect.h * displayScale;
+          cropCtx.fillStyle = 'rgba(0,0,0,0.55)';
+          cropCtx.fillRect(0, 0, dw, sy);
+          cropCtx.fillRect(0, sy + sh, dw, dh - sy - sh);
+          cropCtx.fillRect(0, sy, sx, sh);
+          cropCtx.fillRect(sx + sw, sy, dw - sx - sw, sh);
+          cropCtx.strokeStyle = '#ffd700';
+          cropCtx.lineWidth = 2;
+          cropCtx.setLineDash([4, 3]);
+          cropCtx.strokeRect(sx, sy, sw, sh);
+          cropCtx.setLineDash([]);
+          const cs = 5;
+          cropCtx.fillStyle = '#ffd700';
+          [[sx, sy], [sx + sw - cs, sy], [sx, sy + sh - cs], [sx + sw - cs, sy + sh - cs]]
+            .forEach(([cx, cy]) => cropCtx.fillRect(cx, cy, cs, cs));
+          cropRectText.textContent = `${cropRect.x}, ${cropRect.y} · 帧 ${gifCurrentFrame + 1}/${gifFrameCount}`;
+          cropSizeText.textContent = `${cropRect.w} × ${cropRect.h}（单帧）`;
+        }
+        syncCropInputs();
+        return;
+      }
 
       // 计算显示缩放，适配容器宽度 440px
       const maxW = 440, maxH = 360;
@@ -545,6 +733,7 @@
         cropRectText.textContent = `${cropRect.x}, ${cropRect.y}`;
         cropSizeText.textContent = `${cropRect.w} x ${cropRect.h}`;
       }
+      syncCropInputs();
     }
 
     // ========== 裁剪拖拽交互 ==========
@@ -555,12 +744,22 @@
       return { x: Math.round(dx / displayScale), y: Math.round(dy / displayScale) };
     }
 
+    /** 当前模式下的"单帧"尺寸：GIF 用单帧宽高，静态图用整张源图 */
+    function getFrameDim() {
+      if (!sourceImage) return { w: 1, h: 1 };
+      if (gifFrameCount > 1) {
+        return { w: sourceImage.width / gifFrameCount, h: sourceImage.height };
+      }
+      return { w: sourceImage.width, h: sourceImage.height };
+    }
+
     function clampCrop(x, y, w, h) {
       if (!sourceImage) return { x, y, w, h };
+      const dim = getFrameDim();
       x = Math.max(0, Math.round(x));
       y = Math.max(0, Math.round(y));
-      w = Math.max(1, Math.round(Math.min(w, sourceImage.width - x)));
-      h = Math.max(1, Math.round(Math.min(h, sourceImage.height - y)));
+      w = Math.max(1, Math.round(Math.min(w, dim.w - x)));
+      h = Math.max(1, Math.round(Math.min(h, dim.h - y)));
       return { x, y, w, h };
     }
 
@@ -584,17 +783,38 @@
       const rect = cropCanvas.getBoundingClientRect();
       const dx = e.clientX - rect.left;
       const dy = e.clientY - rect.top;
-      dragStart = displayToSource(dx, dy);
-      isDragging = true;
+      const src = displayToSource(dx, dy);
+      if (cropMode === 'move') {
+        // 移动模式：记录当前光标相对 cropRect 原点的偏移；如无现有选区则无操作
+        if (!cropRect) return;
+        moveDragStart = { mouseX: src.x, mouseY: src.y, rectX: cropRect.x, rectY: cropRect.y };
+        isDragging = true;
+      } else {
+        // 绘制模式：原行为，从此点开始拉框
+        dragStart = src;
+        isDragging = true;
+      }
     };
 
     cropCanvas.onmousemove = e => {
-      if (!isDragging || !dragStart) return;
+      if (!isDragging) return;
       const rect = cropCanvas.getBoundingClientRect();
       const dx = e.clientX - rect.left;
       const dy = e.clientY - rect.top;
       const cur = displayToSource(dx, dy);
 
+      if (cropMode === 'move') {
+        if (!moveDragStart || !cropRect) return;
+        const nx = moveDragStart.rectX + (cur.x - moveDragStart.mouseX);
+        const ny = moveDragStart.rectY + (cur.y - moveDragStart.mouseY);
+        // 平移时保持 w/h 不变；clampCrop 会把 x/y 限到 [0, dim - w/h]
+        cropRect = clampCrop(nx, ny, cropRect.w, cropRect.h);
+        renderCropCanvas();
+        return;
+      }
+
+      // 绘制模式
+      if (!dragStart) return;
       let x = Math.min(dragStart.x, cur.x);
       let y = Math.min(dragStart.y, cur.y);
       let w = Math.abs(cur.x - dragStart.x);
@@ -615,8 +835,8 @@
       renderCropCanvas();
     };
 
-    cropCanvas.onmouseup = () => { isDragging = false; };
-    cropCanvas.onmouseleave = () => { isDragging = false; };
+    cropCanvas.onmouseup = () => { isDragging = false; moveDragStart = null; };
+    cropCanvas.onmouseleave = () => { isDragging = false; moveDragStart = null; };
 
     // 触摸支持
     cropCanvas.ontouchstart = e => {
@@ -634,23 +854,42 @@
     // ========== 自动抠图 ==========
     autoTrimBtn.onclick = () => {
       if (!sourceImage || !sourceImageData) { alert('请先选择图片！'); return; }
-      const data = sourceImageData.data;
-      const w = sourceImage.width, h = sourceImage.height;
       const alphaTh = parseInt(trimThresholdSlider.value);
       const padding = parseInt(trimPaddingSlider.value);
 
+      // GIF 模式：在所有帧中取非透明像素的"并集"边界（用单帧坐标系）
+      let data, w, h, frameXOffset;
+      if (gifFrameCount > 1) {
+        const dim = getFrameDim();
+        w = dim.w; h = dim.h;
+        data = sourceImageData.data;
+        frameXOffset = -1; // 标记为多帧扫描
+      } else {
+        data = sourceImageData.data;
+        w = sourceImage.width;
+        h = sourceImage.height;
+        frameXOffset = 0;
+      }
+
       let top = h, bottom = 0, left = w, right = 0;
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-          const i = (y * w + x) * 4;
-          if (data[i + 3] > alphaTh) {
-            if (y < top) top = y;
-            if (y > bottom) bottom = y;
-            if (x < left) left = x;
-            if (x > right) right = x;
+      const sheetW = sourceImage.width;
+      const scanFrames = gifFrameCount > 1 ? gifFrameCount : 1;
+      const frameSheetW = gifFrameCount > 1 ? sheetW / gifFrameCount : sheetW;
+      for (let f = 0; f < scanFrames; f++) {
+        const xOff = f * frameSheetW;
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const i = (y * sheetW + (xOff + x)) * 4;
+            if (data[i + 3] > alphaTh) {
+              if (y < top) top = y;
+              if (y > bottom) bottom = y;
+              if (x < left) left = x;
+              if (x > right) right = x;
+            }
           }
         }
       }
+      void frameXOffset;
 
       if (top > bottom || left > right) {
         alert('未检测到有效内容，请检查抠图阈值');
@@ -675,14 +914,16 @@
     // ========== 重置选区 / 全选 ==========
     resetCropBtn.onclick = () => {
       if (sourceImage) {
-        cropRect = { x: 0, y: 0, w: sourceImage.width, h: sourceImage.height };
+        const dim = getFrameDim();
+        cropRect = { x: 0, y: 0, w: dim.w, h: dim.h };
         renderCropCanvas();
       }
     };
 
     selectAllBtn.onclick = () => {
       if (sourceImage) {
-        cropRect = { x: 0, y: 0, w: sourceImage.width, h: sourceImage.height };
+        const dim = getFrameDim();
+        cropRect = { x: 0, y: 0, w: dim.w, h: dim.h };
         renderCropCanvas();
       }
     };
@@ -793,16 +1034,36 @@
 
       // 计算目标高度（基于裁剪区域比例）
       const cropRatio = cr.h / cr.w;
-      const th = Math.max(1, Math.round(tw * cropRatio));
 
-      // 从裁剪区域绘制到离屏 canvas
+      // 离屏 canvas
       const offscreen = document.createElement('canvas');
-      offscreen.width = tw;
-      offscreen.height = th;
       const ctx = offscreen.getContext('2d');
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'medium';
-      ctx.drawImage(sourceImage, cr.x, cr.y, cr.w, cr.h, 0, 0, tw, th);
+
+      let th;
+      if (gifFrameCount > 1) {
+        // GIF：cr 是单帧坐标，遍历所有帧把对应区域拼成新 spritesheet
+        const sheetFrameW = sourceImage.width / gifFrameCount;
+        const perFrameTw = tw / gifFrameCount;
+        const perFrameTh = Math.max(1, Math.round(perFrameTw * cropRatio));
+        th = perFrameTh;
+        offscreen.width = tw;
+        offscreen.height = th;
+        for (let i = 0; i < gifFrameCount; i++) {
+          ctx.drawImage(
+            sourceImage,
+            i * sheetFrameW + cr.x, cr.y, cr.w, cr.h,
+            i * perFrameTw, 0, perFrameTw, perFrameTh
+          );
+        }
+      } else {
+        // 静态图：原路径，cr 即源图坐标
+        th = Math.max(1, Math.round(tw * cropRatio));
+        offscreen.width = tw;
+        offscreen.height = th;
+        ctx.drawImage(sourceImage, cr.x, cr.y, cr.w, cr.h, 0, 0, tw, th);
+      }
 
       const imageData = ctx.getImageData(0, 0, tw, th);
       const data = imageData.data;
@@ -853,6 +1114,48 @@
     }
 
     function renderPreview(pixelMap, tw, th) {
+      // 中断进行中的动画循环（即将重新调度或仅静态绘制）
+      stopPreviewAnimation();
+
+      // GIF 动画 sprite：拼帧后 tw 是整个 spritesheet 宽，按单帧 frameW 渲染并按 frameDurationMs 循环
+      if (gifFrameCount > 1) {
+        const frameW = Math.floor(tw / gifFrameCount);
+        const baseScale = Math.max(1, Math.min(Math.floor(300 / Math.max(frameW, th)), 12));
+        previewCanvas.width = frameW * baseScale;
+        previewCanvas.height = th * baseScale;
+        previewCtx.imageSmoothingEnabled = false;
+        const drawFrame = (idx) => {
+          previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+          const xOffset = idx * frameW;
+          for (let y = 0; y < th; y++) {
+            const row = pixelMap[y];
+            if (!row) continue;
+            for (let x = 0; x < frameW; x++) {
+              const c = row[xOffset + x];
+              if (c) {
+                previewCtx.fillStyle = c;
+                previewCtx.fillRect(x * baseScale, y * baseScale, baseScale, baseScale);
+              }
+            }
+          }
+        };
+        let idx = 0;
+        let lastTick = performance.now();
+        drawFrame(idx);
+        const dur = gifFrameDurationMs > 0 ? gifFrameDurationMs : 100;
+        const tick = (now) => {
+          if (now - lastTick >= dur) {
+            idx = (idx + 1) % gifFrameCount;
+            drawFrame(idx);
+            lastTick = now;
+          }
+          previewAnimRAF = requestAnimationFrame(tick);
+        };
+        previewAnimRAF = requestAnimationFrame(tick);
+        return;
+      }
+
+      // 静态 sprite：原全图绘制
       const scale = Math.max(1, Math.min(Math.floor(300 / Math.max(tw, th)), 12));
       previewCanvas.width = tw * scale;
       previewCanvas.height = th * scale;
@@ -865,6 +1168,13 @@
             previewCtx.fillRect(x * scale, y * scale, scale, scale);
           }
         }
+      }
+    }
+
+    function stopPreviewAnimation() {
+      if (previewAnimRAF) {
+        cancelAnimationFrame(previewAnimRAF);
+        previewAnimRAF = 0;
       }
     }
 
@@ -929,7 +1239,9 @@
     resetBtn.onclick = () => {
       sourceImage = null; sourceImageData = null; currentPixelMap = null; colorMap = {};
       cropRect = null;
-      gifFrameCount = 1; gifFrameDurationMs = 100; gifFrameLoop = true;
+      gifFrameCount = 1; gifFrameDurationMs = 100; gifFrameLoop = true; gifCurrentFrame = 0;
+      setGifModeUI(false);
+      stopPreviewAnimation();
       imageInfo.textContent = '尚未选择图片';
       codeOutput.value = '';
       paletteDiv.innerHTML = '';
@@ -990,8 +1302,13 @@
             gifFrameCount = msg.frameCount;
             gifFrameDurationMs = typeof msg.frameDurationMs === 'number' ? msg.frameDurationMs : 100;
             gifFrameLoop = msg.frameLoop !== false;
+            gifCurrentFrame = 0;
+            // 启用 GIF UI 以便用户调整单帧宽 / 切换帧；右侧预览将循环播放
+            setGifModeUI(true);
+            updateGifFrameLabel();
           } else {
             gifFrameCount = 1;
+            setGifModeUI(false);
           }
           renderPreview(currentPixelMap, tw, th);
           const animSuffix = gifFrameCount > 1
