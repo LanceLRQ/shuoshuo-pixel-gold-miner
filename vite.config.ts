@@ -2,7 +2,10 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
+// 生产部署根路径：https://xxx.com/game/gold_miner/
+// dev 服务器仍走 '/'；只有 vite build 输出会注入 /game/gold_miner/ 前缀
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/game/gold_miner/' : '/',
   plugins: [react()],
   resolve: {
     alias: {
@@ -24,4 +27,4 @@ export default defineConfig({
     port: 3000,
     open: true,
   },
-});
+}));

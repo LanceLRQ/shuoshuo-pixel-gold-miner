@@ -117,7 +117,8 @@ export function PixelEditorDialog({
     if (!spriteName) return '';
     const params = new URLSearchParams({ embed: '1', sprite: spriteName });
     if (label) params.set('label', label);
-    return `/tools/pixel-converter.html?${params.toString()}`;
+    // 用 Vite 注入的 BASE_URL 前缀（dev = '/'，prod = '/game/gold_miner/'）
+    return `${import.meta.env.BASE_URL}tools/pixel-converter.html?${params.toString()}`;
   }, [spriteName, label]);
 
   return (
