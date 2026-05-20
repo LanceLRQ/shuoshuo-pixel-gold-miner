@@ -79,45 +79,140 @@ export class ThemeListPanel {
   // ===== 操作 =====
 
   /** 新建主题：基于 classic 模板复制 */
-  private handleCreate(): void {
+  private async handleCreate(): Promise<void> {
     const baseTemplate = this.app.getSystemThemes().find((t) => t.id === 'classic');
     if (!baseTemplate) return;
-    this.cloneAs(
-      baseTemplate,
-      '请输入新主题 ID（小写字母/数字/下划线，1-40 字符）',
-      (id) => id,
-      () => '基于 classic 的自定义主题'
-    );
+    await this.cloneAs(baseTemplate, {
+      title: '新建主题',
+      hint: '将基于「经典版」模板复制一份',
+      defaultId: this.suggestId('my_theme'),
+      defaultName: (id) => id,
+      description: () => '基于 classic 的自定义主题',
+    });
   }
 
   /** 复制当前主题为新主题 */
-  private handleDuplicate(): void {
+  private async handleDuplicate(): Promise<void> {
     const current = this.app.getCurrentTheme();
-    this.cloneAs(
-      current,
-      `基于 "${current.id}" 复制，请输入新主题 ID`,
-      () => `${current.name} 副本`,
-      (src) => src.description
-    );
+    await this.cloneAs(current, {
+      title: '复制当前主题',
+      hint: `将基于「${current.name}」（${current.id}）复制一份`,
+      defaultId: this.suggestId(`${current.id}_copy`),
+      defaultName: () => `${current.name} 副本`,
+      description: (src) => src.description,
+    });
+  }
+
+  /** 在 prefix 基础上找最小未占用后缀：prefix / prefix_2 / prefix_3 … */
+  private suggestId(prefix: string): string {
+    if (!this.findConflict(prefix)) return prefix;
+    for (let i = 2; i < 1000; i++) {
+      const candidate = `${prefix}_${i}`;
+      if (!this.findConflict(candidate)) return candidate;
+    }
+    return `${prefix}_${Date.now()}`;
   }
 
   /** 共享：拷贝 source 主题，弹窗取新 id/name 并写入 store */
-  private cloneAs(
+  private async cloneAs(
     source: ThemeJson,
-    idPrompt: string,
-    defaultName: (newId: string) => string,
-    description: (src: ThemeJson) => string
-  ): void {
-    const newId = this.promptThemeId(idPrompt);
-    if (!newId) return;
-    const newName = window.prompt('请输入主题显示名', defaultName(newId));
-    if (!newName) return;
+    opts: {
+      title: string;
+      hint: string;
+      defaultId: string;
+      defaultName: (newId: string) => string;
+      description: (src: ThemeJson) => string;
+    }
+  ): Promise<void> {
+    const result = await this.openThemeDialog({
+      title: opts.title,
+      hint: opts.hint,
+      defaultId: opts.defaultId,
+      defaultName: opts.defaultName,
+    });
+    if (!result) return;
     const copy = deepClone(source);
-    copy.id = newId;
-    copy.name = newName;
-    copy.description = description(source);
+    copy.id = result.id;
+    copy.name = result.name;
+    copy.description = opts.description(source);
     this.app.getStore().addOrUpdate(copy);
-    this.app.setCurrentThemeId(newId);
+    this.app.setCurrentThemeId(result.id);
+  }
+
+  /** UI 弹窗：填写主题 ID + 显示名，返回 null 表示取消 */
+  private openThemeDialog(opts: {
+    title: string;
+    hint: string;
+    defaultId: string;
+    defaultName: (newId: string) => string;
+  }): Promise<{ id: string; name: string } | null> {
+    return new Promise((resolve) => {
+      const mask = document.createElement('div');
+      mask.className = 'am-dialog-mask';
+      mask.innerHTML = `
+        <div class="am-dialog" role="dialog" aria-modal="true">
+          <div class="am-dialog-title">${escapeHtml(opts.title)}</div>
+          <div class="am-dialog-hint">${escapeHtml(opts.hint)}</div>
+          <label class="am-dialog-field">
+            <span>主题 ID</span>
+            <input class="am-dialog-id" type="text" maxlength="40" autocomplete="off"
+                   placeholder="小写字母 / 数字 / 下划线，1-40 字符">
+          </label>
+          <label class="am-dialog-field">
+            <span>显示名</span>
+            <input class="am-dialog-name" type="text" maxlength="60" autocomplete="off"
+                   placeholder="显示在主题列表的中文名">
+          </label>
+          <div class="am-dialog-error" aria-live="polite"></div>
+          <div class="am-dialog-actions">
+            <button type="button" class="am-btn am-dialog-cancel">取消</button>
+            <button type="button" class="am-btn primary am-dialog-confirm">确定</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(mask);
+
+      const idInput = mask.querySelector<HTMLInputElement>('.am-dialog-id')!;
+      const nameInput = mask.querySelector<HTMLInputElement>('.am-dialog-name')!;
+      const errorEl = mask.querySelector<HTMLDivElement>('.am-dialog-error')!;
+      const confirmBtn = mask.querySelector<HTMLButtonElement>('.am-dialog-confirm')!;
+      const cancelBtn = mask.querySelector<HTMLButtonElement>('.am-dialog-cancel')!;
+
+      // 预填默认 ID + 同步显示名
+      idInput.value = opts.defaultId;
+      nameInput.value = opts.defaultName(opts.defaultId);
+
+      const showError = (msg: string) => { errorEl.textContent = msg; };
+      // ID 变化时联动同步显示名占位
+      idInput.addEventListener('input', () => {
+        if (!nameInput.dataset.dirty) nameInput.value = opts.defaultName(idInput.value.trim());
+        showError('');
+      });
+      nameInput.addEventListener('input', () => { nameInput.dataset.dirty = '1'; });
+
+      const close = (value: { id: string; name: string } | null) => {
+        mask.remove();
+        resolve(value);
+      };
+      const onSubmit = () => {
+        const id = idInput.value.trim();
+        const name = nameInput.value.trim();
+        if (!id) return showError('请输入主题 ID');
+        if (!ID_REGEX.test(id)) return showError('ID 必须由小写字母、数字、下划线组成，长度 1-40');
+        if (this.findConflict(id)) return showError(`主题 ID "${id}" 已存在`);
+        if (!name) return showError('请输入显示名');
+        close({ id, name });
+      };
+
+      confirmBtn.addEventListener('click', onSubmit);
+      cancelBtn.addEventListener('click', () => close(null));
+      mask.addEventListener('click', (e) => { if (e.target === mask) close(null); });
+      mask.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') close(null);
+        else if (e.key === 'Enter') onSubmit();
+      });
+      setTimeout(() => { idInput.focus(); idInput.select(); }, 0);
+    });
   }
 
   private handleExport(): void {
@@ -200,20 +295,6 @@ export class ThemeListPanel {
     return null;
   }
 
-  private promptThemeId(message: string): string | null {
-    const input = window.prompt(message);
-    if (!input) return null;
-    const id = input.trim();
-    if (!ID_REGEX.test(id)) {
-      alert('ID 必须由小写字母、数字、下划线组成，长度 1-40');
-      return null;
-    }
-    if (this.findConflict(id)) {
-      alert(`主题 ID "${id}" 已存在`);
-      return null;
-    }
-    return id;
-  }
 }
 
 function deepClone<T>(obj: T): T {

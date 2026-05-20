@@ -7,6 +7,7 @@
 
 import type { PixelMap } from '../assets/types';
 import { escapeHtml } from './domUtils';
+import { getSpriteLabel } from './spriteLabels';
 
 export interface OpenOptions {
   spriteName: string;
@@ -28,16 +29,26 @@ export class PixelEditorOverlay {
     }
     this.currentOpts = opts;
 
+    const label = getSpriteLabel(opts.spriteName);
+    const headerTitle = label
+      ? `编辑 sprite: <strong>${escapeHtml(opts.spriteName)}</strong> <span class="pixel-editor-label">（${escapeHtml(label)}）</span>`
+      : `编辑 sprite: <strong>${escapeHtml(opts.spriteName)}</strong>`;
+    const params = new URLSearchParams({
+      embed: '1',
+      sprite: opts.spriteName,
+    });
+    if (label) params.set('label', label);
+
     // 构建 overlay 容器
     const overlay = document.createElement('div');
     overlay.className = 'pixel-editor-overlay';
     overlay.innerHTML = `
       <div class="pixel-editor-header">
-        <span>编辑 sprite: <strong>${escapeHtml(opts.spriteName)}</strong></span>
+        <span>${headerTitle}</span>
         <button class="pixel-editor-close" type="button" aria-label="关闭">×</button>
       </div>
       <iframe class="pixel-editor-iframe"
-              src="/tools/pixel-converter.html?embed=1&sprite=${encodeURIComponent(opts.spriteName)}"
+              src="/tools/pixel-converter.html?${params.toString()}"
               title="像素编辑器"></iframe>
     `;
     document.body.appendChild(overlay);

@@ -381,6 +381,8 @@
           // 默认全选
           cropRect = { x: 0, y: 0, w: img.width, h: img.height };
           renderCropCanvas();
+          // 选择图片后自动转换一次，立即看到预览效果
+          convert();
         };
         img.src = e.target.result;
       };
@@ -846,19 +848,27 @@
       $('standaloneExport').style.display = 'none';
       $('embedExport').style.display = 'block';
       const embedInfo = $('embedInfo');
-      const spriteName = new URLSearchParams(location.search).get('sprite') || '';
+      const params = new URLSearchParams(location.search);
+      const spriteName = params.get('sprite') || '';
+      const spriteLabel = params.get('label') || '';
       if (spriteName) {
-        embedInfo.textContent = `正在编辑 sprite: ${spriteName}`;
+        const display = spriteLabel ? `${spriteName}（${spriteLabel}）` : spriteName;
+        // 替换页面标题，让正在编辑的素材一目了然
+        document.title = `编辑 ${display} - Pixel Map Converter`;
+        document.querySelector('h1').textContent = `正在编辑：${display}`;
+        embedInfo.textContent = `编辑完成后点"应用"将更新主题中的 ${spriteName}`;
       }
 
-      // 接收宿主页推送的初始 PixelMap
+      // 接收宿主页推送的初始 PixelMap：渲染到右侧预览
       window.addEventListener('message', (ev) => {
         if (ev.origin !== location.origin) return;
         const msg = ev.data;
-        if (msg && msg.type === 'init' && Array.isArray(msg.pixels)) {
+        if (msg && msg.type === 'init' && Array.isArray(msg.pixels) && msg.pixels.length) {
           currentPixelMap = msg.pixels;
-          renderPreview(currentPixelMap);
-          previewInfo.textContent = `已加载 ${currentPixelMap[0].length}×${currentPixelMap.length}（编辑后点应用）`;
+          const th = msg.pixels.length;
+          const tw = msg.pixels[0].length;
+          renderPreview(currentPixelMap, tw, th);
+          previewInfo.textContent = `当前内容：${tw}×${th}（上传新图后将自动转换覆盖）`;
         }
       });
 
