@@ -41,8 +41,13 @@ function generateGrid(W, H, pixel) {
   return map;
 }
 
-/** PixelMap (颜色数组) → { palette, pixels } 块（ASCII + 局部调色板） */
-function toSpriteJson(pixelMap, scale = 1) {
+/**
+ * PixelMap (颜色数组) → { palette, pixels, displayWidth?, displayHeight? } 块
+ *
+ * HD 精度方案：pixelMap 是 96×96 的高密度数据，但 displayWidth/Height 让游戏画布
+ * 仍按原尺寸渲染（如 24×24）。当 displayWidth/Height 与 PixelMap 尺寸一致时省略字段。
+ */
+function toSpriteJson(pixelMap, scale = 1, displayWidth, displayHeight) {
   const usage = new Map();
   for (const row of pixelMap) {
     for (const cell of row) {
@@ -63,7 +68,16 @@ function toSpriteJson(pixelMap, scale = 1) {
   const pixels = pixelMap.map(row =>
     row.map(cell => (cell === null ? '.' : colorToChar.get(cell))).join('')
   );
-  return { scale, palette, pixels };
+  const out = { scale, palette, pixels };
+  const w = pixels[0]?.length ?? 0;
+  const h = pixels.length;
+  if (typeof displayWidth === 'number' && displayWidth > 0 && displayWidth !== w) {
+    out.displayWidth = displayWidth;
+  }
+  if (typeof displayHeight === 'number' && displayHeight > 0 && displayHeight !== h) {
+    out.displayHeight = displayHeight;
+  }
+  return out;
 }
 
 // ==================== 算法库 ====================
@@ -873,22 +887,32 @@ const GOLD_PALETTE = {
   OUTLINE: '#604808',
 };
 
+/**
+ * HD 精度方案：所有 sprite 升级到 96×96 PixelMap（非正方形按比例最长边 96），
+ * displayWidth/Height 保持原显示尺寸 → 游戏布局/碰撞零改动，细节翻 5-16 倍。
+ *
+ * 配置：[PixelMap 尺寸, 显示尺寸] = [新精度, 老显示]
+ */
+const HD = 96;
 const SPRITES_TO_GENERATE = {
-  GOLD_SMALL: () => toSpriteJson(makeGoldNugget(24, 24, GOLD_PALETTE), 1),
-  GOLD_MEDIUM: () => toSpriteJson(makeGoldNugget(36, 36, GOLD_PALETTE), 1),
-  DIAMOND_SPRITE: () => toSpriteJson(makeDiamond(24, 24), 1),
-  STONE_SPRITE: () => toSpriteJson(makeStone(36, 36), 1),
-  CRYSTAL_ORE_SPRITE: () => toSpriteJson(makeCrystalOre(24, 24), 1),
-  CRAB_SHELL_SPRITE: () => toSpriteJson(makeCrabShell(30, 30), 1),
-  PIGGY_GEM_SPRITE: () => toSpriteJson(makePiggyGem(36, 36), 1),
-  HOOK_SPRITE: () => toSpriteJson(makeHook(30, 36), 1),
-  COIN_ICON: () => toSpriteJson(makeCoinIcon(24, 24), 1),
-  MOUSE_SPRITE: () => toSpriteJson(makeMouse(36, 24), 1),
-  MOLE_SPRITE: () => toSpriteJson(makeMole(36, 30), 1),
-  BONE_SPRITE: () => toSpriteJson(makeBone(36, 18), 1),
-  BOMB_SPRITE: () => toSpriteJson(makeBomb(24, 24), 1),
-  MYSTERY_BAG: () => toSpriteJson(makeMysteryBag(24, 24), 1),
-  WOODEN_BOX_SPRITE: () => toSpriteJson(makeWoodenBox(24, 24), 1),
+  // 正方形 96×96 内画图，按 displayWidth/Height 缩到原显示尺寸
+  GOLD_SMALL:         () => toSpriteJson(makeGoldNugget(HD, HD, GOLD_PALETTE), 1, 24, 24),
+  GOLD_MEDIUM:        () => toSpriteJson(makeGoldNugget(HD, HD, GOLD_PALETTE), 1, 36, 36),
+  GOLD_LARGE:         () => toSpriteJson(makeGoldNugget(HD, HD, GOLD_PALETTE), 1, 48, 48),
+  DIAMOND_SPRITE:     () => toSpriteJson(makeDiamond(HD, HD), 1, 24, 24),
+  STONE_SPRITE:       () => toSpriteJson(makeStone(HD, HD), 1, 36, 36),
+  CRYSTAL_ORE_SPRITE: () => toSpriteJson(makeCrystalOre(HD, HD), 1, 24, 24),
+  CRAB_SHELL_SPRITE:  () => toSpriteJson(makeCrabShell(HD, HD), 1, 30, 30),
+  PIGGY_GEM_SPRITE:   () => toSpriteJson(makePiggyGem(HD, HD), 1, 36, 36),
+  COIN_ICON:          () => toSpriteJson(makeCoinIcon(HD, HD), 1, 24, 24),
+  BOMB_SPRITE:        () => toSpriteJson(makeBomb(HD, HD), 1, 24, 24),
+  MYSTERY_BAG:        () => toSpriteJson(makeMysteryBag(HD, HD), 1, 24, 24),
+  WOODEN_BOX_SPRITE:  () => toSpriteJson(makeWoodenBox(HD, HD), 1, 24, 24),
+  // 非正方形：按原长宽比把最长边放大到 96
+  HOOK_SPRITE:        () => toSpriteJson(makeHook(80, HD), 1, 30, 36),   // 30:36 → 80:96
+  MOUSE_SPRITE:       () => toSpriteJson(makeMouse(HD, 64), 1, 36, 24),  // 36:24 → 96:64
+  MOLE_SPRITE:        () => toSpriteJson(makeMole(HD, 80), 1, 36, 30),   // 36:30 → 96:80
+  BONE_SPRITE:        () => toSpriteJson(makeBone(HD, 48), 1, 36, 18),   // 36:18 → 96:48
 };
 
 // ==================== 主流程：patch classic.json ====================
