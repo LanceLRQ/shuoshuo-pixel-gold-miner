@@ -42,7 +42,7 @@ export function App() {
     <div className="flex h-full flex-col bg-background text-foreground">
       <header className="flex flex-shrink-0 items-center gap-4 border-b bg-card px-5 py-2.5">
         <Button asChild variant="outline" size="sm">
-          <a href="./index.html">
+          <a href="../index.html">
             <ArrowLeft />
             返回游戏
           </a>

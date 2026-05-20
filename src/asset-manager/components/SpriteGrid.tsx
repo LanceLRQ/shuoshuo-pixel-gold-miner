@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Film, ImageUp, Search } from 'lucide-react';
 
 import {
   pixelMapToSpriteJson,
@@ -8,6 +8,7 @@ import {
   type ThemeJson,
 } from '../../assets/themeLoader';
 import { createSpriteCache } from '../../assets/types';
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -49,15 +50,21 @@ export function SpriteGrid({ theme, readonly, onCommitSprite }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="relative max-w-sm">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder="搜索 sprite 名（如 GOLD、MINER）"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="pl-9"
-        />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative max-w-sm flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="搜索 sprite 名（如 GOLD、MINER）"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex items-center gap-1.5 rounded-md border border-dashed border-border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground">
+          <ImageUp className="h-3.5 w-3.5" />
+          <span>点击 sprite 卡片可上传图片/GIF 替换；GIF 自动解帧为动画 sprite</span>
+        </div>
       </div>
 
       {visible.length === 0 ? (
@@ -83,10 +90,10 @@ export function SpriteGrid({ theme, readonly, onCommitSprite }: Props) {
         spriteName={editing ?? ''}
         sprite={editingSprite}
         onClose={() => setEditing(null)}
-        onApply={(pixels) => {
+        onApply={(pixels, meta) => {
           if (!editing || !editingSprite) return;
           try {
-            const next = pixelMapToSpriteJson(pixels, editingSprite.scale);
+            const next = pixelMapToSpriteJson(pixels, editingSprite.scale, meta);
             onCommitSprite(editing, next);
           } catch (e) {
             alert(
@@ -110,6 +117,7 @@ interface CardProps {
 function SpriteCard({ name, sprite, readonly, onClick }: CardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const label = getSpriteLabel(name);
+  const frameCount = sprite.frameCount && sprite.frameCount > 1 ? sprite.frameCount : 1;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -121,19 +129,20 @@ function SpriteCard({ name, sprite, readonly, onClick }: CardProps) {
       if (!ctx) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.imageSmoothingEnabled = false;
-      const scale = Math.min(
-        THUMBNAIL_SIZE / cached.width,
-        THUMBNAIL_SIZE / cached.height
-      );
-      const drawW = cached.width * scale;
-      const drawH = cached.height * scale;
+      // 动画 sprite 只渲染第一帧（cached 是横向拼接 spritesheet）
+      const frameW = cached.width / frameCount;
+      const sourceW = frameW;
+      const sourceH = cached.height;
+      const scale = Math.min(THUMBNAIL_SIZE / sourceW, THUMBNAIL_SIZE / sourceH);
+      const drawW = sourceW * scale;
+      const drawH = sourceH * scale;
       const dx = (THUMBNAIL_SIZE - drawW) / 2;
       const dy = (THUMBNAIL_SIZE - drawH) / 2;
-      ctx.drawImage(cached, dx, dy, drawW, drawH);
+      ctx.drawImage(cached, 0, 0, sourceW, sourceH, dx, dy, drawW, drawH);
     } catch (e) {
       console.warn(`sprite "${name}" 缩略图生成失败`, e);
     }
-  }, [name, sprite]);
+  }, [name, sprite, frameCount]);
 
   return (
     <Card
@@ -149,13 +158,23 @@ function SpriteCard({ name, sprite, readonly, onClick }: CardProps) {
         readonly && 'cursor-not-allowed opacity-70 hover:border-border hover:bg-card'
       )}
     >
-      <div className="bg-checkerboard flex h-24 w-24 items-center justify-center rounded">
+      <div className="bg-checkerboard relative flex h-24 w-24 items-center justify-center rounded">
         <canvas
           ref={canvasRef}
           width={THUMBNAIL_SIZE}
           height={THUMBNAIL_SIZE}
           className="pixelated"
         />
+        {frameCount > 1 && (
+          <Badge
+            variant="secondary"
+            className="absolute right-1 top-1 gap-1 px-1.5 py-0 text-[10px]"
+            title={`动画 sprite — ${frameCount} 帧`}
+          >
+            <Film className="h-3 w-3" />
+            {frameCount}
+          </Badge>
+        )}
       </div>
       <div className="w-full break-all text-center font-mono text-[11px] text-foreground">
         {name}
