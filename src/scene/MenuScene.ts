@@ -250,7 +250,7 @@ export class MenuScene extends SceneBase {
     return true;
   }
 
-  /** 绘制右上角设置入口（深棕金边像素风） */
+  /** 绘制右上角设置入口（优先用 MENU_SETTINGS_BG sprite，缺失时几何 fallback） */
   private renderSettingsIcon(renderer: Renderer): void {
     const ctx = renderer.getContext();
     const w = 72;
@@ -259,19 +259,40 @@ export class MenuScene extends SceneBase {
     const y = 12;
     this.settingsBtnArea = { x, y, w, h };
 
-    // 黑色外描边（3px）
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
-    // 深棕背景
-    ctx.fillStyle = '#3A2A1A';
-    ctx.fillRect(x, y, w, h);
-    // 金黄边框（2px）
-    ctx.fillStyle = '#FFD700';
-    ctx.fillRect(x, y, w, 2);
-    ctx.fillRect(x, y + h - 2, w, 2);
-    ctx.fillRect(x, y, 2, h);
-    ctx.fillRect(x + w - 2, y, 2, h);
-    drawTextCenteredIn(renderer, STRINGS.menu.settings, { x, y, w, h }, '#FFD700', 'MEDIUM');
+    // 优先 sprite 渲染（黄色按钮素材）
+    const sprite = this.game.getThemeManager().getSpriteCache().get('MENU_SETTINGS_BG');
+    if (sprite) {
+      this.drawSprite3Slice(ctx, sprite, x, y, w, h);
+    } else {
+      // 几何 fallback：黑边 + 深棕底 + 金黄边
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+      ctx.fillStyle = '#3A2A1A';
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = '#FFD700';
+      ctx.fillRect(x, y, w, 2);
+      ctx.fillRect(x, y + h - 2, w, 2);
+      ctx.fillRect(x, y, 2, h);
+      ctx.fillRect(x + w - 2, y, 2, h);
+    }
+    drawTextCenteredIn(renderer, STRINGS.menu.settings, { x, y, w, h }, '#000000', 'MEDIUM');
+  }
+
+  /** 3-slice 横向拉伸（与 Button.ts 算法一致，按 25% 切片比例适配任意 sprite 尺寸） */
+  private drawSprite3Slice(ctx: CanvasRenderingContext2D, sprite: HTMLCanvasElement, x: number, y: number, w: number, h: number): void {
+    const srcW = sprite.width;
+    const srcH = sprite.height;
+    const sliceSrcW = Math.floor(srcW * 0.25);
+    const scaleY = h / srcH;
+    const leftW = sliceSrcW * scaleY;
+    const rightW = sliceSrcW * scaleY;
+    const midW = Math.max(0, w - leftW - rightW);
+    ctx.drawImage(sprite, 0, 0, sliceSrcW, srcH, x, y, leftW, h);
+    if (midW > 0) {
+      const srcMidW = srcW - sliceSrcW * 2;
+      ctx.drawImage(sprite, sliceSrcW, 0, srcMidW, srcH, x + leftW, y, midW, h);
+    }
+    ctx.drawImage(sprite, srcW - sliceSrcW, 0, sliceSrcW, srcH, x + leftW + midW, y, rightW, h);
   }
 
   /** 绘制设置面板 */

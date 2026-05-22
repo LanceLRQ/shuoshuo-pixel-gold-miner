@@ -18,6 +18,7 @@ import { Storage, type GameProgress, AUTO_SLOT_ID } from './Storage';
 import { LevelManager } from '../level/LevelManager';
 import { Audio } from './Audio';
 import { ThemeManager } from '../assets/theme/ThemeManager';
+import { Button } from '../ui/Button';
 import { CLASSIC_THEME } from '../assets/theme/classic';
 import { SHUOSHUO_CRYSTAL_THEME } from '../assets/theme/shuoshuo-crystal';
 import { loadTheme } from '../assets/themeLoader';
@@ -123,6 +124,9 @@ export class Game {
       }
     }
     this.themeManager.restoreTheme();
+
+    // 把 ThemeManager 提供给 Button 类用于 sprite 渲染（无 sprite 时自动 fallback 几何）
+    Button.setSpriteProvider(this.themeManager);
 
     // 加载用户音频设置
     const settings = this.storage.loadSettings();

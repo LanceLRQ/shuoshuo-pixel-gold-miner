@@ -2,9 +2,23 @@
  * 通用按钮组件
  * 青蓝色像素风：实心 bg + 黑色描边 + 内边高光 + 两端钉饰
  * 支持正常/高亮/按下/禁用四种状态
+ *
+ * 渲染优先级：主题里有 MENU_BUTTON_BG sprite → 用 3-slice 横向拉伸；否则 fallback 几何绘制
  */
 
 import type { Renderer } from '../core/Renderer';
+import type { SpriteCacheMap } from '../assets/types';
+
+/** sprite 提供器接口（避免 Button 强依赖 ThemeManager） */
+export interface ButtonSpriteProvider {
+  getSpriteCache(): SpriteCacheMap;
+}
+
+/**
+ * 3-slice 切片比例：左右端各占 sprite 矩阵宽度的 25%（中间 50% 横向拉伸）
+ * 适用于任意宽高 sprite（左右两端结构对称即可），不依赖固定像素值
+ */
+const SLICE_RATIO = 0.25;
 
 /** 按钮状态 */
 export enum ButtonState {
@@ -64,6 +78,21 @@ export class Button {
   /** 是否被点击 */
   private clicked: boolean = false;
 
+  /** 全局 sprite 提供器（Game 启动时调 Button.setSpriteProvider 注入） */
+  private static spriteProvider: ButtonSpriteProvider | null = null;
+  /** sprite 渲染时使用的 sprite key（可被 setSpriteKey 覆盖，比如设置按钮用 MENU_SETTINGS_BG） */
+  private spriteKey: string = 'MENU_BUTTON_BG';
+
+  /** 一次性注入主题素材源，全场景 Button 共享 */
+  static setSpriteProvider(provider: ButtonSpriteProvider): void {
+    Button.spriteProvider = provider;
+  }
+
+  /** 覆盖此按钮使用的 sprite key（默认 MENU_BUTTON_BG） */
+  setSpriteKey(key: string): void {
+    this.spriteKey = key;
+  }
+
   constructor(x: number, y: number, width: number, height: number, label: string) {
     this.x = x;
     this.y = y;
@@ -117,32 +146,21 @@ export class Button {
     const ctx = renderer.getContext();
     const { x, y, width: w, height: h } = this;
 
-    // 内填充
-    ctx.fillStyle = colors.bg;
-    ctx.fillRect(x, y, w, h);
-
-    // 黑色外描边（2px）
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(x, y, w, 2);
-    ctx.fillRect(x, y + h - 2, w, 2);
-    ctx.fillRect(x, y, 2, h);
-    ctx.fillRect(x + w - 2, y, 2, h);
-
-    // 内边深蓝阴影（2px，紧贴黑边内侧，仅画上、左、下三边模拟立体感）
-    ctx.fillStyle = colors.border;
-    ctx.fillRect(x + 2, y + 2, w - 4, 2);
-    ctx.fillRect(x + 2, y + h - 4, w - 4, 2);
-    ctx.fillRect(x + 2, y + 2, 2, h - 4);
-    ctx.fillRect(x + w - 4, y + 2, 2, h - 4);
-
-    // 顶部亮带（仅 NORMAL/HOVER 显示）
-    if (!this.disabled && (this.state === ButtonState.NORMAL || this.state === ButtonState.HOVER)) {
-      ctx.fillStyle = colors.highlight;
-      ctx.fillRect(x + 4, y + 4, w - 8, 2);
+    // 优先 sprite 渲染（3-slice 横向拉伸），找不到 sprite 时 fallback 到几何绘制
+    const sprite = Button.spriteProvider?.getSpriteCache().get(this.spriteKey);
+    if (sprite) {
+      this.drawSprite3Slice(ctx, sprite);
+      // 按下/禁用态：盖一层透明色叠加表示状态
+      if (this.state === ButtonState.PRESSED && !this.disabled) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.fillRect(x, y, w, h);
+      } else if (this.disabled) {
+        ctx.fillStyle = 'rgba(40, 40, 40, 0.5)';
+        ctx.fillRect(x, y, w, h);
+      }
+    } else {
+      this.drawGeometryFallback(ctx, colors);
     }
-
-    // 两端钉饰（黑色描边像素三角+方块，左右对称）
-    this.drawEndDecor(ctx);
 
     // 按钮文字（居中，按下时下沉 1px 模拟手感）
     const fontSize = Math.min(h - 12, 22);
@@ -152,7 +170,60 @@ export class Button {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(this.label, x + w / 2, y + h / 2 + textOffsetY);
-    ctx.textAlign = 'start'; // 复位
+    ctx.textAlign = 'start';
+  }
+
+  /**
+   * 3-slice 横向拉伸绘制：sprite 左/右端按 H 等比缩放，中部横向拉伸填满
+   * 切片比例 SLICE_RATIO（默认 0.25），适配任意宽高的 sprite
+   */
+  private drawSprite3Slice(ctx: CanvasRenderingContext2D, sprite: HTMLCanvasElement): void {
+    const { x, y, width: w, height: h } = this;
+    const srcW = sprite.width;
+    const srcH = sprite.height;
+    const sliceSrcW = Math.floor(srcW * SLICE_RATIO);
+    // 整体按按钮高度等比缩放，决定左右端宽度
+    const scaleY = h / srcH;
+    const leftW = sliceSrcW * scaleY;
+    const rightW = sliceSrcW * scaleY;
+    const midW = Math.max(0, w - leftW - rightW);
+
+    // 左端
+    ctx.drawImage(sprite, 0, 0, sliceSrcW, srcH, x, y, leftW, h);
+    // 中部横向拉伸
+    if (midW > 0) {
+      const srcMidW = srcW - sliceSrcW * 2;
+      ctx.drawImage(sprite, sliceSrcW, 0, srcMidW, srcH, x + leftW, y, midW, h);
+    }
+    // 右端
+    ctx.drawImage(sprite, srcW - sliceSrcW, 0, sliceSrcW, srcH, x + leftW + midW, y, rightW, h);
+  }
+
+  /** 几何 fallback 绘制（无 sprite 时使用） */
+  private drawGeometryFallback(ctx: CanvasRenderingContext2D, colors: typeof BUTTON_COLORS[keyof typeof BUTTON_COLORS]): void {
+    const { x, y, width: w, height: h } = this;
+    // 内填充
+    ctx.fillStyle = colors.bg;
+    ctx.fillRect(x, y, w, h);
+    // 黑色外描边（2px）
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(x, y, w, 2);
+    ctx.fillRect(x, y + h - 2, w, 2);
+    ctx.fillRect(x, y, 2, h);
+    ctx.fillRect(x + w - 2, y, 2, h);
+    // 内边深蓝阴影
+    ctx.fillStyle = colors.border;
+    ctx.fillRect(x + 2, y + 2, w - 4, 2);
+    ctx.fillRect(x + 2, y + h - 4, w - 4, 2);
+    ctx.fillRect(x + 2, y + 2, 2, h - 4);
+    ctx.fillRect(x + w - 4, y + 2, 2, h - 4);
+    // 顶部亮带
+    if (!this.disabled && (this.state === ButtonState.NORMAL || this.state === ButtonState.HOVER)) {
+      ctx.fillStyle = colors.highlight;
+      ctx.fillRect(x + 4, y + 4, w - 8, 2);
+    }
+    // 两端钉饰
+    this.drawEndDecor(ctx);
   }
 
   /** 绘制按钮左右两端的像素钉饰（黑色描边小三角+方块） */
