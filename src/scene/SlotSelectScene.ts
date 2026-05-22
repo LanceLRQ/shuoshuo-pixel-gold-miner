@@ -177,7 +177,7 @@ export class SlotSelectScene extends SceneBase {
       const btn = this.getAutoContinueButtonRect();
       ctx.fillStyle = '#5DC4DD';
       ctx.fillRect(btn.x, btn.y, btn.w, btn.h);
-      drawTextCenteredIn(renderer, STRINGS.common.continueGame, btn, '#FFFFFF', 'MEDIUM');
+      drawTextCenteredIn(renderer, STRINGS.common.continueGame, btn, '#000000', 'MEDIUM');
     }
   }
 
@@ -218,7 +218,7 @@ export class SlotSelectScene extends SceneBase {
       const loadRect = this.getCardActionRect(rect, 0);
       ctx.fillStyle = '#5DC4DD';
       ctx.fillRect(loadRect.x, loadRect.y, loadRect.w, loadRect.h);
-      drawTextCenteredIn(renderer, STRINGS.slotSelect.load, loadRect, '#FFFFFF', 'SMALL');
+      drawTextCenteredIn(renderer, STRINGS.slotSelect.load, loadRect, '#000000', 'SMALL');
 
       // 删除按钮
       const delRect = this.getCardActionRect(rect, 1);

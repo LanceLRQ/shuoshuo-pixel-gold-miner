@@ -3451,6 +3451,48 @@
       ],
       "displayWidth": 130,
       "displayHeight": 70
+    },
+    "MENU_TITLE_BG": {
+      "scale": 1,
+      "palette": {
+        "A": "#000000",
+        "B": "#5DC4DD",
+        "C": "#2D85A8",
+        "H": "#A3E5F5",
+        "D": "#3DA9D9"
+      },
+      "pixels": [
+        "............................................................................................",
+        "............................................................................................",
+        "..........D.....................................................D...........................",
+        "..........D.....................................................D...........................",
+        "........ADDDA.................................................ADDDA.........................",
+        "....AHDAADDDAADHA.........................................AHDAADDDAADHA.....................",
+        "....ADDAAHDDAADDA.........................................ADDAAHDDAADDA.....................",
+        "....ADDAAHDDAADDA.........................................ADDAAHDDAADDA.....................",
+        "....ADDAAHDDAADDA.........................................ADDAAHDDAADDA.....................",
+        "....ADDAADDDAADDA.........................................ADDAADDDAADDA.....................",
+        "..AAAAAAAAAAAAAAAA..AAAAAAAAAAAAAAAA..AAAAAAAAAAAAAAAA..AAAAAAAAAAAAAAAA..AAAAAAAAAAAAAAAA..",
+        "..ABHHHHHHHHHHHHCA..ABHHHHHHHHHHHHCA..ABHHHHHHHHHHHHCA..ABHHHHHHHHHHHHCA..ABHHHHHHHHHHHHCA..",
+        "..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..",
+        "..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..",
+        "..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..",
+        "..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..",
+        "..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..",
+        "..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..",
+        "..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..",
+        "..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..",
+        "..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..",
+        "..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..",
+        "..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..",
+        "..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..ABBBBBBBBBBBBBCA..",
+        "..ACCCCCCCCCCCCCCA..ACCCCCCCCCCCCCCA..ACCCCCCCCCCCCCCA..ACCCCCCCCCCCCCCA..ACCCCCCCCCCCCCCA..",
+        "..AAAAAAAAAAAAAAAA..AAAAAAAAAAAAAAAA..AAAAAAAAAAAAAAAA..AAAAAAAAAAAAAAAA..AAAAAAAAAAAAAAAA..",
+        "............................................................................................",
+        "............................................................................................"
+      ],
+      "displayWidth": 440,
+      "displayHeight": 134
     }
   },
   "background": {

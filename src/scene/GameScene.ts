@@ -781,7 +781,7 @@ export class GameScene extends SceneBase {
       // 顶部高光
       ctx.fillStyle = '#8FE0F5';
       ctx.fillRect(x + 4, y + 4, w - 8, 2);
-      drawTextCenteredIn(renderer, btn.label, btn.rect, '#FFFFFF', 'MEDIUM');
+      drawTextCenteredIn(renderer, btn.label, btn.rect, '#000000', 'MEDIUM');
     }
   }
 

@@ -42,6 +42,7 @@ export const SPRITE_LABELS: Record<string, string> = {
   WOODEN_BOX_SPRITE: '木箱（容器）',
 
   // 主菜单装饰（仅 MenuScene 使用，可由各主题独立替换）
+  MENU_TITLE_BG: '主菜单·标题底图（5 方块 + 水晶装饰）',
   MENU_MASCOT_CAT: '主菜单·水晶猫吉祥物',
   MENU_DPAD_DECOR: '主菜单·D-Pad 装饰',
   MENU_BUTTON_B: '主菜单·B 键金币装饰',

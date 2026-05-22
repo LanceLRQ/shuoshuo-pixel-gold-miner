@@ -162,137 +162,90 @@ export class MenuScene extends SceneBase {
     }
   }
 
-  /** 标题"水晶宝石国" - 5 个浅青蓝方块字（Minecraft 风），偏左留出右侧水晶猫位置 */
+  /**
+   * 标题"水晶宝石国" - drawSprite 底图 + 5 个白字叠加
+   * 底图为可替换主题素材 MENU_TITLE_BG（5 方块 + 水晶装饰）
+   * 字仍用 Canvas font 绘制（不走 sprite，方便切多语言）
+   */
   private renderTitleBlocks(renderer: Renderer): void {
     const ctx = renderer.getContext();
     const title = STRINGS.menu.titleLine1; // '水晶宝石国'
     const chars = Array.from(title);
 
-    // 方块布局：每块 64×64，间距 2px，整体居中偏左（标题中心 x=380，让出右侧给猫）
-    const blockSize = 64;
-    const gap = 2;
-    const totalW = blockSize * chars.length + gap * (chars.length - 1);
-    const centerX = 380;
-    const startX = centerX - totalW / 2;
-    const blockY = 92;
+    // sprite 显示尺寸：440×134（与 JSON 中 displayWidth/Height 一致）
+    const SPR_W = 440;
+    const SPR_H = 134;
+    // 居中整张标题
+    const x0 = (renderer.width - SPR_W) / 2; // 800-440=360/2=180
+    const y0 = 60;
 
-    // 块颜色（青蓝主题）
-    const BLOCK_FILL = '#5DC4DD';
-    const BLOCK_INNER = '#2D85A8';
-    const BLOCK_OUTLINE = '#000000';
+    // 绘制底图（无字）
+    this.drawSprite(renderer, 'MENU_TITLE_BG', x0, y0);
 
-    for (let i = 0; i < chars.length; i++) {
-      const x = startX + i * (blockSize + gap);
-      const y = blockY;
-
-      // 黑色外描边（3px）
-      ctx.fillStyle = BLOCK_OUTLINE;
-      ctx.fillRect(x - 3, y - 3, blockSize + 6, blockSize + 6);
-
-      // 内部浅青蓝填充
-      ctx.fillStyle = BLOCK_FILL;
-      ctx.fillRect(x, y, blockSize, blockSize);
-
-      // 内边深蓝阴影（下、右 4px 模拟立体感）
-      ctx.fillStyle = BLOCK_INNER;
-      ctx.fillRect(x, y + blockSize - 5, blockSize, 5);
-      ctx.fillRect(x + blockSize - 5, y, 5, blockSize);
-
-      // 顶部高光（2px 浅色）
-      ctx.fillStyle = '#A3E5F5';
-      ctx.fillRect(x + 3, y + 3, blockSize - 8, 3);
-
-      // 块内大字（白色加粗，垂直居中）
-      ctx.font = `bold 48px monospace`;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(chars[i]!, x + blockSize / 2, y + blockSize / 2 + 2);
+    // 5 个字叠加（方块中心 x 比例：0.1087 / 0.3043 / 0.5000 / 0.6957 / 0.8913；y 比例 0.6429）
+    const BLOCK_CENTERS_X = [0.1087, 0.3043, 0.5000, 0.6957, 0.8913];
+    const BLOCK_CENTER_Y = 0.6429;
+    ctx.font = `bold 48px monospace`;
+    ctx.fillStyle = '#000000';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < chars.length && i < BLOCK_CENTERS_X.length; i++) {
+      const cx = x0 + SPR_W * BLOCK_CENTERS_X[i]!;
+      const cy = y0 + SPR_H * BLOCK_CENTER_Y + 2;
+      ctx.fillText(chars[i]!, cx, cy);
     }
     ctx.textAlign = 'start';
     ctx.textBaseline = 'top';
-
-    // 顶部水晶装饰：第 1、4 块上方
-    this.drawCrystalCluster(ctx, startX + blockSize / 2, blockY);
-    this.drawCrystalCluster(ctx, startX + (blockSize + gap) * 3 + blockSize / 2, blockY);
   }
 
-  /** 顶部水晶簇（深蓝倒三角 + 浅蓝高光，纯 fillRect 像素几何） */
-  private drawCrystalCluster(ctx: CanvasRenderingContext2D, centerX: number, baseY: number): void {
-    // 中间高水晶
-    const cx = Math.floor(centerX);
-    const cy = baseY;
-    // 黑色描边
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(cx - 7, cy - 32, 14, 33);
-    // 深蓝主体
-    ctx.fillStyle = '#3DA9D9';
-    ctx.fillRect(cx - 6, cy - 31, 12, 31);
-    // 浅蓝高光
-    ctx.fillStyle = '#A3E5F5';
-    ctx.fillRect(cx - 5, cy - 30, 4, 26);
-
-    // 左侧矮水晶
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(cx - 16, cy - 20, 9, 21);
-    ctx.fillStyle = '#3DA9D9';
-    ctx.fillRect(cx - 15, cy - 19, 7, 19);
-    ctx.fillStyle = '#A3E5F5';
-    ctx.fillRect(cx - 14, cy - 18, 2, 16);
-
-    // 右侧矮水晶
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(cx + 7, cy - 18, 9, 19);
-    ctx.fillStyle = '#3DA9D9';
-    ctx.fillRect(cx + 8, cy - 17, 7, 17);
-    ctx.fillStyle = '#A3E5F5';
-    ctx.fillRect(cx + 9, cy - 16, 2, 14);
-  }
-
-  /** 副标题 "··· 猪猪传说 ···" 金色 */
+  /** 副标题 "··· 猪猪传说 ···" 金色（居中到画布中线） */
   private renderSubtitle(renderer: Renderer): void {
     const ctx = renderer.getContext();
     const text = `··· ${STRINGS.menu.titleLine2} ···`;
-    const y = 178;
+    const cx = renderer.width / 2;
+    const y = 200;
     ctx.font = `bold 24px monospace`;
-    ctx.fillStyle = '#FFD700';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     // 黑色描边阴影（1px 偏移）
     ctx.fillStyle = '#000000';
-    ctx.fillText(text, 380 + 2, y + 2);
+    ctx.fillText(text, cx + 2, y + 2);
     ctx.fillStyle = '#FFD700';
-    ctx.fillText(text, 380, y);
+    ctx.fillText(text, cx, y);
     ctx.textAlign = 'start';
   }
 
   /** 标题右侧水晶猫 + 飘心装饰 */
   private renderMascotAndHearts(renderer: Renderer): void {
-    // 水晶猫 sprite（标题右侧、地面线之上）
-    this.drawSprite(renderer, 'MENU_MASCOT_CAT', 580, 60);
-    // 3 心飘装饰（一张整图覆盖蓝/粉/黄三心，飘在猫右上方）
-    this.drawSprite(renderer, 'MENU_HEARTS_DECOR', 695, 50);
+    // 水晶猫 sprite（缩小到 70%，紧贴标题"国"右侧）
+    // 缩放后 78×90，标题方块部分右边界约 x=572，猫与方块底大致对齐（标题方块底 y≈184）
+    this.drawSprite(renderer, 'MENU_MASCOT_CAT', 590, 95, 0.7);
+    // 3 心飘装饰：130 宽 必须 ≤ 800-130=670；y=50 避开设置按钮（y=12-44）
+    this.drawSprite(renderer, 'MENU_HEARTS_DECOR', 655, 50);
   }
 
   /** 四角装饰：左下 D-Pad + 左下角靶心 + 右下 B/R 金币 */
   private renderCornerDecorations(renderer: Renderer): void {
-    // 左下：D-Pad
-    this.drawSprite(renderer, 'MENU_DPAD_DECOR', 20, 410);
-    // 左下角更下：靶心音乐图标
-    this.drawSprite(renderer, 'MENU_BULLSEYE_ICON', 18, 502);
-    // 右下：B/R 两个金币
+    // 左下：D-Pad（右移让出空间给靶心）
+    this.drawSprite(renderer, 'MENU_DPAD_DECOR', 70, 410);
+    // 左下角：靶心音乐图标（独占左下角，与 D-Pad 横向分开）
+    this.drawSprite(renderer, 'MENU_BULLSEYE_ICON', 14, 498);
+    // 右下：B 金币 + R 金币（R 略微抬高营造错落感）
     this.drawSprite(renderer, 'MENU_BUTTON_B', 660, 470);
-    this.drawSprite(renderer, 'MENU_BUTTON_R', 730, 470);
+    this.drawSprite(renderer, 'MENU_BUTTON_R', 730, 458);
   }
 
-  /** 从主题 sprite cache 取 canvas 绘制；找不到则跳过（优雅降级） */
-  private drawSprite(renderer: Renderer, spriteName: string, x: number, y: number): boolean {
+  /**
+   * 从主题 sprite cache 取 canvas 绘制；找不到则跳过（优雅降级）
+   * scale=1（默认）使用主题 displayWidth/Height；scale<1 缩小、>1 放大
+   */
+  private drawSprite(renderer: Renderer, spriteName: string, x: number, y: number, scale: number = 1): boolean {
     const cache = this.game.getThemeManager().getSpriteCache();
     const sprite = cache.get(spriteName);
     if (!sprite) return false;
     const meta = this.game.getThemeManager().getSpriteMeta(spriteName);
-    const dw = meta?.displayWidth ?? sprite.width;
-    const dh = meta?.displayHeight ?? sprite.height;
+    const dw = (meta?.displayWidth ?? sprite.width) * scale;
+    const dh = (meta?.displayHeight ?? sprite.height) * scale;
     renderer.drawImageSlice(sprite, 0, 0, sprite.width, sprite.height, x, y, dw, dh);
     return true;
   }

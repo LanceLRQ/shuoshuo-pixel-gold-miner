@@ -13,31 +13,31 @@ export enum ButtonState {
   PRESSED = 'PRESSED',
 }
 
-/** 按钮颜色配置（青蓝色像素风） */
+/** 按钮颜色配置（青蓝色像素风，文字统一黑色） */
 const BUTTON_COLORS = {
   NORMAL: {
     bg: '#5DC4DD',
     border: '#1F5F7A',
     highlight: '#8FE0F5',
-    text: '#FFFFFF',
+    text: '#000000',
   },
   HOVER: {
     bg: '#7DDFF0',
     border: '#2D85A8',
     highlight: '#B0EFFF',
-    text: '#FFFFFF',
+    text: '#000000',
   },
   PRESSED: {
     bg: '#2D85A8',
     border: '#1A4A60',
     highlight: '#5DC4DD',
-    text: '#CFEFFF',
+    text: '#1A1A1A',
   },
   DISABLED: {
     bg: '#6F8590',
     border: '#3A4A55',
     highlight: '#92A6AF',
-    text: '#A0AFB8',
+    text: '#3A3A3A',
   },
 } as const;
 
