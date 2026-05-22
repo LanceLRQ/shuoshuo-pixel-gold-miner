@@ -274,7 +274,7 @@ export const STRINGS = {
     label1: '第 一 章',
     label2: '第 二 章',
     label3: '第 三 章',
-    skipHint: '按任意键跳过 · 2.5s 后自动进入',
+    skipHint: '按任意键跳过 · 1s 后自动进入',
     /** 3 章节的标题 + 过场剧情（src/level/levels.ts 引用） */
     list: {
       crystalMine: {

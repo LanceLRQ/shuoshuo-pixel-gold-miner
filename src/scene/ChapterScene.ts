@@ -1,6 +1,6 @@
 /**
  * 章节过场场景
- * 进入新章节首关（L1/L8/L15）之前显示一句剧情文字，2.5s 后自动跳关
+ * 进入新章节首关（L1/L8/L15）之前显示一句剧情文字，1s 后自动跳关
  * 玩家可按 Space/Enter 或鼠标点击立即跳过
  * 详见 docs/design/20260519_chapter-system.md §六
  */
@@ -15,7 +15,7 @@ import { STRINGS } from '../ui/strings';
 import { CHAPTER_INFO, CHAPTER_ORDER, type ChapterId } from '../level/levels';
 
 /** 自动跳过等待时间（秒） */
-const AUTO_SKIP_SECONDS = 2.5;
+const AUTO_SKIP_SECONDS = 1;
 
 /** 文字最大单行字符数（CJK 字符宽度估算，超出换行） */
 const MAX_CHARS_PER_LINE = 20;
