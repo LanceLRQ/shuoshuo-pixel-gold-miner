@@ -17,16 +17,35 @@ import {
   type DifficultyConfig,
 } from '../level/difficulty';
 
-/** 卡片布局（横屏 800×540，5 张卡片横排） */
-const CARD_LAYOUT = {
-  width: 140,
-  height: 320,
-  gap: 12,
-  startY: 110,
-} as const;
+/** 卡片布局（800×540，2:2:1 上下排列：4 张普通卡 + 1 张无尽长条卡） */
+const TOP_CARD_W = 230;
+const TOP_CARD_H = 130;
+const GAP_X = 28;
+const GAP_Y = 14;
+const TOP_ROW1_Y = 92;
+const TOP_ROW2_Y = TOP_ROW1_Y + TOP_CARD_H + GAP_Y; // 236
+const BOTTOM_CARD_H = 64;
+const BOTTOM_Y = TOP_ROW2_Y + TOP_CARD_H + GAP_Y;   // 380
+const TOP_GRID_W = TOP_CARD_W * 2 + GAP_X;          // 488
+const TOP_GRID_START_X = (800 - TOP_GRID_W) / 2;    // 156
 
 const TITLE_Y = 40;
-const RETURN_BTN = { x: 330, y: 470, w: 140, h: 36 } as const;
+const RETURN_BTN = { x: 330, y: 460, w: 140, h: 36 } as const;
+
+/** 把 valueScale 数值转成模糊词标签（颜色根据档位由绿→红渐变） */
+function moneyLabel(v: number): { text: string; color: string } {
+  if (v >= 1.2) return { text: '丰厚', color: '#88FF88' };
+  if (v >= 0.7) return { text: '标准', color: '#FFD700' };
+  if (v >= 0.3) return { text: '微薄', color: '#FFA040' };
+  return { text: '稀缺', color: '#FF6464' };
+}
+
+/** 把 timeScale 数值转成模糊词标签 */
+function timeLabel(v: number): { text: string; color: string } {
+  if (v >= 1.2) return { text: '充裕', color: '#88FF88' };
+  if (v >= 0.8) return { text: '标准', color: '#FFD700' };
+  return { text: '紧迫', color: '#FF6464' };
+}
 
 export class DifficultyScene extends SceneBase {
   private game: Game;
@@ -89,37 +108,50 @@ export class DifficultyScene extends SceneBase {
     renderer.clear('#1a1a2e');
 
     drawTextCentered(renderer, '选择难度', TITLE_Y, '#FFD700', 'LARGE');
-    drawTextCentered(renderer, '不同难度影响金额倍率、时间长度、重量影响、商店与道具机制', TITLE_Y + 38, '#888899', 'SMALL');
 
     for (let i = 0; i < DIFFICULTY_DISPLAY_ORDER.length; i++) {
       const id = DIFFICULTY_DISPLAY_ORDER[i]!;
       const cfg = DIFFICULTY_CONFIGS[id];
       const rect = this.getCardRect(i);
-      this.renderCard(renderer, rect, cfg, i === this.hoverIndex);
+      const isInfinite = i === DIFFICULTY_DISPLAY_ORDER.length - 1;
+      this.renderCard(renderer, rect, cfg, i === this.hoverIndex, isInfinite);
     }
 
     this.returnButton.render(renderer);
   }
 
-  /** 计算第 i 张卡片的矩形区域（5 张横排居中） */
+  /**
+   * 计算第 i 张卡片的矩形区域
+   *  - index 0~3：2×2 网格（230×130 卡片）
+   *  - index 4 (INFINITE)：独占底部一行（488×64 长条卡）
+   */
   private getCardRect(index: number): { x: number; y: number; w: number; h: number } {
-    const totalCount = DIFFICULTY_DISPLAY_ORDER.length;
-    const totalWidth = CARD_LAYOUT.width * totalCount + CARD_LAYOUT.gap * (totalCount - 1);
-    const startX = (800 - totalWidth) / 2;
+    if (index < 4) {
+      const row = Math.floor(index / 2);
+      const col = index % 2;
+      return {
+        x: TOP_GRID_START_X + col * (TOP_CARD_W + GAP_X),
+        y: row === 0 ? TOP_ROW1_Y : TOP_ROW2_Y,
+        w: TOP_CARD_W,
+        h: TOP_CARD_H,
+      };
+    }
+    // INFINITE：长条独占底部一行
     return {
-      x: startX + index * (CARD_LAYOUT.width + CARD_LAYOUT.gap),
-      y: CARD_LAYOUT.startY,
-      w: CARD_LAYOUT.width,
-      h: CARD_LAYOUT.height,
+      x: TOP_GRID_START_X,
+      y: BOTTOM_Y,
+      w: TOP_GRID_W,
+      h: BOTTOM_CARD_H,
     };
   }
 
-  /** 渲染单张难度卡片 */
+  /** 渲染单张难度卡片：普通卡（230×130）走纵向布局；INFINITE 长条卡走横向布局 */
   private renderCard(
     renderer: Renderer,
     rect: { x: number; y: number; w: number; h: number },
     cfg: DifficultyConfig,
     hover: boolean,
+    isInfinite: boolean,
   ): void {
     const ctx = renderer.getContext();
     const bgColor = hover ? '#2a2a4a' : '#1f1f33';
@@ -134,38 +166,47 @@ export class DifficultyScene extends SceneBase {
 
     // 顶部色带（难度色）
     ctx.fillStyle = cfg.color;
-    ctx.fillRect(rect.x + 4, rect.y + 4, rect.w - 8, 6);
+    ctx.fillRect(rect.x + 4, rect.y + 4, rect.w - 8, 5);
 
-    // 难度名（大字）
+    if (isInfinite) {
+      this.renderInfiniteCardContent(renderer, rect, cfg);
+    } else {
+      this.renderNormalCardContent(renderer, rect, cfg);
+    }
+  }
+
+  /** 普通卡内容（230×130 纵向布局：难度名 + 描述 + 关键参数行） */
+  private renderNormalCardContent(
+    renderer: Renderer,
+    rect: { x: number; y: number; w: number; h: number },
+    cfg: DifficultyConfig,
+  ): void {
     const centerX = rect.x + rect.w / 2;
-    drawTextCenteredAt(renderer, cfg.name, centerX, rect.y + 24, '#FFFFFF', 'LARGE');
+    // 难度名（大字）
+    drawTextCenteredAt(renderer, cfg.name, centerX, rect.y + 18, '#FFFFFF', 'LARGE');
+    // 描述（小字换行，2 行内）
+    this.renderWrappedText(renderer, cfg.description, rect.x + 12, rect.y + 56, rect.w - 24, '#AAAAAA', 'SMALL');
+    // 底部一行关键参数：用模糊词替代数字（玩家可凭颜色感知差异）
+    const paramY = rect.y + rect.h - 22;
+    const money = moneyLabel(cfg.valueScale);
+    const time = timeLabel(cfg.timeScale);
+    drawText(renderer, `金币 ${money.text}`, rect.x + 12, paramY, money.color, 'SMALL');
+    drawText(renderer, `时间 ${time.text}`, rect.x + 110, paramY, time.color, 'SMALL');
+  }
 
-    // 描述（小字两行）
-    this.renderWrappedText(renderer, cfg.description, rect.x + 10, rect.y + 70, rect.w - 20, '#AAAAAA', 'SMALL');
-
-    // 参数列表
-    const paramY = rect.y + 130;
-    const lineHeight = 22;
-    drawText(renderer, `金额:`, rect.x + 12, paramY, '#888899', 'SMALL');
-    drawText(renderer, this.formatScale(cfg.valueScale, 'x'), rect.x + rect.w - 50, paramY, '#FFD700', 'SMALL');
-
-    drawText(renderer, `时间:`, rect.x + 12, paramY + lineHeight, '#888899', 'SMALL');
-    drawText(renderer, this.formatScale(cfg.timeScale, 'x'), rect.x + rect.w - 50, paramY + lineHeight, '#FFD700', 'SMALL');
-
-    drawText(renderer, `重量:`, rect.x + 12, paramY + lineHeight * 2, '#888899', 'SMALL');
-    drawText(renderer, cfg.weightFactorScale === 0 ? '无' : `${cfg.weightFactorScale}x`, rect.x + rect.w - 50, paramY + lineHeight * 2, '#FFD700', 'SMALL');
-
-    drawText(renderer, `商店:`, rect.x + 12, paramY + lineHeight * 3, '#888899', 'SMALL');
-    drawText(renderer, cfg.shopEnabled ? '开放' : '禁用', rect.x + rect.w - 50, paramY + lineHeight * 3, cfg.shopEnabled ? '#88FF88' : '#FF6464', 'SMALL');
-
-    drawText(renderer, `道具:`, rect.x + 12, paramY + lineHeight * 4, '#888899', 'SMALL');
-    drawText(renderer, cfg.infiniteItems ? '无限' : '需买', rect.x + rect.w - 50, paramY + lineHeight * 4, cfg.infiniteItems ? '#88FFFF' : '#FFD700', 'SMALL');
-
-    // 底部"开始"提示
-    const startY = rect.y + rect.h - 40;
-    ctx.fillStyle = hover ? cfg.color : '#444466';
-    ctx.fillRect(rect.x + 10, startY, rect.w - 20, 28);
-    drawTextCenteredAt(renderer, hover ? '点击开始' : '选择', centerX, startY + 6, hover ? '#000000' : '#CCCCCC', 'MEDIUM');
+  /** INFINITE 长条卡内容（488×64 横向布局：左 难度名 / 中 描述 / 右 标志） */
+  private renderInfiniteCardContent(
+    renderer: Renderer,
+    rect: { x: number; y: number; w: number; h: number },
+    cfg: DifficultyConfig,
+  ): void {
+    const midY = rect.y + rect.h / 2;
+    // 左侧：难度名
+    drawText(renderer, cfg.name, rect.x + 20, midY - 12, '#FFFFFF', 'LARGE');
+    // 中部：描述
+    drawText(renderer, cfg.description, rect.x + 170, midY - 6, '#CCCCCC', 'SMALL');
+    // 右侧：道具无限标志
+    drawText(renderer, cfg.infiniteItems ? '∞ 无限道具' : '', rect.x + rect.w - 130, midY - 6, '#88FFFF', 'SMALL');
   }
 
   /** 在指定区域内换行渲染文本（按字符宽度估算） */
@@ -197,10 +238,5 @@ export class DifficultyScene extends SceneBase {
       }
     }
     if (line) drawText(renderer, line, x, curY, color, size);
-  }
-
-  /** 格式化倍率（如 2 → "2x" / 0.5 → "0.5x"） */
-  private formatScale(value: number, suffix: string): string {
-    return `${value}${suffix}`;
   }
 }

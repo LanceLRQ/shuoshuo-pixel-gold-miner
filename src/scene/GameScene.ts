@@ -763,9 +763,9 @@ export class GameScene extends SceneBase {
     drawTextCentered(renderer, '点击按钮或按 ESC 继续', 180, '#888899', 'SMALL');
 
     for (const btn of this.getPauseMenuButtons()) {
-      ctx.fillStyle = '#4169E1';
+      ctx.fillStyle = '#FF6FA8';
       ctx.fillRect(btn.rect.x, btn.rect.y, btn.rect.w, btn.rect.h);
-      ctx.fillStyle = '#6688CC';
+      ctx.fillStyle = '#FF8FC0';
       ctx.fillRect(btn.rect.x, btn.rect.y, btn.rect.w, 2);
       drawTextCenteredIn(renderer, btn.label, btn.rect, '#FFFFFF', 'MEDIUM');
     }

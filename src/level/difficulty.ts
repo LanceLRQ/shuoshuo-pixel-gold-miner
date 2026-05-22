@@ -51,7 +51,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   [Difficulty.NOVICE]: {
     id: Difficulty.NOVICE,
     name: '新手',
-    description: '金额翻倍 + 大件多，1-2 件即可达标',
+    description: '金币丰厚，大件充裕，轻松上手',
     valueScale: 1.5,
     timeScale: 1.0,
     weightFactorScale: 0,
@@ -67,7 +67,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   [Difficulty.NORMAL]: {
     id: Difficulty.NORMAL,
     name: '一般',
-    description: '原汁原味经典体验，抓 3-4 件达标',
+    description: '原汁原味的经典体验',
     valueScale: 0.85,
     timeScale: 1.0,
     weightFactorScale: 1.0,
@@ -83,7 +83,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   [Difficulty.HARD]: {
     id: Difficulty.HARD,
     name: '困难',
-    description: '大件稀少 + 重物慢，需抓 5-6 件',
+    description: '大件稀少，重物拖手，需要谋略',
     valueScale: 0.45,
     timeScale: 1.0,
     weightFactorScale: 1.5,
@@ -99,7 +99,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   [Difficulty.EXPERT]: {
     id: Difficulty.EXPERT,
     name: '高手',
-    description: '无大件 + 时间减半 + 重物极慢，几乎全抓',
+    description: '金币稀缺，分秒必争，举步维艰',
     valueScale: 0.15,
     timeScale: 0.5,
     weightFactorScale: 2.0,
@@ -115,7 +115,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   [Difficulty.INFINITE]: {
     id: Difficulty.INFINITE,
     name: '无限火力',
-    description: '所有道具永久开启，娱乐模式',
+    description: '道具任你挥霍，纯粹的娱乐场',
     valueScale: 1.0,
     timeScale: 1.0,
     weightFactorScale: 0,

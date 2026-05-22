@@ -12,27 +12,27 @@ export enum ButtonState {
   PRESSED = 'PRESSED',
 }
 
-/** 按钮颜色配置 */
+/** 按钮颜色配置（粉色主题） */
 const BUTTON_COLORS = {
   NORMAL: {
-    bg: '#4169E1',
-    border: '#2B4DA0',
+    bg: '#FF6FA8',
+    border: '#C8407A',
     text: '#FFFFFF',
   },
   HOVER: {
-    bg: '#5B82FF',
-    border: '#4169E1',
+    bg: '#FF8FC0',
+    border: '#FF6FA8',
     text: '#FFFFFF',
   },
   PRESSED: {
-    bg: '#2B4DA0',
-    border: '#1E3A6F',
-    text: '#DDDDDD',
+    bg: '#C8407A',
+    border: '#8F2855',
+    text: '#FFD0E5',
   },
   DISABLED: {
-    bg: '#555566',
-    border: '#33333F',
-    text: '#888899',
+    bg: '#A0707F',
+    border: '#5F3F4A',
+    text: '#D0A0B0',
   },
 } as const;
 
@@ -120,7 +120,7 @@ export class Button {
 
     // 高亮效果（禁用态不显示亮边）
     if (!this.disabled && (this.state === ButtonState.NORMAL || this.state === ButtonState.HOVER)) {
-      ctx.fillStyle = this.state === ButtonState.HOVER ? '#88AAFF' : '#6688CC';
+      ctx.fillStyle = this.state === ButtonState.HOVER ? '#FFB0D5' : '#FF8FC0';
       ctx.fillRect(this.x + 2, this.y + 2, this.width - 4, 2);
     }
 
