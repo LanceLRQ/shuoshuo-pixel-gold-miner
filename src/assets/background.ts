@@ -11,13 +11,26 @@ import { ChapterId } from '../level/levels';
 
 /**
  * 章节色板覆盖表
- *  - Ch1 水晶矿坑：保留主题基础色（贴近经典矿坑感）
+ *  - Ch1 水晶矿坑：火把暖光矿洞（黑棕打底的暗黄调）
  *  - Ch2 蟹潮海湾：深蓝磷光海底调
  *  - Ch3 猪猪王座：粉白宫殿萌系调
  * 详见 docs/design/20260519_chapter-system.md §三
  */
 const CHAPTER_COLOR_OVERRIDES: Record<ChapterId, Partial<BackgroundColors> | null> = {
-  [ChapterId.CRYSTAL_MINE]: null, // 保持主题原色
+  [ChapterId.CRYSTAL_MINE]: {
+    // 火把暖光矿洞：黑棕打底的暗黄调，呼应经典黄金矿工的地下感
+    // groundLight 必须覆盖，否则草尖会继承主题绿色冒出在矿洞顶
+    skyTop: '#1A1410',
+    skyBottom: '#3A2A1A',
+    groundColor: '#5A3F28',
+    groundDark: '#3A2618',
+    groundLight: '#7A5A38',
+    dirtLight: '#4A3220',
+    dirtMid: '#3A2618',
+    dirtDark: '#1F140A',
+    rockColor: '#7A5A38',
+    rockDark: '#4A3220',
+  },
   [ChapterId.CRAB_BAY]: {
     skyTop: '#0D1F35',
     skyBottom: '#1E3A5F',
