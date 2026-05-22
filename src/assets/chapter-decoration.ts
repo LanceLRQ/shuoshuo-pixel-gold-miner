@@ -323,10 +323,205 @@ function drawMineCart(ctx: CanvasRenderingContext2D, x: number, y: number): void
   }
 }
 
+/**
+ * 扇形贝壳（12x8 像素，顶尖底宽，带辐射纹理 + 深色描边）
+ */
+function drawSeashell(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+  highlight: string
+): void {
+  // 主体扇形 (从上到下逐行增宽)
+  ctx.fillStyle = color;
+  ctx.fillRect(x + 4, y, 4, 1);
+  ctx.fillRect(x + 3, y + 1, 6, 1);
+  ctx.fillRect(x + 2, y + 2, 8, 1);
+  ctx.fillRect(x + 1, y + 3, 10, 1);
+  ctx.fillRect(x, y + 4, 12, 2);
+  ctx.fillRect(x + 1, y + 6, 10, 1);
+  // 深色描边底部（让贝壳脱离背景）
+  ctx.fillStyle = '#0A1828';
+  ctx.fillRect(x, y + 7, 12, 1);
+  // 辐射纹理（中央 + 两侧亮线）
+  ctx.fillStyle = highlight;
+  ctx.fillRect(x + 5, y + 1, 2, 1);
+  ctx.fillRect(x + 5, y + 2, 2, 4);
+  ctx.fillRect(x + 2, y + 4, 1, 2);
+  ctx.fillRect(x + 9, y + 4, 1, 2);
+}
+
+/**
+ * 大海螺（60x42 侧躺姿态，蓝紫渐变 + 螺旋塔 + 开口阴影）
+ * 起点 (x, y) 是海螺包围盒左上角
+ */
+function drawLargeSnail(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  const body = '#9E8AC8';       // 主色：蓝紫
+  const bodyDark = '#6E5AA8';   // 暗紫（螺旋分隔线）
+  const bodyLight = '#C0B0E0';  // 亮紫（每圈顶部高光）
+  const opening = '#3A1F4A';    // 开口内部深紫
+  const innerPink = '#A04060';  // 开口内壁淡粉（参考图）
+  const highlight = '#E8DCFF';  // 白蓝高光
+
+  // ===== 螺旋塔（5 阶递增，左上→右下扩张）=====
+  // 第 1 阶（尖顶）
+  ctx.fillStyle = body;
+  ctx.fillRect(x + 12, y + 2, 4, 3);
+  ctx.fillRect(x + 10, y + 4, 8, 2);
+  ctx.fillStyle = bodyDark;
+  ctx.fillRect(x + 10, y + 5, 8, 1);
+
+  // 第 2 阶
+  ctx.fillStyle = body;
+  ctx.fillRect(x + 8, y + 6, 12, 4);
+  ctx.fillStyle = bodyLight;
+  ctx.fillRect(x + 9, y + 6, 4, 1);
+  ctx.fillStyle = bodyDark;
+  ctx.fillRect(x + 8, y + 9, 12, 1);
+
+  // 第 3 阶
+  ctx.fillStyle = body;
+  ctx.fillRect(x + 5, y + 10, 18, 5);
+  ctx.fillStyle = bodyLight;
+  ctx.fillRect(x + 7, y + 10, 6, 1);
+  ctx.fillStyle = bodyDark;
+  ctx.fillRect(x + 5, y + 14, 18, 1);
+
+  // 第 4 阶
+  ctx.fillStyle = body;
+  ctx.fillRect(x + 3, y + 15, 24, 7);
+  ctx.fillStyle = bodyLight;
+  ctx.fillRect(x + 5, y + 15, 8, 1);
+  ctx.fillStyle = bodyDark;
+  ctx.fillRect(x + 3, y + 21, 24, 1);
+
+  // 第 5 阶（主体最大圈，延伸到开口）
+  ctx.fillStyle = body;
+  ctx.fillRect(x + 1, y + 22, 36, 9);
+  ctx.fillStyle = bodyLight;
+  ctx.fillRect(x + 3, y + 22, 12, 1);
+  ctx.fillStyle = bodyDark;
+  ctx.fillRect(x + 1, y + 30, 36, 1);
+
+  // 底部收缩（贝壳底端）
+  ctx.fillStyle = body;
+  ctx.fillRect(x + 4, y + 31, 32, 5);
+  ctx.fillRect(x + 8, y + 36, 26, 4);
+  ctx.fillStyle = bodyDark;
+  ctx.fillRect(x + 8, y + 39, 26, 1);
+
+  // ===== 右侧开口（椭圆深紫洞 + 淡粉内壁）=====
+  // 开口主体（深紫）
+  ctx.fillStyle = opening;
+  ctx.fillRect(x + 36, y + 18, 14, 3);
+  ctx.fillRect(x + 34, y + 21, 18, 7);
+  ctx.fillRect(x + 36, y + 28, 16, 4);
+  ctx.fillRect(x + 38, y + 32, 12, 2);
+  // 开口内壁淡粉（参考图：右下角粉红倒影）
+  ctx.fillStyle = innerPink;
+  ctx.fillRect(x + 42, y + 23, 8, 4);
+  ctx.fillRect(x + 44, y + 27, 6, 3);
+  // 开口外沿（亮紫边缘，模拟壳口卷边）
+  ctx.fillStyle = bodyLight;
+  ctx.fillRect(x + 34, y + 18, 2, 4);
+  ctx.fillRect(x + 32, y + 20, 2, 8);
+  ctx.fillRect(x + 34, y + 28, 2, 5);
+  ctx.fillRect(x + 36, y + 33, 4, 2);
+
+  // ===== 高光（左上反光 + 主体顶部斜光）=====
+  ctx.fillStyle = highlight;
+  ctx.fillRect(x + 13, y + 3, 2, 1);
+  ctx.fillRect(x + 11, y + 4, 1, 1);
+  ctx.fillRect(x + 10, y + 7, 2, 1);
+  ctx.fillRect(x + 8, y + 11, 2, 1);
+  ctx.fillRect(x + 6, y + 16, 2, 1);
+  ctx.fillRect(x + 4, y + 23, 3, 1);
+}
+
+/**
+ * 五角星海星 - 俯视立体透视版
+ * 整体纵向压扁 (scaleY=0.65) 模拟从上方斜视的角度，呈"卧在海床"姿态
+ * (cx, cy) 是海星几何中心，armLength 是臂长（外半径，未压扁前的水平半径）
+ */
+function drawStarfish(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  armLength: number,
+  color: string,
+  highlight: string,
+  shadow: string
+): void {
+  const PERSPECTIVE_Y = 0.65; // 纵向透视压扁系数
+
+  // ===== 主体：在 transform 内画 5 臂三角形 + 中心圆盘 =====
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(1.0, PERSPECTIVE_Y);
+
+  ctx.fillStyle = color;
+  const armWidth = Math.max(3, Math.floor(armLength * 0.35));
+  for (let i = 0; i < 5; i++) {
+    ctx.save();
+    ctx.rotate(-Math.PI / 2 + (i * Math.PI * 2) / 5);
+    ctx.beginPath();
+    ctx.moveTo(-armWidth, 0);
+    ctx.lineTo(0, -armLength);
+    ctx.lineTo(armWidth, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  // 中心圆盘（在透视坐标系内画，会被压成椭圆）
+  ctx.beginPath();
+  ctx.arc(0, 0, armWidth, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // ===== 装饰点（原始坐标系，但 y 偏移按 PERSPECTIVE_Y 投影）=====
+  // 阴影：下半部臂的根部更深（透视下"远端阴影"位于上方臂，但视觉上压在臂中段）
+  ctx.fillStyle = shadow;
+  for (let i = 0; i < 5; i++) {
+    const angle = -Math.PI / 2 + (i * Math.PI * 2) / 5;
+    const px = cx + Math.cos(angle) * armLength * 0.4;
+    const py = cy + Math.sin(angle) * armLength * 0.4 * PERSPECTIVE_Y;
+    ctx.fillRect(Math.floor(px) - 1, Math.floor(py) - 1, 2, 2);
+  }
+
+  // 高光：中心 + 每臂尖端小亮点（强化"鼓起"的立体感）
+  ctx.fillStyle = highlight;
+  // 中心亮斑（透视下椭圆形）
+  ctx.fillRect(Math.floor(cx) - 2, Math.floor(cy) - 1, 4, 2);
+  // 上半臂高光更亮（"靠近观察者"，模拟光照）
+  for (let i = 0; i < 5; i++) {
+    const angle = -Math.PI / 2 + (i * Math.PI * 2) / 5;
+    const px = cx + Math.cos(angle) * armLength * 0.7;
+    const py = cy + Math.sin(angle) * armLength * 0.7 * PERSPECTIVE_Y;
+    ctx.fillRect(Math.floor(px) - 1, Math.floor(py) - 1, 2, 2);
+  }
+}
+
 function drawCh2SeaDecor(ctx: CanvasRenderingContext2D, colors: BackgroundColors): void {
   // --- 海底淤泥层（屏幕最底部） ---
   ctx.fillStyle = '#050E1A';
   ctx.fillRect(0, H - 10, W, 10);
+
+  // --- 海面装饰 ---
+  // 大海螺：左侧海面，约矿工 60% 尺寸 (60x42)，蓝紫渐变 + 开口阴影
+  drawLargeSnail(ctx, 80, GROUND_Y - 40);
+  // 小贝壳散布（避开海螺位置 x=80~140 + 矿工 x=380~420 + 海草 x>730）
+  drawSeashell(ctx, 200, GROUND_Y - 8, '#FF9E80', '#FFE0CC');
+  drawSeashell(ctx, 290, GROUND_Y - 8, '#C898C8', '#F0D8F0');
+  drawSeashell(ctx, 520, GROUND_Y - 8, '#FFCC80', '#FFF0D0');
+  drawSeashell(ctx, 620, GROUND_Y - 8, '#FFE066', '#FFF5B0');
+
+  // --- 右上角海星（一大一小叠在一起，俯视透视，底端贴海面 GROUND_Y=140） ---
+  // 立体透视下海星最底点 y = cy + 0.81*armLength*0.65 ≈ cy + 0.53*armLength
+  // 让底点≈GROUND_Y - 2 即 cy ≈ 138 - 0.53*armLength
+  // x 位置避开右海草丛 (x=734~770)，海星组放在 x<=720 区间
+  drawStarfish(ctx, 670, 126, 22, '#FF8C5A', '#FFCFAA', '#A04020');  // 大
+  drawStarfish(ctx, 700, 132, 14, '#FF5A40', '#FFB088', '#A03020');  // 小（叠右下）
 
   // --- 散落贝壳/珊瑚（地下浅层小三角） ---
   const corals: ReadonlyArray<{ x: number; y: number; w: number; h: number; color: string }> = [
