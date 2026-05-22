@@ -30,7 +30,7 @@ function migrateDisplaySize(theme: ThemeJson): ThemeJson {
 }
 
 /** 系统主题 ID（只读、不可删/改） */
-export const SYSTEM_THEME_IDS: readonly string[] = ['classic', 'shuoshuo_crystal'];
+export const SYSTEM_THEME_IDS: readonly string[] = ['shuoshuo_crystal', 'classic'];
 
 /** BackgroundColors 字段清单（与 src/assets/theme/types.ts 保持同步） */
 export const BACKGROUND_COLOR_KEYS: ReadonlyArray<keyof BackgroundColors> = [

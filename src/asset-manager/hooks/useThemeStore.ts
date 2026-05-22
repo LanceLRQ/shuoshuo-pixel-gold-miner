@@ -7,8 +7,8 @@ import { SYSTEM_THEME_IDS, ThemeStore } from '../ThemeStore';
 import { applyDisplayPreset } from '../spritePresets';
 
 const SYSTEM_THEMES: ThemeJson[] = [
-  classicJson as ThemeJson,
   shuoshuoCrystalJson as ThemeJson,
+  classicJson as ThemeJson,
 ];
 
 /** 响应式封装 ThemeStore：暴露 system/custom 主题数组与 mutation actions */
