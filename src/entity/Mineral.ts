@@ -9,6 +9,7 @@ import { getSpriteFrame } from '../assets/animation';
 import type { SpriteMetaProvider } from './Miner';
 import { MineralType, MINERAL_CONFIGS, STONE_VARIANTS, type MineralConfig } from './types';
 import { randomInt, pickWeightedContent } from '../utils/random';
+import { STRINGS } from '../ui/strings';
 
 /** 神秘袋内容类型 */
 export enum MysteryContent {
@@ -20,10 +21,10 @@ export enum MysteryContent {
 
 /** 神秘袋内容配置 */
 const MYSTERY_CONTENTS: { type: MysteryContent; weight: number; label: string }[] = [
-  { type: MysteryContent.CASH_SMALL, weight: 35, label: '少量现金' },
-  { type: MysteryContent.CASH_LARGE, weight: 15, label: '大量现金' },
-  { type: MysteryContent.STRENGTH_POTION, weight: 20, label: '大力药剂' },
-  { type: MysteryContent.DYNAMITE, weight: 30, label: '炸药' },
+  { type: MysteryContent.CASH_SMALL,      weight: 35, label: STRINGS.mineral.mystery.cashSmall },
+  { type: MysteryContent.CASH_LARGE,      weight: 15, label: STRINGS.mineral.mystery.cashLarge },
+  { type: MysteryContent.STRENGTH_POTION, weight: 20, label: STRINGS.mineral.mystery.strengthPotion },
+  { type: MysteryContent.DYNAMITE,        weight: 30, label: STRINGS.mineral.mystery.dynamite },
 ];
 
 /** 木箱抽奖内容类型（详见 docs/design/20260519_chapter-system.md #12） */
@@ -44,12 +45,12 @@ export enum BoxContent {
 
 /** 木箱内容配置：权重 + 价值 + 提示文字（玩家抓到后通过飘字显示） */
 const BOX_CONTENTS: { type: BoxContent; weight: number; value: number; label: string }[] = [
-  { type: BoxContent.PRIZE_DIAMOND, weight: 10, value: 800, label: '钻石大奖！' },
-  { type: BoxContent.PRIZE_GOLD, weight: 20, value: 500, label: '金币 +500' },
-  { type: BoxContent.PRIZE_COIN, weight: 30, value: 200, label: '金币 +200' },
-  { type: BoxContent.EMPTY, weight: 15, value: 0, label: '空盒……' },
-  { type: BoxContent.SKULL_LARGE, weight: 10, value: -300, label: '骷髅 -300' },
-  { type: BoxContent.SKULL_SMALL, weight: 15, value: -100, label: '小骷髅 -100' },
+  { type: BoxContent.PRIZE_DIAMOND, weight: 10, value:  800, label: STRINGS.mineral.box.prizeDiamond },
+  { type: BoxContent.PRIZE_GOLD,    weight: 20, value:  500, label: STRINGS.mineral.box.prizeGold },
+  { type: BoxContent.PRIZE_COIN,    weight: 30, value:  200, label: STRINGS.mineral.box.prizeCoin },
+  { type: BoxContent.EMPTY,         weight: 15, value:    0, label: STRINGS.mineral.box.empty },
+  { type: BoxContent.SKULL_LARGE,   weight: 10, value: -300, label: STRINGS.mineral.box.skullLarge },
+  { type: BoxContent.SKULL_SMALL,   weight: 15, value: -100, label: STRINGS.mineral.box.skullSmall },
 ];
 
 export class Mineral {

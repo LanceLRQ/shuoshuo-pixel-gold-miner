@@ -4,7 +4,11 @@
  *  - Ch1 水晶矿坑（L1-L7）：友好引入段
  *  - Ch2 蟹潮海湾（L8-L14）：进入硬核段
  *  - Ch3 猪猪王座（L15-L21）：终极挑战段
+ *
+ * 注：章节显示名/过场剧情统一从 src/ui/strings.ts 引用。
  */
+
+import { STRINGS } from '../ui/strings';
 
 /** 章节 ID */
 export enum ChapterId {
@@ -34,24 +38,24 @@ export const CHAPTER_INFO: Record<ChapterId, ChapterInfo> = {
   [ChapterId.CRYSTAL_MINE]: {
     firstLevel: 1,
     lastLevel: 7,
-    displayName: '水晶矿坑',
-    intro: '矿工老王听说这里能挖到水晶宝石国的入口……',
+    displayName: STRINGS.chapter.list.crystalMine.displayName,
+    intro: STRINGS.chapter.list.crystalMine.intro,
     bgColor: '#2A1F14',     // 矿洞棕黑
     accentColor: '#FFD27C', // 暖金黄
   },
   [ChapterId.CRAB_BAY]: {
     firstLevel: 8,
     lastLevel: 14,
-    displayName: '蟹潮海湾',
-    intro: '传说海湾深处有水晶蟹守卫着前往王城的通道。',
+    displayName: STRINGS.chapter.list.crabBay.displayName,
+    intro: STRINGS.chapter.list.crabBay.intro,
     bgColor: '#0D1F35',     // 海湾深蓝
     accentColor: '#7CD9FF', // 海湾青蓝
   },
   [ChapterId.PIGGY_THRONE]: {
     firstLevel: 15,
     lastLevel: 21,
-    displayName: '猪猪王座',
-    intro: '粉色宫殿深处，猪猪公主抱着粉宝石打盹。',
+    displayName: STRINGS.chapter.list.piggyThrone.displayName,
+    intro: STRINGS.chapter.list.piggyThrone.intro,
     bgColor: '#3A2540',     // 王座紫暗
     accentColor: '#FFB6E5', // 粉色公主
   },

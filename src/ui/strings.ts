@@ -70,6 +70,14 @@ export const STRINGS = {
       tight: '紧迫',
     },
     infiniteItemsBadge: '∞ 无限道具',
+    /** 5 档难度的显示名 + 描述（src/level/difficulty.ts 引用） */
+    list: {
+      novice:   { name: '新手',     description: '金币丰厚，大件充裕，轻松上手' },
+      normal:   { name: '一般',     description: '经典体验，娱乐休闲，' },
+      hard:     { name: '困难',     description: '大件稀少，重物拖手，需要谋略' },
+      expert:   { name: '高手',     description: '金币稀缺，分秒必争，举步维艰' },
+      infinite: { name: '无限火力', description: '道具任你挥霍，纯粹的娱乐场' },
+    },
   },
 
   // ====================================================================
@@ -89,10 +97,12 @@ export const STRINGS = {
       title: '操作说明',
       shoot: '空格 / 点击画面 - 发射钩爪',
       fineAdjust: '钩爪伸出中←/→微调',
-      bomb: '按 F 键引爆收回物',
+      bomb: 'F / ↑ 键 - 引爆 TNT（需购买炸药）',
+      pause: 'ESC / 右上角按钮 - 暂停',
       goal: '抓取矿物达到目标金额即可过关',
       clickToStart: '点击任意位置开始',
     },
+    saveToast: '✓ 已保存到槽位',
     /** HUD 显示用道具简写（短名，2 字内） */
     itemNamesShort: {
       dynamite: '炸药',
@@ -113,6 +123,70 @@ export const STRINGS = {
       bombMissed: '空炸药',
       strengthPotion: '大力药剂!',
     },
+    /** HUD 难度标签（GameScene 拼接难度名后显示） */
+    hud: {
+      difficultyPrefix: '难度: ',
+      infiniteEmoji: '🔥 ',
+      endlessLabel: '⚡ 无尽 L',
+    },
+  },
+
+  // ====================================================================
+  // 矿物 (Mineral / 神秘袋 / 木箱抽奖飘字)
+  // ====================================================================
+  mineral: {
+    /** 神秘袋开出后飘字显示用 label */
+    mystery: {
+      cashSmall: '少量现金',
+      cashLarge: '大量现金',
+      strengthPotion: '大力药剂',
+      dynamite: '炸药',
+    },
+    /** 木箱抽奖结果飘字 label */
+    box: {
+      prizeDiamond: '钻石大奖！',
+      prizeGold: '金币 +500',
+      prizeCoin: '金币 +200',
+      empty: '空盒……',
+      skullLarge: '骷髅 -300',
+      skullSmall: '小骷髅 -100',
+    },
+  },
+
+  // ====================================================================
+  // 图鉴弹窗 (CodexModal)
+  // ====================================================================
+  codex: {
+    dialogLabel: '游戏帮助',
+    tabControls: '操作说明',
+    tabCodex: '矿物图鉴',
+    closeAria: '关闭',
+    footer: '按 ESC 关闭 · 点击遮罩关闭 · 上方切换 Tab',
+    /** 操作说明列表 */
+    controls: [
+      { key: '空格 / 点击画面', desc: '发射钩爪' },
+      { key: 'F / ↑ 键',         desc: '引爆 TNT（需购买炸药）' },
+      { key: 'ESC / 右上角按钮', desc: '暂停游戏' },
+    ],
+    /** 矿物名 + 备注（按图鉴顺序） */
+    minerals: {
+      bone:        { name: '骨头',     note: '低价值垫场' },
+      stoneSmall:  { name: '小石头' },
+      stoneMedium: { name: '中石头',   note: '石头书 ×3' },
+      stoneLarge:  { name: '大石头',   note: '石头书 ×3' },
+      mouse:       { name: '老鼠',     note: '会移动 · 老鼠药 ×5' },
+      mole:        { name: '鼹鼠',     note: '会移动 · 30% 携带钻石' },
+      goldSmall:   { name: '小金块' },
+      goldMedium:  { name: '中金块' },
+      crystalOre:  { name: '水晶矿石', note: 'Ch1 章节专属' },
+      goldLarge:   { name: '大金块' },
+      diamond:     { name: '钻石',     note: '钻石变色油 ×2' },
+      crabShell:   { name: '水晶蟹甲', note: 'Ch2 章节专属' },
+      piggyGem:    { name: '猪猪宝石', note: 'Ch3 章节专属' },
+      mysteryBag:  { name: '神秘袋',   note: '现金 / 大力药剂 / 炸药' },
+      woodenBox:   { name: '木箱',     note: '抽奖：钻石 / 金币 / 骷髅扣分' },
+      bomb:        { name: '炸药桶',   note: '⚠ 碰到爆炸，避开' },
+    },
   },
 
   // ====================================================================
@@ -121,6 +195,7 @@ export const STRINGS = {
   shop: {
     title: '道具商店',
     nextLevel: '下一关',
+    moneyLabel: '持有金额: $',
     items: {
       dynamite: { name: '炸药', desc: '按 F 键引爆收回物' },
       extraTime: { name: '额外时间', desc: '本关开局 +10 秒（一次性）' },
@@ -143,6 +218,11 @@ export const STRINGS = {
     skipAnimation: '点击跳过动画 ▶',
     enterShop: '进入商店',
     retry: '重试本关',
+    earnedPrefix: '本关入账: +$',
+    cumulativeTargetPrefix: '累计目标: $',
+    cumulativeAchievedPrefix: '累计达成: $',
+    cumulativeFailPrefix: '累计: $',
+    gapPrefix: '还差 $',
   },
 
   // ====================================================================
@@ -152,6 +232,13 @@ export const STRINGS = {
     title: '游戏结束',
     titleEndless: '无尽挑战结束',
     restart: '重新开始',
+    /** 关卡显示模板：endlessLevelPrefix + 关数 + endlessLevelSuffix */
+    endlessLevelPrefix: '坚持到无尽第 ',
+    endlessLevelSuffix: ' 关',
+    /** 普通模式到达关卡：normalLevelPrefix + 关数 + endlessLevelSuffix */
+    normalLevelPrefix: '到达关卡: 第 ',
+    finalScore: '最终得分: $',
+    highScore: '最高分: $',
   },
 
   // ====================================================================
@@ -165,6 +252,19 @@ export const STRINGS = {
     neverPlayed: '从未游玩',
     justNow: '刚刚',
     emptyHint: '在主菜单点"新游戏"开始',
+    manualSlotsDivider: '— 手动槽位（暂停菜单"另存为"写入） —',
+    autoSlotLabel: '⚡ 自动存档',
+    autoSlotEmpty: '（暂无进度）',
+    manualSlotEmpty: '[空槽位]',
+    /** 槽位卡片字段前缀 */
+    fieldDifficulty: '难度: ',
+    fieldLevelPrefix: '第 ',
+    fieldLevelSuffix: ' 关',
+    fieldLastPlayed: '最后游玩: ',
+    fieldHighScore: '最高分: $',
+    /** GameScene 暂停界面"另存为"槽位卡片 */
+    saveAsEmpty: '[空]',
+    saveAsOverwriteWarn: '⚠ 覆盖',
   },
 
   // ====================================================================
@@ -175,5 +275,20 @@ export const STRINGS = {
     label2: '第 二 章',
     label3: '第 三 章',
     skipHint: '按任意键跳过 · 2.5s 后自动进入',
+    /** 3 章节的标题 + 过场剧情（src/level/levels.ts 引用） */
+    list: {
+      crystalMine: {
+        displayName: '水晶矿坑',
+        intro: '听说这里能挖到水晶宝石国的宝藏...',
+      },
+      crabBay: {
+        displayName: '蟹潮海湾',
+        intro: '海湾深处有水晶蟹守卫着前往王城的通道...',
+      },
+      piggyThrone: {
+        displayName: '猪猪王座',
+        intro: '粉色宫殿深处，猪猪公主抱着粉宝石打盹...',
+      },
+    },
   },
 } as const;

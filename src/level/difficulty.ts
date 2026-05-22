@@ -2,7 +2,11 @@
  * 难度系统
  * 5 档难度（新手/一般/困难/高手/无限火力）的参数配置表
  * 详见 docs/design/20260518_difficulty-system.md
+ *
+ * 注：难度显示名/描述统一从 src/ui/strings.ts 引用，方便集中维护。
  */
+
+import { STRINGS } from '../ui/strings';
 
 /** 难度等级 */
 export enum Difficulty {
@@ -50,8 +54,8 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   // 新数值经过 analyze-difficulty.mjs 模拟验证（贪心抓取率达 NOVICE 10% / NORMAL 33% / HARD 60% / EXPERT 75%）
   [Difficulty.NOVICE]: {
     id: Difficulty.NOVICE,
-    name: '新手',
-    description: '金币丰厚，大件充裕，轻松上手',
+    name: STRINGS.difficulty.list.novice.name,
+    description: STRINGS.difficulty.list.novice.description,
     valueScale: 1.5,
     timeScale: 1.0,
     weightFactorScale: 0,
@@ -66,8 +70,8 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   },
   [Difficulty.NORMAL]: {
     id: Difficulty.NORMAL,
-    name: '一般',
-    description: '原汁原味的经典体验',
+    name: STRINGS.difficulty.list.normal.name,
+    description: STRINGS.difficulty.list.normal.description,
     valueScale: 0.85,
     timeScale: 1.0,
     weightFactorScale: 1.0,
@@ -82,8 +86,8 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   },
   [Difficulty.HARD]: {
     id: Difficulty.HARD,
-    name: '困难',
-    description: '大件稀少，重物拖手，需要谋略',
+    name: STRINGS.difficulty.list.hard.name,
+    description: STRINGS.difficulty.list.hard.description,
     valueScale: 0.45,
     timeScale: 1.0,
     weightFactorScale: 1.5,
@@ -98,8 +102,8 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   },
   [Difficulty.EXPERT]: {
     id: Difficulty.EXPERT,
-    name: '高手',
-    description: '金币稀缺，分秒必争，举步维艰',
+    name: STRINGS.difficulty.list.expert.name,
+    description: STRINGS.difficulty.list.expert.description,
     valueScale: 0.15,
     timeScale: 0.5,
     weightFactorScale: 2.0,
@@ -114,8 +118,8 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
   },
   [Difficulty.INFINITE]: {
     id: Difficulty.INFINITE,
-    name: '无限火力',
-    description: '道具任你挥霍，纯粹的娱乐场',
+    name: STRINGS.difficulty.list.infinite.name,
+    description: STRINGS.difficulty.list.infinite.description,
     valueScale: 1.0,
     timeScale: 1.0,
     weightFactorScale: 0,

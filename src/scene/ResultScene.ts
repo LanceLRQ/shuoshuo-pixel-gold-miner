@@ -148,21 +148,21 @@ export class ResultScene extends SceneBase {
     drawTextCentered(renderer, resultText, 120, resultColor, 'LARGE');
 
     // 本关入账（动画 tween）+ 累计目标
-    drawTextCentered(renderer, `本关入账: +$${this.displayEarned}`, 190, '#FFD700', 'MEDIUM');
-    drawTextCentered(renderer, `累计目标: $${this.targetMoney}`, 225, '#AAAAAA', 'SMALL');
+    drawTextCentered(renderer, `${STRINGS.result.earnedPrefix}${this.displayEarned}`, 190, '#FFD700', 'MEDIUM');
+    drawTextCentered(renderer, `${STRINGS.result.cumulativeTargetPrefix}${this.targetMoney}`, 225, '#AAAAAA', 'SMALL');
 
     // 累计达成（动画完成后显示）
     if (this.isPassed && this.stage === ResultStage.DONE) {
       const cumulative = this.cumulativeBeforeLevel + this.earnedMoney;
-      drawTextCentered(renderer, `累计达成: $${cumulative} / $${this.targetMoney}`, 330, '#FFD27C', 'MEDIUM');
+      drawTextCentered(renderer, `${STRINGS.result.cumulativeAchievedPrefix}${cumulative} / $${this.targetMoney}`, 330, '#FFD27C', 'MEDIUM');
     }
 
     // 未达标时显示差距
     if (!this.isPassed && this.stage === ResultStage.DONE) {
       const cumulative = this.cumulativeBeforeLevel + this.earnedMoney;
       const gap = this.targetMoney - cumulative;
-      drawTextCentered(renderer, `累计: $${cumulative} / $${this.targetMoney}`, 330, '#FF4444', 'MEDIUM');
-      drawTextCentered(renderer, `还差 $${gap}`, 365, '#FF8888', 'SMALL');
+      drawTextCentered(renderer, `${STRINGS.result.cumulativeFailPrefix}${cumulative} / $${this.targetMoney}`, 330, '#FF4444', 'MEDIUM');
+      drawTextCentered(renderer, `${STRINGS.result.gapPrefix}${gap}`, 365, '#FF8888', 'SMALL');
     }
 
     // 按钮（动画完成后才显示）

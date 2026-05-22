@@ -296,11 +296,11 @@ export class GameScene extends SceneBase {
     // 注：INFINITE 难度玩家进 L22+ 仍显示"🔥 无限火力"（难度模式优先于关卡模式）
     const inEndlessChapter = isEndlessLevel(this.levelConfig.level);
     if (this.difficulty.infiniteItems) {
-      this.hud.difficultyLabel = `🔥 ${this.difficulty.name}`;
+      this.hud.difficultyLabel = `${STRINGS.game.hud.infiniteEmoji}${this.difficulty.name}`;
     } else if (inEndlessChapter) {
-      this.hud.difficultyLabel = `⚡ 无尽 L${this.levelConfig.level - TOTAL_LEVELS}`;
+      this.hud.difficultyLabel = `${STRINGS.game.hud.endlessLabel}${this.levelConfig.level - TOTAL_LEVELS}`;
     } else {
-      this.hud.difficultyLabel = `难度: ${this.difficulty.name}`;
+      this.hud.difficultyLabel = `${STRINGS.game.hud.difficultyPrefix}${this.difficulty.name}`;
     }
 
     // INFINITE 模式：开局自动加全部 persistent buff
@@ -612,7 +612,7 @@ export class GameScene extends SceneBase {
       const ctx = renderer.getContext();
       ctx.save();
       ctx.globalAlpha = Math.min(1, this.saveToastTimer / 0.3);
-      drawTextCentered(renderer, '✓ 已保存到槽位', 100, '#88FF88', 'MEDIUM');
+      drawTextCentered(renderer, STRINGS.game.saveToast, 100, '#88FF88', 'MEDIUM');
       ctx.restore();
     }
 
@@ -623,8 +623,8 @@ export class GameScene extends SceneBase {
       ctx.fillRect(0, 0, renderer.width, renderer.height);
       drawTextCentered(renderer, STRINGS.game.tutorial.title, 100, '#FFD700', 'TITLE');
       drawTextCentered(renderer, STRINGS.game.tutorial.shoot, 180, '#FFFFFF', 'MEDIUM');
-      drawTextCentered(renderer, 'F / ↑ 键 - 引爆 TNT（需购买炸药）', 220, '#FFFFFF', 'MEDIUM');
-      drawTextCentered(renderer, 'ESC / 右上角按钮 - 暂停', 260, '#FFFFFF', 'MEDIUM');
+      drawTextCentered(renderer, STRINGS.game.tutorial.bomb, 220, '#FFFFFF', 'MEDIUM');
+      drawTextCentered(renderer, STRINGS.game.tutorial.pause, 260, '#FFFFFF', 'MEDIUM');
       drawTextCentered(renderer, STRINGS.game.tutorial.goal, 320, '#AAAAAA', 'SMALL');
       drawTextCentered(renderer, STRINGS.game.tutorial.clickToStart, 390, '#FFD700', 'MEDIUM');
     }
@@ -795,12 +795,12 @@ export class GameScene extends SceneBase {
       drawText(renderer, `#${i + 1}`, rect.x + 8, rect.y + 8, '#FFD700', 'SMALL');
 
       if (empty) {
-        drawText(renderer, '[空]', rect.x + 8, rect.y + 36, '#666688', 'SMALL');
+        drawText(renderer, STRINGS.slotSelect.saveAsEmpty, rect.x + 8, rect.y + 36, '#666688', 'SMALL');
         drawText(renderer, STRINGS.game.saveAsClickPrompt, rect.x + 8, rect.y + 60, '#88FF88', 'SMALL');
       } else {
-        drawText(renderer, `第 ${meta.currentLevel} 关`, rect.x + 8, rect.y + 30, '#FFFFFF', 'SMALL');
+        drawText(renderer, `${STRINGS.slotSelect.fieldLevelPrefix}${meta.currentLevel}${STRINGS.slotSelect.fieldLevelSuffix}`, rect.x + 8, rect.y + 30, '#FFFFFF', 'SMALL');
         drawText(renderer, `$${meta.currentMoney}`, rect.x + 8, rect.y + 50, '#FFD700', 'SMALL');
-        drawText(renderer, '⚠ 覆盖', rect.x + 8, rect.y + 72, '#FF8888', 'SMALL');
+        drawText(renderer, STRINGS.slotSelect.saveAsOverwriteWarn, rect.x + 8, rect.y + 72, '#FF8888', 'SMALL');
       }
     }
 

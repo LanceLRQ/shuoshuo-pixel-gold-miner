@@ -147,7 +147,7 @@ export class ShopScene extends SceneBase {
     drawTextCentered(renderer, STRINGS.shop.title, 25, '#FFD700', 'LARGE');
 
     // 当前金额
-    drawTextCentered(renderer, `持有金额: $${this.money}`, 60, '#FFD700', 'MEDIUM');
+    drawTextCentered(renderer, `${STRINGS.shop.moneyLabel}${this.money}`, 60, '#FFD700', 'MEDIUM');
 
     // 道具列表（3列网格布局适配横屏）
     const startX = (800 - CARD_LAYOUT.cardW * CARD_LAYOUT.cols - CARD_LAYOUT.gapX * (CARD_LAYOUT.cols - 1)) / 2;

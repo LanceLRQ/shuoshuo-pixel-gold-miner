@@ -12,6 +12,7 @@
 
 import type { ThemeManager } from '../assets/theme/ThemeManager';
 import { MINERAL_CONFIGS, MineralType, STONE_VARIANTS } from '../entity/types';
+import { STRINGS } from './strings';
 
 type TabId = 'controls' | 'codex';
 
@@ -29,34 +30,31 @@ interface CodexEntry {
 }
 
 const HD = MINERAL_CONFIGS;
+const M = STRINGS.codex.minerals;
 
-/** 矿物图鉴 16 项 — 按价值升序排列 */
+/** 矿物图鉴 16 项 — 按价值升序排列（名称/备注从 STRINGS.codex.minerals 取） */
 function buildCodexEntries(): CodexEntry[] {
   return [
-    { sprite: HD[MineralType.BONE].spriteName,        name: '骨头',     value: `$${HD[MineralType.BONE].value}`, note: '低价值垫场' },
-    { sprite: STONE_VARIANTS[0]!.spriteName,          name: '小石头',   value: `$${STONE_VARIANTS[0]!.valueRange[0]}–$${STONE_VARIANTS[0]!.valueRange[1]}` },
-    { sprite: STONE_VARIANTS[1]!.spriteName,          name: '中石头',   value: `$${STONE_VARIANTS[1]!.valueRange[0]}–$${STONE_VARIANTS[1]!.valueRange[1]}`, note: '石头书 ×3' },
-    { sprite: STONE_VARIANTS[2]!.spriteName,          name: '大石头',   value: `$${STONE_VARIANTS[2]!.valueRange[0]}–$${STONE_VARIANTS[2]!.valueRange[1]}`, note: '石头书 ×3' },
-    { sprite: HD[MineralType.MOUSE].spriteName,       name: '老鼠',     value: `$${HD[MineralType.MOUSE].value}`, note: '会移动 · 老鼠药 ×5' },
-    { sprite: HD[MineralType.MOLE].spriteName,        name: '鼹鼠',     value: `$${HD[MineralType.MOLE].value}`, note: '会移动 · 30% 携带钻石' },
-    { sprite: HD[MineralType.GOLD_SMALL].spriteName,  name: '小金块',   value: `$${HD[MineralType.GOLD_SMALL].value}` },
-    { sprite: HD[MineralType.GOLD_MEDIUM].spriteName, name: '中金块',   value: `$${HD[MineralType.GOLD_MEDIUM].value}` },
-    { sprite: HD[MineralType.CRYSTAL_ORE].spriteName, name: '水晶矿石', value: `$${HD[MineralType.CRYSTAL_ORE].value}`, note: 'Ch1 章节专属' },
-    { sprite: HD[MineralType.GOLD_LARGE].spriteName,  name: '大金块',   value: `$${HD[MineralType.GOLD_LARGE].value}` },
-    { sprite: HD[MineralType.DIAMOND].spriteName,     name: '钻石',     value: `$${HD[MineralType.DIAMOND].value}`, note: '钻石变色油 ×2' },
-    { sprite: HD[MineralType.CRAB_SHELL].spriteName,  name: '水晶蟹甲', value: `$${HD[MineralType.CRAB_SHELL].value}`, note: 'Ch2 章节专属' },
-    { sprite: HD[MineralType.PIGGY_GEM].spriteName,   name: '猪猪宝石', value: `$${HD[MineralType.PIGGY_GEM].value}`, note: 'Ch3 章节专属' },
-    { sprite: HD[MineralType.MYSTERY_BAG].spriteName, name: '神秘袋',   value: '?', note: '现金 / 大力药剂 / 炸药' },
-    { sprite: HD[MineralType.WOODEN_BOX].spriteName,  name: '木箱',     value: '?', note: '抽奖：钻石 / 金币 / 骷髅扣分' },
-    { sprite: HD[MineralType.BOMB].spriteName,        name: '炸药桶',   value: '−$100', valueColor: '#ff6464', note: '⚠ 碰到爆炸，避开' },
+    { sprite: HD[MineralType.BONE].spriteName,        name: M.bone.name,        value: `$${HD[MineralType.BONE].value}`, note: M.bone.note },
+    { sprite: STONE_VARIANTS[0]!.spriteName,          name: M.stoneSmall.name,  value: `$${STONE_VARIANTS[0]!.valueRange[0]}–$${STONE_VARIANTS[0]!.valueRange[1]}` },
+    { sprite: STONE_VARIANTS[1]!.spriteName,          name: M.stoneMedium.name, value: `$${STONE_VARIANTS[1]!.valueRange[0]}–$${STONE_VARIANTS[1]!.valueRange[1]}`, note: M.stoneMedium.note },
+    { sprite: STONE_VARIANTS[2]!.spriteName,          name: M.stoneLarge.name,  value: `$${STONE_VARIANTS[2]!.valueRange[0]}–$${STONE_VARIANTS[2]!.valueRange[1]}`, note: M.stoneLarge.note },
+    { sprite: HD[MineralType.MOUSE].spriteName,       name: M.mouse.name,       value: `$${HD[MineralType.MOUSE].value}`, note: M.mouse.note },
+    { sprite: HD[MineralType.MOLE].spriteName,        name: M.mole.name,        value: `$${HD[MineralType.MOLE].value}`, note: M.mole.note },
+    { sprite: HD[MineralType.GOLD_SMALL].spriteName,  name: M.goldSmall.name,   value: `$${HD[MineralType.GOLD_SMALL].value}` },
+    { sprite: HD[MineralType.GOLD_MEDIUM].spriteName, name: M.goldMedium.name,  value: `$${HD[MineralType.GOLD_MEDIUM].value}` },
+    { sprite: HD[MineralType.CRYSTAL_ORE].spriteName, name: M.crystalOre.name,  value: `$${HD[MineralType.CRYSTAL_ORE].value}`, note: M.crystalOre.note },
+    { sprite: HD[MineralType.GOLD_LARGE].spriteName,  name: M.goldLarge.name,   value: `$${HD[MineralType.GOLD_LARGE].value}` },
+    { sprite: HD[MineralType.DIAMOND].spriteName,     name: M.diamond.name,     value: `$${HD[MineralType.DIAMOND].value}`, note: M.diamond.note },
+    { sprite: HD[MineralType.CRAB_SHELL].spriteName,  name: M.crabShell.name,   value: `$${HD[MineralType.CRAB_SHELL].value}`, note: M.crabShell.note },
+    { sprite: HD[MineralType.PIGGY_GEM].spriteName,   name: M.piggyGem.name,    value: `$${HD[MineralType.PIGGY_GEM].value}`, note: M.piggyGem.note },
+    { sprite: HD[MineralType.MYSTERY_BAG].spriteName, name: M.mysteryBag.name,  value: '?', note: M.mysteryBag.note },
+    { sprite: HD[MineralType.WOODEN_BOX].spriteName,  name: M.woodenBox.name,   value: '?', note: M.woodenBox.note },
+    { sprite: HD[MineralType.BOMB].spriteName,        name: M.bomb.name,        value: '−$100', valueColor: '#ff6464', note: M.bomb.note },
   ];
 }
 
-const CONTROL_HINTS: { key: string; desc: string }[] = [
-  { key: '空格 / 点击画面',  desc: '发射钩爪' },
-  { key: 'F / ↑ 键',          desc: '引爆 TNT（需购买炸药）' },
-  { key: 'ESC / 右上角按钮',  desc: '暂停游戏' },
-];
+const CONTROL_HINTS: readonly { key: string; desc: string }[] = STRINGS.codex.controls;
 
 const STYLE_ID = 'codex-modal-style';
 const STYLE_CSS = `
@@ -187,14 +185,14 @@ export class CodexModal {
     this.root = document.createElement('div');
     this.root.className = 'codex-modal-overlay';
     this.root.innerHTML = `
-      <div class="codex-modal-panel" role="dialog" aria-modal="true" aria-label="游戏帮助">
+      <div class="codex-modal-panel" role="dialog" aria-modal="true" aria-label="${STRINGS.codex.dialogLabel}">
         <div class="codex-modal-header">
-          <button type="button" class="codex-modal-tab active" data-tab="controls">操作说明</button>
-          <button type="button" class="codex-modal-tab" data-tab="codex">矿物图鉴</button>
-          <button type="button" class="codex-modal-close" aria-label="关闭">✕</button>
+          <button type="button" class="codex-modal-tab active" data-tab="controls">${STRINGS.codex.tabControls}</button>
+          <button type="button" class="codex-modal-tab" data-tab="codex">${STRINGS.codex.tabCodex}</button>
+          <button type="button" class="codex-modal-close" aria-label="${STRINGS.codex.closeAria}">✕</button>
         </div>
         <div class="codex-modal-body"></div>
-        <div class="codex-modal-footer">按 ESC 关闭 · 点击遮罩关闭 · 上方切换 Tab</div>
+        <div class="codex-modal-footer">${STRINGS.codex.footer}</div>
       </div>
     `;
     document.body.appendChild(this.root);

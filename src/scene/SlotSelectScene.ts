@@ -130,7 +130,7 @@ export class SlotSelectScene extends SceneBase {
     }
 
     // 分隔提示
-    drawText(renderer, '— 手动槽位（暂停菜单"另存为"写入） —', 200, 132, '#666688', 'SMALL');
+    drawText(renderer, STRINGS.slotSelect.manualSlotsDivider, 200, 132, '#666688', 'SMALL');
 
     // 手动槽位网格
     for (let i = 0; i < 10; i++) {
@@ -160,18 +160,18 @@ export class SlotSelectScene extends SceneBase {
     ctx.lineWidth = 2;
     ctx.strokeRect(rect.x + 1, rect.y + 1, rect.w - 2, rect.h - 2);
 
-    drawText(renderer, '⚡ 自动存档', rect.x + 12, rect.y + 10, '#FFD700', 'MEDIUM');
+    drawText(renderer, STRINGS.slotSelect.autoSlotLabel, rect.x + 12, rect.y + 10, '#FFD700', 'MEDIUM');
 
     if (empty) {
-      drawText(renderer, '（暂无进度）', rect.x + 12, rect.y + 40, '#888899', 'SMALL');
+      drawText(renderer, STRINGS.slotSelect.autoSlotEmpty, rect.x + 12, rect.y + 40, '#888899', 'SMALL');
       drawText(renderer, STRINGS.slotSelect.emptyHint, rect.x + 12, rect.y + 55, '#666688', 'SMALL');
     } else {
       const cfg = DIFFICULTY_CONFIGS[meta.difficulty];
-      drawText(renderer, `难度: ${cfg.name}`, rect.x + 180, rect.y + 12, cfg.color, 'SMALL');
-      drawText(renderer, `第 ${meta.currentLevel} 关`, rect.x + 320, rect.y + 12, '#FFFFFF', 'SMALL');
+      drawText(renderer, `${STRINGS.slotSelect.fieldDifficulty}${cfg.name}`, rect.x + 180, rect.y + 12, cfg.color, 'SMALL');
+      drawText(renderer, `${STRINGS.slotSelect.fieldLevelPrefix}${meta.currentLevel}${STRINGS.slotSelect.fieldLevelSuffix}`, rect.x + 320, rect.y + 12, '#FFFFFF', 'SMALL');
       drawText(renderer, `$${meta.currentMoney}`, rect.x + 420, rect.y + 12, '#FFD700', 'SMALL');
-      drawText(renderer, `最后游玩: ${formatTime(meta.lastPlayedAt)}`, rect.x + 12, rect.y + 40, '#888899', 'SMALL');
-      drawText(renderer, `最高分: $${meta.highScore}`, rect.x + 12, rect.y + 55, '#88FF88', 'SMALL');
+      drawText(renderer, `${STRINGS.slotSelect.fieldLastPlayed}${formatTime(meta.lastPlayedAt)}`, rect.x + 12, rect.y + 40, '#888899', 'SMALL');
+      drawText(renderer, `${STRINGS.slotSelect.fieldHighScore}${meta.highScore}`, rect.x + 12, rect.y + 55, '#88FF88', 'SMALL');
 
       // 继续按钮
       const btn = this.getAutoContinueButtonRect();
@@ -206,11 +206,11 @@ export class SlotSelectScene extends SceneBase {
     drawText(renderer, `#${slotId}`, rect.x + 8, rect.y + 6, '#888899', 'SMALL');
 
     if (empty) {
-      drawTextCenteredIn(renderer, '[空槽位]', { x: rect.x, y: rect.y + rect.h / 2 - 10, w: rect.w, h: 20 }, '#666688', 'SMALL');
+      drawTextCenteredIn(renderer, STRINGS.slotSelect.manualSlotEmpty, { x: rect.x, y: rect.y + rect.h / 2 - 10, w: rect.w, h: 20 }, '#666688', 'SMALL');
     } else {
       const cfg = DIFFICULTY_CONFIGS[meta.difficulty];
       drawText(renderer, cfg.name, rect.x + 8, rect.y + 26, cfg.color, 'SMALL');
-      drawText(renderer, `第 ${meta.currentLevel} 关`, rect.x + 8, rect.y + 46, '#FFFFFF', 'SMALL');
+      drawText(renderer, `${STRINGS.slotSelect.fieldLevelPrefix}${meta.currentLevel}${STRINGS.slotSelect.fieldLevelSuffix}`, rect.x + 8, rect.y + 46, '#FFFFFF', 'SMALL');
       drawText(renderer, `$${meta.currentMoney}`, rect.x + 8, rect.y + 66, '#FFD700', 'SMALL');
       drawText(renderer, formatTime(meta.lastPlayedAt), rect.x + 8, rect.y + 86, '#888899', 'SMALL');
 

@@ -30,8 +30,8 @@ export class GameOverScene extends SceneBase {
     const endless = isEndlessLevel(level);
     this.title = endless ? STRINGS.gameOver.titleEndless : STRINGS.gameOver.title;
     this.levelText = endless
-      ? `坚持到无尽第 ${level - TOTAL_LEVELS} 关`
-      : `到达关卡: 第 ${level} 关`;
+      ? `${STRINGS.gameOver.endlessLevelPrefix}${level - TOTAL_LEVELS}${STRINGS.gameOver.endlessLevelSuffix}`
+      : `${STRINGS.gameOver.normalLevelPrefix}${level}${STRINGS.gameOver.endlessLevelSuffix}`;
   }
 
   enter(): void {}
@@ -58,13 +58,13 @@ export class GameOverScene extends SceneBase {
 
     // 标题 + 关卡显示（文案在 constructor 已算好，render 直读字段）
     drawTextCentered(renderer, this.title, 80, '#FF4444', 'TITLE');
-    drawTextCentered(renderer, `最终得分: $${this.score}`, 180, '#FFD700', 'LARGE');
+    drawTextCentered(renderer, `${STRINGS.gameOver.finalScore}${this.score}`, 180, '#FFD700', 'LARGE');
     drawTextCentered(renderer, this.levelText, 240, '#AAAAAA', 'MEDIUM');
 
     // 最高分
     const highScore = this.game.getStorage().getHighScore();
     if (highScore > 0) {
-      drawTextCentered(renderer, `最高分: $${highScore}`, 300, '#FFFFFF', 'MEDIUM');
+      drawTextCentered(renderer, `${STRINGS.gameOver.highScore}${highScore}`, 300, '#FFFFFF', 'MEDIUM');
     }
 
     // 重新开始按钮
