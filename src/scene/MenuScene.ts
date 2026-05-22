@@ -125,16 +125,20 @@ export class MenuScene extends SceneBase {
   }
 
   render(renderer: Renderer): void {
-    // 绘制背景（使用当前主题颜色）
+    // 绘制背景（使用当前主题颜色，菜单不加章节装饰）
     renderBackground(renderer, renderer.width, renderer.height, this.game.getThemeManager().getBackgroundColors());
 
-    // 半透明遮罩
-    renderer.fillRect(0, 0, renderer.width, renderer.height, 'rgba(0, 0, 0, 0.3)');
+    // 四角装饰（D-Pad / B/R / 靶心，纯装饰不响应点击）
+    this.renderCornerDecorations(renderer);
 
-    // 标题（带动画浮动效果）
-    const titleY = 120 + Math.sin(this.animTime * 2) * 8;
-    drawTextCentered(renderer, STRINGS.menu.titleLine1, titleY, '#FFD700', 'TITLE');
-    drawTextCentered(renderer, STRINGS.menu.titleLine2, titleY + 45, '#FFA500', 'LARGE');
+    // 标题方块字（5 个浅青蓝方块，每块装一字）
+    this.renderTitleBlocks(renderer);
+
+    // 水晶猫吉祥物 + 3 心飘（标题右侧）
+    this.renderMascotAndHearts(renderer);
+
+    // 副标题 "··· 猪猪传说 ···"（金色）
+    this.renderSubtitle(renderer);
 
     // 最高分
     if (this.highScore > 0) {
@@ -149,7 +153,7 @@ export class MenuScene extends SceneBase {
     this.newGameButton.render(renderer);
     this.loadGameButton.render(renderer);
 
-    // 右上角设置图标（齿轮简化为方框 + 文字）
+    // 右上角设置图标（深棕金边像素风）
     this.renderSettingsIcon(renderer);
 
     // 设置面板
@@ -158,23 +162,163 @@ export class MenuScene extends SceneBase {
     }
   }
 
-  /** 绘制右上角设置入口（齿轮简化） */
+  /** 标题"水晶宝石国" - 5 个浅青蓝方块字（Minecraft 风），偏左留出右侧水晶猫位置 */
+  private renderTitleBlocks(renderer: Renderer): void {
+    const ctx = renderer.getContext();
+    const title = STRINGS.menu.titleLine1; // '水晶宝石国'
+    const chars = Array.from(title);
+
+    // 方块布局：每块 64×64，间距 2px，整体居中偏左（标题中心 x=380，让出右侧给猫）
+    const blockSize = 64;
+    const gap = 2;
+    const totalW = blockSize * chars.length + gap * (chars.length - 1);
+    const centerX = 380;
+    const startX = centerX - totalW / 2;
+    const blockY = 92;
+
+    // 块颜色（青蓝主题）
+    const BLOCK_FILL = '#5DC4DD';
+    const BLOCK_INNER = '#2D85A8';
+    const BLOCK_OUTLINE = '#000000';
+
+    for (let i = 0; i < chars.length; i++) {
+      const x = startX + i * (blockSize + gap);
+      const y = blockY;
+
+      // 黑色外描边（3px）
+      ctx.fillStyle = BLOCK_OUTLINE;
+      ctx.fillRect(x - 3, y - 3, blockSize + 6, blockSize + 6);
+
+      // 内部浅青蓝填充
+      ctx.fillStyle = BLOCK_FILL;
+      ctx.fillRect(x, y, blockSize, blockSize);
+
+      // 内边深蓝阴影（下、右 4px 模拟立体感）
+      ctx.fillStyle = BLOCK_INNER;
+      ctx.fillRect(x, y + blockSize - 5, blockSize, 5);
+      ctx.fillRect(x + blockSize - 5, y, 5, blockSize);
+
+      // 顶部高光（2px 浅色）
+      ctx.fillStyle = '#A3E5F5';
+      ctx.fillRect(x + 3, y + 3, blockSize - 8, 3);
+
+      // 块内大字（白色加粗，垂直居中）
+      ctx.font = `bold 48px monospace`;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(chars[i]!, x + blockSize / 2, y + blockSize / 2 + 2);
+    }
+    ctx.textAlign = 'start';
+    ctx.textBaseline = 'top';
+
+    // 顶部水晶装饰：第 1、4 块上方
+    this.drawCrystalCluster(ctx, startX + blockSize / 2, blockY);
+    this.drawCrystalCluster(ctx, startX + (blockSize + gap) * 3 + blockSize / 2, blockY);
+  }
+
+  /** 顶部水晶簇（深蓝倒三角 + 浅蓝高光，纯 fillRect 像素几何） */
+  private drawCrystalCluster(ctx: CanvasRenderingContext2D, centerX: number, baseY: number): void {
+    // 中间高水晶
+    const cx = Math.floor(centerX);
+    const cy = baseY;
+    // 黑色描边
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(cx - 7, cy - 32, 14, 33);
+    // 深蓝主体
+    ctx.fillStyle = '#3DA9D9';
+    ctx.fillRect(cx - 6, cy - 31, 12, 31);
+    // 浅蓝高光
+    ctx.fillStyle = '#A3E5F5';
+    ctx.fillRect(cx - 5, cy - 30, 4, 26);
+
+    // 左侧矮水晶
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(cx - 16, cy - 20, 9, 21);
+    ctx.fillStyle = '#3DA9D9';
+    ctx.fillRect(cx - 15, cy - 19, 7, 19);
+    ctx.fillStyle = '#A3E5F5';
+    ctx.fillRect(cx - 14, cy - 18, 2, 16);
+
+    // 右侧矮水晶
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(cx + 7, cy - 18, 9, 19);
+    ctx.fillStyle = '#3DA9D9';
+    ctx.fillRect(cx + 8, cy - 17, 7, 17);
+    ctx.fillStyle = '#A3E5F5';
+    ctx.fillRect(cx + 9, cy - 16, 2, 14);
+  }
+
+  /** 副标题 "··· 猪猪传说 ···" 金色 */
+  private renderSubtitle(renderer: Renderer): void {
+    const ctx = renderer.getContext();
+    const text = `··· ${STRINGS.menu.titleLine2} ···`;
+    const y = 178;
+    ctx.font = `bold 24px monospace`;
+    ctx.fillStyle = '#FFD700';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    // 黑色描边阴影（1px 偏移）
+    ctx.fillStyle = '#000000';
+    ctx.fillText(text, 380 + 2, y + 2);
+    ctx.fillStyle = '#FFD700';
+    ctx.fillText(text, 380, y);
+    ctx.textAlign = 'start';
+  }
+
+  /** 标题右侧水晶猫 + 飘心装饰 */
+  private renderMascotAndHearts(renderer: Renderer): void {
+    // 水晶猫 sprite（标题右侧、地面线之上）
+    this.drawSprite(renderer, 'MENU_MASCOT_CAT', 580, 60);
+    // 3 心飘装饰（一张整图覆盖蓝/粉/黄三心，飘在猫右上方）
+    this.drawSprite(renderer, 'MENU_HEARTS_DECOR', 695, 50);
+  }
+
+  /** 四角装饰：左下 D-Pad + 左下角靶心 + 右下 B/R 金币 */
+  private renderCornerDecorations(renderer: Renderer): void {
+    // 左下：D-Pad
+    this.drawSprite(renderer, 'MENU_DPAD_DECOR', 20, 410);
+    // 左下角更下：靶心音乐图标
+    this.drawSprite(renderer, 'MENU_BULLSEYE_ICON', 18, 502);
+    // 右下：B/R 两个金币
+    this.drawSprite(renderer, 'MENU_BUTTON_B', 660, 470);
+    this.drawSprite(renderer, 'MENU_BUTTON_R', 730, 470);
+  }
+
+  /** 从主题 sprite cache 取 canvas 绘制；找不到则跳过（优雅降级） */
+  private drawSprite(renderer: Renderer, spriteName: string, x: number, y: number): boolean {
+    const cache = this.game.getThemeManager().getSpriteCache();
+    const sprite = cache.get(spriteName);
+    if (!sprite) return false;
+    const meta = this.game.getThemeManager().getSpriteMeta(spriteName);
+    const dw = meta?.displayWidth ?? sprite.width;
+    const dh = meta?.displayHeight ?? sprite.height;
+    renderer.drawImageSlice(sprite, 0, 0, sprite.width, sprite.height, x, y, dw, dh);
+    return true;
+  }
+
+  /** 绘制右上角设置入口（深棕金边像素风） */
   private renderSettingsIcon(renderer: Renderer): void {
     const ctx = renderer.getContext();
-    const x = renderer.width - 70;
+    const w = 72;
+    const h = 32;
+    const x = renderer.width - w - 14;
     const y = 12;
-    const w = 56;
-    const h = 26;
     this.settingsBtnArea = { x, y, w, h };
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    // 黑色外描边（3px）
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+    // 深棕背景
+    ctx.fillStyle = '#3A2A1A';
     ctx.fillRect(x, y, w, h);
+    // 金黄边框（2px）
     ctx.fillStyle = '#FFD700';
     ctx.fillRect(x, y, w, 2);
     ctx.fillRect(x, y + h - 2, w, 2);
     ctx.fillRect(x, y, 2, h);
     ctx.fillRect(x + w - 2, y, 2, h);
-    drawTextCenteredIn(renderer, STRINGS.menu.settings, { x, y, w, h }, '#FFFFFF', 'SMALL');
+    drawTextCenteredIn(renderer, STRINGS.menu.settings, { x, y, w, h }, '#FFD700', 'MEDIUM');
   }
 
   /** 绘制设置面板 */

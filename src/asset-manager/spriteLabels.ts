@@ -40,6 +40,14 @@ export const SPRITE_LABELS: Record<string, string> = {
   BOMB_SPRITE: '炸弹道具',
   MYSTERY_BAG: '神秘袋（随机奖励）',
   WOODEN_BOX_SPRITE: '木箱（容器）',
+
+  // 主菜单装饰（仅 MenuScene 使用，可由各主题独立替换）
+  MENU_MASCOT_CAT: '主菜单·水晶猫吉祥物',
+  MENU_DPAD_DECOR: '主菜单·D-Pad 装饰',
+  MENU_BUTTON_B: '主菜单·B 键金币装饰',
+  MENU_BUTTON_R: '主菜单·R 键金币装饰',
+  MENU_BULLSEYE_ICON: '主菜单·靶心音乐图标',
+  MENU_HEARTS_DECOR: '主菜单·3 心飘装饰',
 };
 
 /** 取 sprite 中文名，未配置时回退空字符串（UI 自动隐藏副标题） */

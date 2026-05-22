@@ -764,10 +764,23 @@ export class GameScene extends SceneBase {
     drawTextCentered(renderer, STRINGS.game.pauseHint, 180, '#888899', 'SMALL');
 
     for (const btn of this.getPauseMenuButtons()) {
-      ctx.fillStyle = '#FF6FA8';
-      ctx.fillRect(btn.rect.x, btn.rect.y, btn.rect.w, btn.rect.h);
-      ctx.fillStyle = '#FF8FC0';
-      ctx.fillRect(btn.rect.x, btn.rect.y, btn.rect.w, 2);
+      const { x, y, w, h } = btn.rect;
+      // 黑色外描边
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(x, y, w, 2);
+      ctx.fillRect(x, y + h - 2, w, 2);
+      ctx.fillRect(x, y, 2, h);
+      ctx.fillRect(x + w - 2, y, 2, h);
+      // 青蓝实心
+      ctx.fillStyle = '#5DC4DD';
+      ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+      // 深蓝内边
+      ctx.fillStyle = '#1F5F7A';
+      ctx.fillRect(x + 2, y + h - 4, w - 4, 2);
+      ctx.fillRect(x + w - 4, y + 2, 2, h - 4);
+      // 顶部高光
+      ctx.fillStyle = '#8FE0F5';
+      ctx.fillRect(x + 4, y + 4, w - 8, 2);
       drawTextCenteredIn(renderer, btn.label, btn.rect, '#FFFFFF', 'MEDIUM');
     }
   }

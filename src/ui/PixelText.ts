@@ -14,6 +14,8 @@ export const FONT_SIZES = {
   MEDIUM: 16,
   LARGE: 24,
   TITLE: 32,
+  HUGE: 48,
+  MASSIVE: 56,
 } as const;
 
 /** 字体大小键名类型 */
