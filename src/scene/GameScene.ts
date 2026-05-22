@@ -33,6 +33,8 @@ import {
   PRESET_BOMB_SPARK,
 } from '../effects/Particle';
 import { FloatingTextSystem } from '../effects/FloatingText';
+import { DecorationLayer } from '../effects/DecorationLayer';
+import { createChapterAnimators } from '../assets/chapter-decoration';
 import { Button } from '../ui/Button';
 
 /** 炸药桶爆炸半径 */
@@ -243,6 +245,9 @@ export class GameScene extends SceneBase {
   /** 飘字系统 */
   private floatingTexts: FloatingTextSystem = new FloatingTextSystem();
 
+  /** 章节背景装饰图层（动画装饰：火把火星 / 气泡 / 花瓣 等） */
+  private readonly decorationLayer: DecorationLayer;
+
   /** 提前结算按钮（仅在达标后显示） */
   private finishButton: Button;
 
@@ -283,6 +288,9 @@ export class GameScene extends SceneBase {
       this.levelConfig.chapter,
       game.getThemeManager().getBackgroundColors(),
     );
+
+    // 章节装饰动画图层：按当前章节实例化（独立粒子池，与击中特效池隔离）
+    this.decorationLayer = new DecorationLayer(createChapterAnimators(this.levelConfig.chapter));
     // HUD 标签优先级：INFINITE 难度 > 无尽关卡（L22+）> 普通难度
     // 注：INFINITE 难度玩家进 L22+ 仍显示"🔥 无限火力"（难度模式优先于关卡模式）
     const inEndlessChapter = isEndlessLevel(this.levelConfig.level);
@@ -350,6 +358,7 @@ export class GameScene extends SceneBase {
     this.minerals = [];
     this.particles.clear();
     this.floatingTexts.clear();
+    this.decorationLayer.clear();
     // 场景退出时停止钩绳循环音，防止泄漏到下一场景
     this.game.getAudio().stopRopeFriction();
   }
@@ -402,6 +411,7 @@ export class GameScene extends SceneBase {
 
     this.particles.update(dt);
     this.floatingTexts.update(dt);
+    this.decorationLayer.update(dt);
 
     // 状态变化反馈：达标"叮咚"上升沿 + 钩绳金属摩擦循环音启停
     this.detectStateTransitionSfx();
@@ -539,8 +549,11 @@ export class GameScene extends SceneBase {
     // 清空画面
     renderer.clear('#000000');
 
-    // 绘制背景（用构造时缓存的章节色板，避免每帧 alloc）
-    renderBackground(renderer, renderer.width, renderer.height, this.chapterColors);
+    // 绘制背景（用构造时缓存的章节色板 + 当前章节，叠加章节静态装饰）
+    renderBackground(renderer, renderer.width, renderer.height, this.chapterColors, this.levelConfig.chapter);
+
+    // 章节装饰动画图层（背景之上、矿物之下）
+    this.decorationLayer.render(renderer);
 
     // 绘制矿物
     for (const mineral of this.minerals) {

@@ -8,6 +8,7 @@
 import type { Renderer } from '../core/Renderer';
 import type { BackgroundColors } from './theme/types';
 import { ChapterId } from '../level/levels';
+import { drawChapterStaticDecor } from './chapter-decoration';
 
 /**
  * 章节色板覆盖表
@@ -80,10 +81,17 @@ let bgCacheKey = '';
 /**
  * 渲染三层背景（带缓存）
  * @param colors 背景颜色配置，由主题系统提供
+ * @param chapter 当前章节，传入后叠加章节静态装饰；传 null（如主菜单）则不叠装饰
  */
-export function renderBackground(renderer: Renderer, width: number, height: number, colors: BackgroundColors): void {
-  // 用尺寸和关键颜色生成缓存键
-  const key = `${width}x${height}_${colors.skyTop}_${colors.dirtDark}`;
+export function renderBackground(
+  renderer: Renderer,
+  width: number,
+  height: number,
+  colors: BackgroundColors,
+  chapter: ChapterId | null = null
+): void {
+  // 缓存键含章节维度：不同章节的静态装饰不同，需独立缓存
+  const key = `${width}x${height}_${colors.skyTop}_${colors.dirtDark}_${chapter ?? 'none'}`;
 
   // 缓存有效则直接绘制
   if (bgCache && bgCacheKey === key) {
@@ -102,6 +110,9 @@ export function renderBackground(renderer: Renderer, width: number, height: numb
   drawGround(ctx, width, colors);
   drawDirtShallow(ctx, width, DIRT_DEEP_Y, colors);
   drawDirtDeep(ctx, width, height, DIRT_DEEP_Y, colors);
+
+  // 末尾叠加章节静态装饰（钟乳石/海草/城堡 等）
+  drawChapterStaticDecor(ctx, chapter, colors);
 
   bgCacheKey = key;
   renderer.getContext().drawImage(bgCache, 0, 0);
