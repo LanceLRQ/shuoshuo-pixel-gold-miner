@@ -11,6 +11,7 @@ import type { Game } from '../core/Game';
 import { GameState } from '../core/Game';
 import { drawTextCentered } from '../ui/PixelText';
 import { Button } from '../ui/Button';
+import { STRINGS } from '../ui/strings';
 import { SoundType } from '../core/Audio';
 import { clamp } from '../utils/math';
 
@@ -57,11 +58,11 @@ export class ResultScene extends SceneBase {
 
     if (this.isPassed) {
       // 通过：单按钮居中
-      this.primaryButton = new Button(330, 420, 140, 44, '进入商店');
+      this.primaryButton = new Button(330, 420, 140, 44, STRINGS.result.enterShop);
     } else {
       // 失败：双按钮并排
-      this.primaryButton = new Button(240, 420, 140, 44, '重试本关');
-      this.secondaryButton = new Button(420, 420, 140, 44, '返回菜单');
+      this.primaryButton = new Button(240, 420, 140, 44, STRINGS.result.retry);
+      this.secondaryButton = new Button(420, 420, 140, 44, STRINGS.common.backToMenuShort);
     }
   }
 
@@ -139,10 +140,10 @@ export class ResultScene extends SceneBase {
     renderer.clear('#1a1a2e');
 
     // 标题
-    drawTextCentered(renderer, '关卡结算', 60, '#FFFFFF', 'LARGE');
+    drawTextCentered(renderer, STRINGS.result.title, 60, '#FFFFFF', 'LARGE');
 
     // 结果
-    const resultText = this.isPassed ? '恭喜达标！' : '未达标...';
+    const resultText = this.isPassed ? STRINGS.result.success : STRINGS.result.failure;
     const resultColor = this.isPassed ? '#00FF00' : '#FF4444';
     drawTextCentered(renderer, resultText, 120, resultColor, 'LARGE');
 
@@ -172,7 +173,7 @@ export class ResultScene extends SceneBase {
       }
     } else {
       // 动画进行中提示"点击跳过"
-      drawTextCentered(renderer, '点击跳过动画 ▶', 480, '#888888', 'SMALL');
+      drawTextCentered(renderer, STRINGS.result.skipAnimation, 480, '#888888', 'SMALL');
     }
   }
 

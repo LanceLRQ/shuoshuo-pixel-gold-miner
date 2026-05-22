@@ -11,6 +11,7 @@ import type { Input } from '../core/Input';
 import type { Game } from '../core/Game';
 import { GameState } from '../core/Game';
 import { drawTextCentered } from '../ui/PixelText';
+import { STRINGS } from '../ui/strings';
 import { CHAPTER_INFO, CHAPTER_ORDER, type ChapterId } from '../level/levels';
 
 /** 自动跳过等待时间（秒） */
@@ -29,7 +30,7 @@ const LAYOUT = {
 } as const;
 
 /** 章节序号汉字（用于"第 N 章"展示） */
-const CHAPTER_ORDINAL = ['第 一 章', '第 二 章', '第 三 章'] as const;
+const CHAPTER_ORDINAL = [STRINGS.chapter.label1, STRINGS.chapter.label2, STRINGS.chapter.label3] as const;
 
 export class ChapterScene extends SceneBase {
   private game: Game;
@@ -88,7 +89,7 @@ export class ChapterScene extends SceneBase {
 
     // 跳过提示闪烁（500ms 周期）
     if (Math.floor(this.elapsed * 2) % 2 === 0) {
-      drawTextCentered(renderer, '按任意键跳过 · 2.5s 后自动进入', LAYOUT.hintY, '#888888', 'SMALL');
+      drawTextCentered(renderer, STRINGS.chapter.skipHint, LAYOUT.hintY, '#888888', 'SMALL');
     }
 
     // 倒计时进度条（底部 2px）

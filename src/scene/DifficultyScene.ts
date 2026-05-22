@@ -10,6 +10,7 @@ import type { Game } from '../core/Game';
 import { GameState } from '../core/Game';
 import { drawText, drawTextCentered, drawTextCenteredAt, FONT_SIZES, type FontSize } from '../ui/PixelText';
 import { Button } from '../ui/Button';
+import { STRINGS } from '../ui/strings';
 import { pointInRect } from '../utils/collision';
 import {
   DIFFICULTY_CONFIGS,
@@ -34,17 +35,17 @@ const RETURN_BTN = { x: 330, y: 460, w: 140, h: 36 } as const;
 
 /** 把 valueScale 数值转成模糊词标签（颜色根据档位由绿→红渐变） */
 function moneyLabel(v: number): { text: string; color: string } {
-  if (v >= 1.2) return { text: '丰厚', color: '#88FF88' };
-  if (v >= 0.7) return { text: '标准', color: '#FFD700' };
-  if (v >= 0.3) return { text: '微薄', color: '#FFA040' };
-  return { text: '稀缺', color: '#FF6464' };
+  if (v >= 1.2) return { text: STRINGS.difficulty.money.rich, color: '#88FF88' };
+  if (v >= 0.7) return { text: STRINGS.difficulty.money.normal, color: '#FFD700' };
+  if (v >= 0.3) return { text: STRINGS.difficulty.money.poor, color: '#FFA040' };
+  return { text: STRINGS.difficulty.money.scarce, color: '#FF6464' };
 }
 
 /** 把 timeScale 数值转成模糊词标签 */
 function timeLabel(v: number): { text: string; color: string } {
-  if (v >= 1.2) return { text: '充裕', color: '#88FF88' };
-  if (v >= 0.8) return { text: '标准', color: '#FFD700' };
-  return { text: '紧迫', color: '#FF6464' };
+  if (v >= 1.2) return { text: STRINGS.difficulty.time.plenty, color: '#88FF88' };
+  if (v >= 0.8) return { text: STRINGS.difficulty.time.normal, color: '#FFD700' };
+  return { text: STRINGS.difficulty.time.tight, color: '#FF6464' };
 }
 
 export class DifficultyScene extends SceneBase {
@@ -57,7 +58,7 @@ export class DifficultyScene extends SceneBase {
   constructor(game: Game) {
     super();
     this.game = game;
-    this.returnButton = new Button(RETURN_BTN.x, RETURN_BTN.y, RETURN_BTN.w, RETURN_BTN.h, '返回主菜单');
+    this.returnButton = new Button(RETURN_BTN.x, RETURN_BTN.y, RETURN_BTN.w, RETURN_BTN.h, STRINGS.common.backToMenu);
   }
 
   enter(): void {}
@@ -107,7 +108,7 @@ export class DifficultyScene extends SceneBase {
   render(renderer: Renderer): void {
     renderer.clear('#1a1a2e');
 
-    drawTextCentered(renderer, '选择难度', TITLE_Y, '#FFD700', 'LARGE');
+    drawTextCentered(renderer, STRINGS.difficulty.title, TITLE_Y, '#FFD700', 'LARGE');
 
     for (let i = 0; i < DIFFICULTY_DISPLAY_ORDER.length; i++) {
       const id = DIFFICULTY_DISPLAY_ORDER[i]!;
@@ -190,8 +191,8 @@ export class DifficultyScene extends SceneBase {
     const paramY = rect.y + rect.h - 22;
     const money = moneyLabel(cfg.valueScale);
     const time = timeLabel(cfg.timeScale);
-    drawText(renderer, `金币 ${money.text}`, rect.x + 12, paramY, money.color, 'SMALL');
-    drawText(renderer, `时间 ${time.text}`, rect.x + 110, paramY, time.color, 'SMALL');
+    drawText(renderer, `${STRINGS.difficulty.moneyLabel} ${money.text}`, rect.x + 12, paramY, money.color, 'SMALL');
+    drawText(renderer, `${STRINGS.difficulty.timeLabel} ${time.text}`, rect.x + 110, paramY, time.color, 'SMALL');
   }
 
   /** INFINITE 长条卡内容（488×64 横向布局：左 难度名 / 中 描述 / 右 标志） */
@@ -206,7 +207,7 @@ export class DifficultyScene extends SceneBase {
     // 中部：描述
     drawText(renderer, cfg.description, rect.x + 170, midY - 6, '#CCCCCC', 'SMALL');
     // 右侧：道具无限标志
-    drawText(renderer, cfg.infiniteItems ? '∞ 无限道具' : '', rect.x + rect.w - 130, midY - 6, '#88FFFF', 'SMALL');
+    drawText(renderer, cfg.infiniteItems ? STRINGS.difficulty.infiniteItemsBadge : '', rect.x + rect.w - 130, midY - 6, '#88FFFF', 'SMALL');
   }
 
   /** 在指定区域内换行渲染文本（按字符宽度估算） */

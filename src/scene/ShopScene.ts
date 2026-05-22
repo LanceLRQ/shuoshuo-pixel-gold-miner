@@ -10,6 +10,7 @@ import type { Game } from '../core/Game';
 import { GameState } from '../core/Game';
 import { drawText, drawTextCentered } from '../ui/PixelText';
 import { Button } from '../ui/Button';
+import { STRINGS } from '../ui/strings';
 
 /** 道具配置 */
 interface ShopItem {
@@ -38,14 +39,14 @@ export enum ItemType {
  *  - persistent=true：buff 类道具，新手/一般可跨关保留；困难/高手每关清除
  *  - persistent=false：消耗品，任何难度用完即弃 */
 const SHOP_ITEMS: ShopItem[] = [
-  { name: '炸药', price: 150, description: '按 F 键引爆收回物', owned: false, type: ItemType.DYNAMITE, persistent: false },
-  { name: '力量药水', price: 200, description: '收回速度 +50%', owned: false, type: ItemType.STRENGTH_POTION, persistent: true },
-  { name: '幸运草', price: 100, description: '神秘袋最低 200$', owned: false, type: ItemType.LUCKY_CLOVER, persistent: true },
-  { name: '石头书', price: 80, description: '石头价值 x3', owned: false, type: ItemType.STONE_BOOK, persistent: true },
-  { name: '老鼠药', price: 120, description: '老鼠价值 x5', owned: false, type: ItemType.MOUSE_POISON, persistent: true },
-  { name: '钻石变色油', price: 250, description: '钻石价值 x2', owned: false, type: ItemType.DIAMOND_OIL, persistent: true },
-  { name: '额外时间', price: 80, description: '本关开局 +10 秒（一次性）', owned: false, type: ItemType.EXTRA_TIME, persistent: false },
-  { name: '摇晃饮料', price: 180, description: '钩爪伸出中←/→微调', owned: false, type: ItemType.SHAKE_DRINK, persistent: true },
+  { name: STRINGS.shop.items.dynamite.name, price: 150, description: STRINGS.shop.items.dynamite.desc, owned: false, type: ItemType.DYNAMITE, persistent: false },
+  { name: STRINGS.shop.items.strengthPotion.name, price: 200, description: STRINGS.shop.items.strengthPotion.desc, owned: false, type: ItemType.STRENGTH_POTION, persistent: true },
+  { name: STRINGS.shop.items.lucky.name, price: 100, description: STRINGS.shop.items.lucky.desc, owned: false, type: ItemType.LUCKY_CLOVER, persistent: true },
+  { name: STRINGS.shop.items.stoneBook.name, price: 80, description: STRINGS.shop.items.stoneBook.desc, owned: false, type: ItemType.STONE_BOOK, persistent: true },
+  { name: STRINGS.shop.items.ratPoison.name, price: 120, description: STRINGS.shop.items.ratPoison.desc, owned: false, type: ItemType.MOUSE_POISON, persistent: true },
+  { name: STRINGS.shop.items.diamondGloss.name, price: 250, description: STRINGS.shop.items.diamondGloss.desc, owned: false, type: ItemType.DIAMOND_OIL, persistent: true },
+  { name: STRINGS.shop.items.extraTime.name, price: 80, description: STRINGS.shop.items.extraTime.desc, owned: false, type: ItemType.EXTRA_TIME, persistent: false },
+  { name: STRINGS.shop.items.shakySoda.name, price: 180, description: STRINGS.shop.items.shakySoda.desc, owned: false, type: ItemType.SHAKE_DRINK, persistent: true },
 ];
 
 /**
@@ -85,7 +86,7 @@ export class ShopScene extends SceneBase {
     this.items = this.buildItemsFromOwned();
 
     // 下一关按钮（横屏 800x540 居中底部）
-    this.nextButton = new Button(330, 470, 140, 44, '下一关');
+    this.nextButton = new Button(330, 470, 140, 44, STRINGS.shop.nextLevel);
 
     this.rebuildItemButtons();
   }
@@ -143,7 +144,7 @@ export class ShopScene extends SceneBase {
     renderer.clear('#1a1a2e');
 
     // 标题
-    drawTextCentered(renderer, '道具商店', 25, '#FFD700', 'LARGE');
+    drawTextCentered(renderer, STRINGS.shop.title, 25, '#FFD700', 'LARGE');
 
     // 当前金额
     drawTextCentered(renderer, `持有金额: $${this.money}`, 60, '#FFD700', 'MEDIUM');
@@ -171,7 +172,7 @@ export class ShopScene extends SceneBase {
 
       // 价格/已购买
       if (item.owned) {
-        drawText(renderer, '已购买', x + CARD_LAYOUT.cardW - 70, y + 18, '#00FF00', 'SMALL');
+        drawText(renderer, STRINGS.common.purchased, x + CARD_LAYOUT.cardW - 70, y + 18, '#00FF00', 'SMALL');
       } else if (this.money < item.price) {
         drawText(renderer, `$${item.price}`, x + CARD_LAYOUT.cardW - 60, y + 18, '#FF4444', 'SMALL');
       } else {

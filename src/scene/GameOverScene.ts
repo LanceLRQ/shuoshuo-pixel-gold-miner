@@ -10,6 +10,7 @@ import type { Game } from '../core/Game';
 import { GameState } from '../core/Game';
 import { drawTextCentered } from '../ui/PixelText';
 import { Button } from '../ui/Button';
+import { STRINGS } from '../ui/strings';
 import { isEndlessLevel, TOTAL_LEVELS } from '../level/levels';
 
 export class GameOverScene extends SceneBase {
@@ -25,9 +26,9 @@ export class GameOverScene extends SceneBase {
     super();
     this.game = game;
     this.score = score;
-    this.button = new Button(330, 400, 140, 44, '重新开始');
+    this.button = new Button(330, 400, 140, 44, STRINGS.gameOver.restart);
     const endless = isEndlessLevel(level);
-    this.title = endless ? '无尽挑战结束' : '游戏结束';
+    this.title = endless ? STRINGS.gameOver.titleEndless : STRINGS.gameOver.title;
     this.levelText = endless
       ? `坚持到无尽第 ${level - TOTAL_LEVELS} 关`
       : `到达关卡: 第 ${level} 关`;

@@ -11,6 +11,7 @@ import type { Game } from '../core/Game';
 import { GameState } from '../core/Game';
 import { drawText, drawTextCentered, drawTextCenteredIn } from '../ui/PixelText';
 import { Button } from '../ui/Button';
+import { STRINGS } from '../ui/strings';
 import { pointInRect } from '../utils/collision';
 import { AUTO_SLOT_ID, SlotKind, type SlotMeta } from '../core/Storage';
 import { DIFFICULTY_CONFIGS } from '../level/difficulty';
@@ -45,7 +46,7 @@ export class SlotSelectScene extends SceneBase {
   constructor(game: Game) {
     super();
     this.game = game;
-    this.returnButton = new Button(RETURN_BTN.x, RETURN_BTN.y, RETURN_BTN.w, RETURN_BTN.h, '返回主菜单');
+    this.returnButton = new Button(RETURN_BTN.x, RETURN_BTN.y, RETURN_BTN.w, RETURN_BTN.h, STRINGS.common.backToMenu);
   }
 
   enter(): void {
@@ -120,7 +121,7 @@ export class SlotSelectScene extends SceneBase {
   render(renderer: Renderer): void {
     renderer.clear('#1a1a2e');
 
-    drawTextCentered(renderer, '存档管理', TITLE_Y, '#FFD700', 'LARGE');
+    drawTextCentered(renderer, STRINGS.slotSelect.title, TITLE_Y, '#FFD700', 'LARGE');
 
     // 自动槽位卡片
     const autoMeta = this.slots[0];
@@ -163,7 +164,7 @@ export class SlotSelectScene extends SceneBase {
 
     if (empty) {
       drawText(renderer, '（暂无进度）', rect.x + 12, rect.y + 40, '#888899', 'SMALL');
-      drawText(renderer, '在主菜单点"新游戏"开始', rect.x + 12, rect.y + 55, '#666688', 'SMALL');
+      drawText(renderer, STRINGS.slotSelect.emptyHint, rect.x + 12, rect.y + 55, '#666688', 'SMALL');
     } else {
       const cfg = DIFFICULTY_CONFIGS[meta.difficulty];
       drawText(renderer, `难度: ${cfg.name}`, rect.x + 180, rect.y + 12, cfg.color, 'SMALL');
@@ -176,7 +177,7 @@ export class SlotSelectScene extends SceneBase {
       const btn = this.getAutoContinueButtonRect();
       ctx.fillStyle = '#FF6FA8';
       ctx.fillRect(btn.x, btn.y, btn.w, btn.h);
-      drawTextCenteredIn(renderer, '继续游戏', btn, '#FFFFFF', 'MEDIUM');
+      drawTextCenteredIn(renderer, STRINGS.common.continueGame, btn, '#FFFFFF', 'MEDIUM');
     }
   }
 
@@ -217,13 +218,13 @@ export class SlotSelectScene extends SceneBase {
       const loadRect = this.getCardActionRect(rect, 0);
       ctx.fillStyle = '#FF6FA8';
       ctx.fillRect(loadRect.x, loadRect.y, loadRect.w, loadRect.h);
-      drawTextCenteredIn(renderer, '载入', loadRect, '#FFFFFF', 'SMALL');
+      drawTextCenteredIn(renderer, STRINGS.slotSelect.load, loadRect, '#FFFFFF', 'SMALL');
 
       // 删除按钮
       const delRect = this.getCardActionRect(rect, 1);
       ctx.fillStyle = '#883333';
       ctx.fillRect(delRect.x, delRect.y, delRect.w, delRect.h);
-      drawTextCenteredIn(renderer, '删除', delRect, '#FFFFFF', 'SMALL');
+      drawTextCenteredIn(renderer, STRINGS.slotSelect.delete, delRect, '#FFFFFF', 'SMALL');
     }
   }
 
@@ -292,18 +293,18 @@ export class SlotSelectScene extends SceneBase {
     ctx.strokeRect(dx + 1, dy + 1, dw - 2, dh - 2);
 
     drawTextCentered(renderer, this.confirmDialog.title, dy + 30, '#FFFFFF', 'MEDIUM');
-    drawTextCentered(renderer, '此操作不可撤销', dy + 65, '#FF8888', 'SMALL');
+    drawTextCentered(renderer, STRINGS.common.undoWarning, dy + 65, '#FF8888', 'SMALL');
 
     const yesRect = this.getDialogButtonRect(0);
     const noRect = this.getDialogButtonRect(1);
 
     ctx.fillStyle = '#883333';
     ctx.fillRect(yesRect.x, yesRect.y, yesRect.w, yesRect.h);
-    drawTextCenteredIn(renderer, '确定删除', yesRect, '#FFFFFF', 'MEDIUM');
+    drawTextCenteredIn(renderer, STRINGS.slotSelect.confirmDeleteTitle, yesRect, '#FFFFFF', 'MEDIUM');
 
     ctx.fillStyle = '#444466';
     ctx.fillRect(noRect.x, noRect.y, noRect.w, noRect.h);
-    drawTextCenteredIn(renderer, '取消', noRect, '#FFFFFF', 'MEDIUM');
+    drawTextCenteredIn(renderer, STRINGS.common.cancel, noRect, '#FFFFFF', 'MEDIUM');
   }
 
   private getDialogButtonRect(idx: number): { x: number; y: number; w: number; h: number } {
@@ -331,11 +332,11 @@ export class SlotSelectScene extends SceneBase {
 
 /** 时间戳格式化（如 "刚刚" / "5 分钟前" / "昨天 14:30"） */
 function formatTime(ts: number): string {
-  if (!ts) return '从未游玩';
+  if (!ts) return STRINGS.slotSelect.neverPlayed;
   const now = Date.now();
   const diff = now - ts;
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return '刚刚';
+  if (minutes < 1) return STRINGS.slotSelect.justNow;
   if (minutes < 60) return `${minutes} 分钟前`;
   const hours = Math.floor(diff / 3600000);
   if (hours < 24) return `${hours} 小时前`;

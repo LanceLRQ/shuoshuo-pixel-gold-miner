@@ -10,6 +10,7 @@ import type { Game } from '../core/Game';
 import { GameState } from '../core/Game';
 import { drawText, drawTextCentered, drawTextCenteredIn } from '../ui/PixelText';
 import { Button } from '../ui/Button';
+import { STRINGS } from '../ui/strings';
 import { renderBackground } from '../assets/background';
 import { pointInRect } from '../utils/collision';
 
@@ -52,9 +53,9 @@ export class MenuScene extends SceneBase {
 
     // 主按钮（横屏 800x540 居中，竖排）
     const btnW = 200, btnH = 44, btnX = (800 - btnW) / 2;
-    this.continueButton = new Button(btnX, 280, btnW, btnH, '继续游戏');
-    this.newGameButton = new Button(btnX, 340, btnW, btnH, '新游戏');
-    this.loadGameButton = new Button(btnX, 400, btnW, btnH, '读取存档');
+    this.continueButton = new Button(btnX, 280, btnW, btnH, STRINGS.common.continueGame);
+    this.newGameButton = new Button(btnX, 340, btnW, btnH, STRINGS.menu.newGame);
+    this.loadGameButton = new Button(btnX, 400, btnW, btnH, STRINGS.menu.loadSave);
   }
 
   enter(): void {
@@ -132,16 +133,16 @@ export class MenuScene extends SceneBase {
 
     // 标题（带动画浮动效果）
     const titleY = 120 + Math.sin(this.animTime * 2) * 8;
-    drawTextCentered(renderer, '水晶宝石国', titleY, '#FFD700', 'TITLE');
-    drawTextCentered(renderer, '猪猪传说', titleY + 45, '#FFA500', 'LARGE');
+    drawTextCentered(renderer, STRINGS.menu.titleLine1, titleY, '#FFD700', 'TITLE');
+    drawTextCentered(renderer, STRINGS.menu.titleLine2, titleY + 45, '#FFA500', 'LARGE');
 
     // 最高分
     if (this.highScore > 0) {
-      drawTextCentered(renderer, `最高分: $${this.highScore}`, 232, '#FFFFFF', 'MEDIUM');
+      drawTextCentered(renderer, `${STRINGS.menu.highScoreLabel}: $${this.highScore}`, 232, '#FFFFFF', 'MEDIUM');
     }
 
     // 操作提示（与最高分拉开 24px，避免 MEDIUM/SMALL 重叠）
-    drawTextCentered(renderer, this.hasProgress ? '按空格继续上次进度' : '按空格直接进入难度选择', 256, '#AAAAAA', 'SMALL');
+    drawTextCentered(renderer, this.hasProgress ? STRINGS.menu.pressSpaceContinue : STRINGS.menu.pressSpaceNewGame, 256, '#AAAAAA', 'SMALL');
 
     // 主按钮（disabled 状态已在 enter 时设定）
     this.continueButton.render(renderer);
@@ -173,7 +174,7 @@ export class MenuScene extends SceneBase {
     ctx.fillRect(x, y + h - 2, w, 2);
     ctx.fillRect(x, y, 2, h);
     ctx.fillRect(x + w - 2, y, 2, h);
-    drawTextCenteredIn(renderer, '设置', { x, y, w, h }, '#FFFFFF', 'SMALL');
+    drawTextCenteredIn(renderer, STRINGS.menu.settings, { x, y, w, h }, '#FFFFFF', 'SMALL');
   }
 
   /** 绘制设置面板 */
@@ -200,17 +201,17 @@ export class MenuScene extends SceneBase {
     ctx.fillRect(px + pw - 2, py, 2, ph);
 
     // 标题
-    drawTextCentered(renderer, '设置', py + 20, '#FFD700', 'LARGE');
+    drawTextCentered(renderer, STRINGS.menu.settingsTitle, py + 20, '#FFD700', 'LARGE');
 
     const audio = this.game.getAudio();
 
     // 静音
-    drawText(renderer, '静音:', px + 30, py + 80, '#FFFFFF', 'MEDIUM');
+    drawText(renderer, `${STRINGS.menu.mutedLabel}:`, px + 30, py + 80, '#FFFFFF', 'MEDIUM');
     this.muteBtnArea = { x: px + 200, y: py + 75, w: 100, h: 28 };
-    this.drawSettingButton(renderer, this.muteBtnArea, audio.isMuted() ? '已静音' : '正常');
+    this.drawSettingButton(renderer, this.muteBtnArea, audio.isMuted() ? STRINGS.menu.muted : STRINGS.menu.normal);
 
     // 音量
-    drawText(renderer, '音量:', px + 30, py + 130, '#FFFFFF', 'MEDIUM');
+    drawText(renderer, `${STRINGS.menu.volumeLabel}:`, px + 30, py + 130, '#FFFFFF', 'MEDIUM');
     const volPercent = Math.round(audio.getVolume() * 100);
     drawText(renderer, `${volPercent}%`, px + 200, py + 130, '#FFD700', 'MEDIUM');
     this.volumeMinusArea = { x: px + 280, y: py + 125, w: 36, h: 28 };
@@ -219,26 +220,26 @@ export class MenuScene extends SceneBase {
     this.drawSettingButton(renderer, this.volumePlusArea, '+');
 
     // BGM 开关
-    drawText(renderer, 'BGM:', px + 30, py + 180, '#FFFFFF', 'MEDIUM');
+    drawText(renderer, `${STRINGS.menu.bgmLabel}:`, px + 30, py + 180, '#FFFFFF', 'MEDIUM');
     this.bgmBtnArea = { x: px + 200, y: py + 175, w: 100, h: 28 };
-    this.drawSettingButton(renderer, this.bgmBtnArea, audio.isBgmEnabled() ? '开' : '关');
+    this.drawSettingButton(renderer, this.bgmBtnArea, audio.isBgmEnabled() ? STRINGS.menu.on : STRINGS.menu.off);
 
     // 主题切换
-    drawText(renderer, '主题:', px + 30, py + 230, '#FFFFFF', 'MEDIUM');
+    drawText(renderer, `${STRINGS.menu.themeLabel}:`, px + 30, py + 230, '#FFFFFF', 'MEDIUM');
     const themeName = this.game.getThemeManager().getTheme().name;
     this.themeBtnArea = { x: px + 200, y: py + 225, w: 200, h: 28 };
     this.drawSettingButton(renderer, this.themeBtnArea, themeName);
 
     // 清除存档
     this.clearProgressBtnArea = { x: px + 30, y: py + 285, w: 180, h: 32 };
-    this.drawSettingButton(renderer, this.clearProgressBtnArea, '清除进度', '#AA3333');
+    this.drawSettingButton(renderer, this.clearProgressBtnArea, STRINGS.menu.clearProgress, '#AA3333');
 
     // 关闭按钮
     this.closeSettingsBtnArea = { x: px + pw - 130, y: py + 285, w: 100, h: 32 };
-    this.drawSettingButton(renderer, this.closeSettingsBtnArea, '关闭');
+    this.drawSettingButton(renderer, this.closeSettingsBtnArea, STRINGS.common.close);
 
     // 底部提示
-    drawTextCentered(renderer, 'ESC 关闭设置', py + ph - 30, '#888888', 'SMALL');
+    drawTextCentered(renderer, STRINGS.menu.escCloseSettings, py + ph - 30, '#888888', 'SMALL');
   }
 
   /** 绘制设置面板按钮 */

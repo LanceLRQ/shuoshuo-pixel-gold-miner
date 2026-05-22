@@ -23,6 +23,7 @@ import { ItemType, PERSISTENT_ITEM_TYPES } from '../scene/ShopScene';
 import type { SlotMeta } from '../core/Storage';
 import type { DifficultyConfig } from '../level/difficulty';
 import { drawText, drawTextCentered, drawTextCenteredIn } from '../ui/PixelText';
+import { STRINGS } from '../ui/strings';
 import { randomInt, weightedRandom } from '../utils/random';
 import { pointInRect } from '../utils/collision';
 import {
@@ -95,12 +96,12 @@ function pickValueColor(value: number): string {
 
 /** 道具名称缩写映射 */
 const ITEM_SHORT_NAMES: Record<string, string> = {
-  [ItemType.DYNAMITE]: '炸药',
-  [ItemType.STRENGTH_POTION]: '力量',
-  [ItemType.LUCKY_CLOVER]: '幸运',
-  [ItemType.STONE_BOOK]: '石书',
-  [ItemType.MOUSE_POISON]: '鼠药',
-  [ItemType.DIAMOND_OIL]: '钻油',
+  [ItemType.DYNAMITE]: STRINGS.game.itemNamesShort.dynamite,
+  [ItemType.STRENGTH_POTION]: STRINGS.game.itemNamesShort.strength,
+  [ItemType.LUCKY_CLOVER]: STRINGS.game.itemNamesShort.lucky,
+  [ItemType.STONE_BOOK]: STRINGS.game.itemNamesShort.stoneBook,
+  [ItemType.MOUSE_POISON]: STRINGS.game.itemNamesShort.ratPoison,
+  [ItemType.DIAMOND_OIL]: STRINGS.game.itemNamesShort.diamondGloss,
   [ItemType.EXTRA_TIME]: '+时间',
 };
 
@@ -329,7 +330,7 @@ export class GameScene extends SceneBase {
       HUD_HEIGHT + 8,
       120,
       36,
-      '提前结算 ▶'
+      STRINGS.game.finishEarly
     );
   }
 
@@ -535,7 +536,7 @@ export class GameScene extends SceneBase {
 
     this.minerals = this.minerals.filter(m => m !== mineral);
     this.particles.emit({ ...PRESET_BOMB_SPARK, x: mineral.x, y: mineral.y });
-    this.floatingTexts.emit(mineral.x, mineral.y - 10, '炸毁!', '#FF6600', 'MEDIUM');
+    this.floatingTexts.emit(mineral.x, mineral.y - 10, STRINGS.game.floatingText.bombDestroyed, '#FF6600', 'MEDIUM');
     // INFINITE 模式道具永久不消耗
     if (!this.difficulty.infiniteItems) {
       items.delete(ItemType.DYNAMITE);
@@ -620,12 +621,12 @@ export class GameScene extends SceneBase {
       const ctx = renderer.getContext();
       ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
       ctx.fillRect(0, 0, renderer.width, renderer.height);
-      drawTextCentered(renderer, '操作说明', 100, '#FFD700', 'TITLE');
-      drawTextCentered(renderer, '空格 / 点击画面 - 发射钩爪', 180, '#FFFFFF', 'MEDIUM');
+      drawTextCentered(renderer, STRINGS.game.tutorial.title, 100, '#FFD700', 'TITLE');
+      drawTextCentered(renderer, STRINGS.game.tutorial.shoot, 180, '#FFFFFF', 'MEDIUM');
       drawTextCentered(renderer, 'F / ↑ 键 - 引爆 TNT（需购买炸药）', 220, '#FFFFFF', 'MEDIUM');
       drawTextCentered(renderer, 'ESC / 右上角按钮 - 暂停', 260, '#FFFFFF', 'MEDIUM');
-      drawTextCentered(renderer, '抓取矿物达到目标金额即可过关', 320, '#AAAAAA', 'SMALL');
-      drawTextCentered(renderer, '点击任意位置开始', 390, '#FFD700', 'MEDIUM');
+      drawTextCentered(renderer, STRINGS.game.tutorial.goal, 320, '#AAAAAA', 'SMALL');
+      drawTextCentered(renderer, STRINGS.game.tutorial.clickToStart, 390, '#FFD700', 'MEDIUM');
     }
   }
 
@@ -635,9 +636,9 @@ export class GameScene extends SceneBase {
     const startY = 220;
     const x = (this.game.getRenderer().width - btnW) / 2;
     return [
-      { rect: { x, y: startY, w: btnW, h: btnH }, label: '继续游戏', action: 'resume' },
-      { rect: { x, y: startY + (btnH + gap), w: btnW, h: btnH }, label: '另存为...', action: 'saveAs' },
-      { rect: { x, y: startY + (btnH + gap) * 2, w: btnW, h: btnH }, label: '返回主菜单', action: 'menu' },
+      { rect: { x, y: startY, w: btnW, h: btnH }, label: STRINGS.common.continueGame, action: 'resume' },
+      { rect: { x, y: startY + (btnH + gap), w: btnW, h: btnH }, label: STRINGS.game.saveAs, action: 'saveAs' },
+      { rect: { x, y: startY + (btnH + gap) * 2, w: btnW, h: btnH }, label: STRINGS.common.backToMenu, action: 'menu' },
     ];
   }
 
@@ -759,8 +760,8 @@ export class GameScene extends SceneBase {
   /** 暂停层 - 主菜单层渲染 */
   private renderPauseMenuLayer(renderer: Renderer): void {
     const ctx = renderer.getContext();
-    drawTextCentered(renderer, '游戏暂停', 130, '#FFFFFF', 'TITLE');
-    drawTextCentered(renderer, '点击按钮或按 ESC 继续', 180, '#888899', 'SMALL');
+    drawTextCentered(renderer, STRINGS.game.paused, 130, '#FFFFFF', 'TITLE');
+    drawTextCentered(renderer, STRINGS.game.pauseHint, 180, '#888899', 'SMALL');
 
     for (const btn of this.getPauseMenuButtons()) {
       ctx.fillStyle = '#FF6FA8';
@@ -774,8 +775,8 @@ export class GameScene extends SceneBase {
   /** 暂停层 - SaveAs 子层渲染（10 槽位卡片） */
   private renderSaveAsLayer(renderer: Renderer): void {
     const ctx = renderer.getContext();
-    drawTextCentered(renderer, '选择手动槽位保存', 140, '#FFD700', 'LARGE');
-    drawTextCentered(renderer, '非空槽位将覆盖（需二次确认）', 180, '#888899', 'SMALL');
+    drawTextCentered(renderer, STRINGS.game.saveAsTitle, 140, '#FFD700', 'LARGE');
+    drawTextCentered(renderer, STRINGS.game.overwriteWarning, 180, '#888899', 'SMALL');
 
     // 用缓存（进入子层时已 listManualSlots 一次）
     const slots = this.cachedManualSlots ?? [];
@@ -795,7 +796,7 @@ export class GameScene extends SceneBase {
 
       if (empty) {
         drawText(renderer, '[空]', rect.x + 8, rect.y + 36, '#666688', 'SMALL');
-        drawText(renderer, '点击保存', rect.x + 8, rect.y + 60, '#88FF88', 'SMALL');
+        drawText(renderer, STRINGS.game.saveAsClickPrompt, rect.x + 8, rect.y + 60, '#88FF88', 'SMALL');
       } else {
         drawText(renderer, `第 ${meta.currentLevel} 关`, rect.x + 8, rect.y + 30, '#FFFFFF', 'SMALL');
         drawText(renderer, `$${meta.currentMoney}`, rect.x + 8, rect.y + 50, '#FFD700', 'SMALL');
@@ -807,7 +808,7 @@ export class GameScene extends SceneBase {
     const cancel = this.getSaveAsCancelRect();
     ctx.fillStyle = '#444466';
     ctx.fillRect(cancel.x, cancel.y, cancel.w, cancel.h);
-    drawText(renderer, '取消', cancel.x + 52, cancel.y + 8, '#FFFFFF', 'MEDIUM');
+    drawText(renderer, STRINGS.common.cancel, cancel.x + 52, cancel.y + 8, '#FFFFFF', 'MEDIUM');
   }
 
   /** 覆盖二次确认对话框 */
@@ -824,20 +825,20 @@ export class GameScene extends SceneBase {
     ctx.lineWidth = 2;
     ctx.strokeRect(dx + 1, dy + 1, dw - 2, dh - 2);
 
-    drawTextCentered(renderer, '覆盖槽位？', dy + 30, '#FFFFFF', 'LARGE');
+    drawTextCentered(renderer, STRINGS.game.overwriteTitle, dy + 30, '#FFFFFF', 'LARGE');
     drawTextCentered(renderer, `槽位 #${this.confirmOverwrite.slotId} 已有存档`, dy + 70, '#FF8888', 'SMALL');
-    drawTextCentered(renderer, '此操作不可撤销', dy + 90, '#FF8888', 'SMALL');
+    drawTextCentered(renderer, STRINGS.common.undoWarning, dy + 90, '#FF8888', 'SMALL');
 
     // 是/否按钮
     const yesRect = this.getConfirmOverwriteButtonRect(0);
     const noRect = this.getConfirmOverwriteButtonRect(1);
     ctx.fillStyle = '#883333';
     ctx.fillRect(yesRect.x, yesRect.y, yesRect.w, yesRect.h);
-    drawText(renderer, '覆盖', yesRect.x + 30, yesRect.y + 8, '#FFFFFF', 'MEDIUM');
+    drawText(renderer, STRINGS.game.overwrite, yesRect.x + 30, yesRect.y + 8, '#FFFFFF', 'MEDIUM');
 
     ctx.fillStyle = '#444466';
     ctx.fillRect(noRect.x, noRect.y, noRect.w, noRect.h);
-    drawText(renderer, '取消', noRect.x + 30, noRect.y + 8, '#FFFFFF', 'MEDIUM');
+    drawText(renderer, STRINGS.common.cancel, noRect.x + 30, noRect.y + 8, '#FFFFFF', 'MEDIUM');
   }
 
   /** 绘制右上角按钮组（暂停 + 教程） */
@@ -1031,8 +1032,8 @@ export class GameScene extends SceneBase {
     } else if (content === MysteryContent.STRENGTH_POTION) {
       // 大力药剂：本关收回速度永久 +80%
       this.hook.reelSpeedMultiplier = Math.max(this.hook.reelSpeedMultiplier, 1.8);
-      this.showNotification('大力药剂: 收回加速!');
-      this.floatingTexts.emit(px, py - 20, '大力药剂!', '#88FF88', 'MEDIUM');
+      this.showNotification(STRINGS.game.notifications.strengthPotionMsg);
+      this.floatingTexts.emit(px, py - 20, STRINGS.game.floatingText.strengthPotion, '#88FF88', 'MEDIUM');
       this.game.getAudio().play(SoundType.COIN);
       this.game.getAudio().play(SoundType.MINER_HAPPY);
       this.miner.setState(MinerState.HAPPY);
@@ -1058,11 +1059,11 @@ export class GameScene extends SceneBase {
           sizeMax: 3,
           gravity: 80,
         });
-        this.showNotification('炸药: 摧毁了一个矿物!');
-        this.floatingTexts.emit(px, py - 20, '炸药! BOOM', '#FF6600', 'MEDIUM');
+        this.showNotification(STRINGS.game.notifications.bombDestroy);
+        this.floatingTexts.emit(px, py - 20, STRINGS.game.floatingText.bombBoom, '#FF6600', 'MEDIUM');
       } else {
-        this.showNotification('炸药: 场上没有可炸的...');
-        this.floatingTexts.emit(px, py - 20, '空炸药', '#888888', 'MEDIUM');
+        this.showNotification(STRINGS.game.notifications.bombEmpty);
+        this.floatingTexts.emit(px, py - 20, STRINGS.game.floatingText.bombMissed, '#888888', 'MEDIUM');
       }
       this.game.getAudio().play(SoundType.GRAB_BOMB);
       this.game.getAudio().play(SoundType.MINER_SAD);
