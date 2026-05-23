@@ -21,6 +21,12 @@ interface ShopItem {
   type: ItemType;
   /** 是否持久型（仅新手/一般难度跨关保留；困难/高手强制当关失效） */
   persistent: boolean;
+  /**
+   * 限期 buff 持续关数（仅资源乘数类道具设置）
+   * 缺省 = 永久 buff（NOVICE/NORMAL 难度下永不过期）
+   * 设置后：购买当关计入第 1 关，过 N 关后失效
+   */
+  durationLevels?: number;
 }
 
 /** 道具效果类型 */
@@ -36,17 +42,18 @@ export enum ItemType {
 }
 
 /** 道具配置表
- *  - persistent=true：buff 类道具，新手/一般可跨关保留；困难/高手每关清除
+ *  - persistent=true + durationLevels：限期 buff（NOVICE/NORMAL 倒计时；HARD/EXPERT 每关清空）
+ *  - persistent=true，无 durationLevels：永久 buff（NOVICE/NORMAL 全程；HARD/EXPERT 每关清空）
  *  - persistent=false：消耗品，任何难度用完即弃 */
 const SHOP_ITEMS: ShopItem[] = [
   { name: STRINGS.shop.items.dynamite.name, price: 150, description: STRINGS.shop.items.dynamite.desc, owned: false, type: ItemType.DYNAMITE, persistent: false },
-  { name: STRINGS.shop.items.strengthPotion.name, price: 200, description: STRINGS.shop.items.strengthPotion.desc, owned: false, type: ItemType.STRENGTH_POTION, persistent: true },
-  { name: STRINGS.shop.items.lucky.name, price: 100, description: STRINGS.shop.items.lucky.desc, owned: false, type: ItemType.LUCKY_CLOVER, persistent: true },
-  { name: STRINGS.shop.items.stoneBook.name, price: 80, description: STRINGS.shop.items.stoneBook.desc, owned: false, type: ItemType.STONE_BOOK, persistent: true },
-  { name: STRINGS.shop.items.ratPoison.name, price: 120, description: STRINGS.shop.items.ratPoison.desc, owned: false, type: ItemType.MOUSE_POISON, persistent: true },
-  { name: STRINGS.shop.items.diamondGloss.name, price: 250, description: STRINGS.shop.items.diamondGloss.desc, owned: false, type: ItemType.DIAMOND_OIL, persistent: true },
+  { name: STRINGS.shop.items.strengthPotion.name, price: 600, description: STRINGS.shop.items.strengthPotion.desc, owned: false, type: ItemType.STRENGTH_POTION, persistent: true },
+  { name: STRINGS.shop.items.lucky.name, price: 180, description: STRINGS.shop.items.lucky.desc, owned: false, type: ItemType.LUCKY_CLOVER, persistent: true },
+  { name: STRINGS.shop.items.stoneBook.name, price: 100, description: STRINGS.shop.items.stoneBook.desc, owned: false, type: ItemType.STONE_BOOK, persistent: true, durationLevels: 5 },
+  { name: STRINGS.shop.items.ratPoison.name, price: 150, description: STRINGS.shop.items.ratPoison.desc, owned: false, type: ItemType.MOUSE_POISON, persistent: true, durationLevels: 4 },
+  { name: STRINGS.shop.items.diamondGloss.name, price: 350, description: STRINGS.shop.items.diamondGloss.desc, owned: false, type: ItemType.DIAMOND_OIL, persistent: true, durationLevels: 3 },
   { name: STRINGS.shop.items.extraTime.name, price: 80, description: STRINGS.shop.items.extraTime.desc, owned: false, type: ItemType.EXTRA_TIME, persistent: false },
-  { name: STRINGS.shop.items.shakySoda.name, price: 180, description: STRINGS.shop.items.shakySoda.desc, owned: false, type: ItemType.SHAKE_DRINK, persistent: true },
+  { name: STRINGS.shop.items.shakySoda.name, price: 500, description: STRINGS.shop.items.shakySoda.desc, owned: false, type: ItemType.SHAKE_DRINK, persistent: true },
 ];
 
 /**
@@ -170,9 +177,11 @@ export class ShopScene extends SceneBase {
       drawText(renderer, item.name, x + 20, y + 12, textColor, 'MEDIUM');
       drawText(renderer, item.description, x + 20, y + 38, '#AAAAAA', 'SMALL');
 
-      // 价格/已购买
+      // 价格 / 已购买（限期 buff 显示"剩余 N 关"，永久买断显示"已购买"）
       if (item.owned) {
-        drawText(renderer, STRINGS.common.purchased, x + CARD_LAYOUT.cardW - 70, y + 18, '#00FF00', 'SMALL');
+        const remaining = this.game.getItemRemainingLevels(item.type);
+        const label = remaining !== null ? `剩余 ${remaining} 关` : STRINGS.common.purchased;
+        drawText(renderer, label, x + CARD_LAYOUT.cardW - 75, y + 18, '#00FF00', 'SMALL');
       } else if (this.money < item.price) {
         drawText(renderer, `$${item.price}`, x + CARD_LAYOUT.cardW - 60, y + 18, '#FF4444', 'SMALL');
       } else {
@@ -200,7 +209,7 @@ export class ShopScene extends SceneBase {
     });
   }
 
-  /** 购买道具 */
+  /** 购买道具（限期 buff 在生效期内 owned=true，会被 owned 拦截禁止续期） */
   private buyItem(index: number): void {
     const item = this.items[index];
     if (!item || item.owned) return;
@@ -208,7 +217,7 @@ export class ShopScene extends SceneBase {
 
     this.money -= item.price;
     item.owned = true;
-    this.game.addOwnedItem(item.type);
+    this.game.addOwnedItem(item.type, item.durationLevels);
   }
 
   /** 获取当前剩余金额（供 Game 同步使用） */

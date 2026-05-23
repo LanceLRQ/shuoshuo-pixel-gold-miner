@@ -55,6 +55,11 @@ export class Game {
   private themeManager: ThemeManager;
   private levelManager: LevelManager;
   private ownedItems: Set<ItemType> = new Set();
+  /**
+   * 限期道具剩余关数（仅限期 buff 有条目，永久道具不进 Map）
+   * 与 ownedItems 协同维护：addOwnedItem 同步写入；clearLevelBuffs 倒计时；归零时双删
+   */
+  private itemDurations: Map<ItemType, number> = new Map();
   private audio: Audio;
 
   /** 当前游戏状态 */
@@ -188,6 +193,7 @@ export class Game {
         this.currentMoney = 0;
         this.levelManager.reset();
         this.ownedItems.clear();
+        this.itemDurations.clear();
         break;
       case GameState.DIFFICULTY_SELECT:
         scene = new DifficultyScene(this);
@@ -293,21 +299,38 @@ export class Game {
     return this.ownedItems;
   }
 
-  /** 添加已购买道具 */
-  addOwnedItem(item: ItemType): void {
+  /**
+   * 添加已购买道具
+   * @param durationLevels 限期 buff 的可用关数；undefined 表示永久
+   */
+  addOwnedItem(item: ItemType, durationLevels?: number): void {
     this.ownedItems.add(item);
+    if (durationLevels !== undefined) {
+      this.itemDurations.set(item, durationLevels);
+    }
   }
 
   /** 清空已购买道具 */
   clearOwnedItems(): void {
     this.ownedItems.clear();
+    this.itemDurations.clear();
+  }
+
+  /**
+   * 查询限期 buff 的剩余关数。null = 永久（未记入 itemDurations）
+   */
+  getItemRemainingLevels(item: ItemType): number | null {
+    return this.itemDurations.get(item) ?? null;
   }
 
   /**
    * 关卡结束清理 buff（按难度门控）
    * - INFINITE：保留所有道具（道具永久开启）
    * - HARD/EXPERT：清除所有 persistent 道具（每关从零开始 buff）
-   * - NOVICE/NORMAL：保留 persistent 道具（跨关投资型决策）
+   * - NOVICE/NORMAL：限期 buff 倒计时 1 关，归零时移除；永久 buff 不动
+   *
+   * 注：PLAYING→RESULT 退出时调用一次，失败/通关都会走到（与 HARD/EXPERT 一致）。
+   * 因此失败关卡同样消耗 1 关限期 buff——设计取舍：buff 在本关已生效则计入消耗。
    */
   private clearLevelBuffs(): void {
     const cfg = this.getDifficultyConfig();
@@ -316,18 +339,35 @@ export class Game {
     if (cfg.isHardcore) {
       for (const itemType of PERSISTENT_ITEM_TYPES) {
         this.ownedItems.delete(itemType);
+        this.itemDurations.delete(itemType);
+      }
+      return;
+    }
+
+    // 新手/一般：限期 buff 倒计时；归零时同步移除 ownedItems
+    for (const [type, remaining] of this.itemDurations) {
+      const next = remaining - 1;
+      if (next <= 0) {
+        this.ownedItems.delete(type);
+        this.itemDurations.delete(type);
+      } else {
+        this.itemDurations.set(type, next);
       }
     }
-    // 新手/一般：保留 persistent，消耗品在使用时已 delete
   }
 
   /** 构造当前进度快照 */
   private buildProgress(): GameProgress {
-    return {
+    const progress: GameProgress = {
       currentMoney: this.currentMoney,
       currentLevel: this.levelManager.currentLevel,
       ownedItems: Array.from(this.ownedItems).map(item => item as string),
     };
+    // 仅限期 buff 写入 ownedItemLevels；空 Map 时省略字段以保持旧存档兼容
+    if (this.itemDurations.size > 0) {
+      progress.ownedItemLevels = Object.fromEntries(this.itemDurations);
+    }
+    return progress;
   }
 
   /** 自动存档到自动槽位（关键事件触发） */
@@ -348,6 +388,25 @@ export class Game {
     this.bonusAlreadyCommitted = true;
   }
 
+  /**
+   * 从存档载入 ownedItems + itemDurations（用于 restore/load）
+   * 旧存档无 ownedItemLevels 字段 → 限期 buff Map 保持空 → 已拥有道具视为永久（兼容老玩家）
+   */
+  private loadOwnedItemsFromProgress(progress: GameProgress): void {
+    this.ownedItems.clear();
+    this.itemDurations.clear();
+    for (const itemStr of progress.ownedItems) {
+      this.ownedItems.add(itemStr as ItemType);
+    }
+    if (progress.ownedItemLevels) {
+      for (const [key, val] of Object.entries(progress.ownedItemLevels)) {
+        if (typeof val === 'number' && val > 0) {
+          this.itemDurations.set(key as ItemType, val);
+        }
+      }
+    }
+  }
+
   /** 从自动槽位恢复进度并直接进入游戏 */
   restoreProgress(): boolean {
     const save = this.storage.loadAutoSlot();
@@ -355,10 +414,7 @@ export class Game {
     this.currentMoney = save.progress.currentMoney;
     this.currentDifficulty = save.meta.difficulty;
     this.levelManager.setLevel(save.progress.currentLevel);
-    this.ownedItems.clear();
-    for (const itemStr of save.progress.ownedItems) {
-      this.ownedItems.add(itemStr as ItemType);
-    }
+    this.loadOwnedItemsFromProgress(save.progress);
     this.activeSlot = AUTO_SLOT_ID;
     this.state = GameState.MENU; // 临时设回 MENU，让 changeScene 内部 previousState 为 MENU 不触发 nextLevel
     this.changeScene(GameState.PLAYING);
@@ -375,6 +431,7 @@ export class Game {
     this.currentMoney = 0;
     this.levelManager.reset();
     this.ownedItems.clear();
+    this.itemDurations.clear();
     this.activeSlot = AUTO_SLOT_ID;
     this.state = GameState.MENU;
     this.changeScene(GameState.PLAYING);
@@ -398,10 +455,7 @@ export class Game {
     this.currentMoney = save.progress.currentMoney;
     this.currentDifficulty = save.meta.difficulty;
     this.levelManager.setLevel(save.progress.currentLevel);
-    this.ownedItems.clear();
-    for (const itemStr of save.progress.ownedItems) {
-      this.ownedItems.add(itemStr as ItemType);
-    }
+    this.loadOwnedItemsFromProgress(save.progress);
     this.activeSlot = AUTO_SLOT_ID;
     this.state = GameState.MENU;
     this.changeScene(GameState.PLAYING);

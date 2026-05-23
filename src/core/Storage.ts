@@ -34,6 +34,23 @@ export interface GameProgress {
   currentLevel: number;
   /** 已购买的道具 type 字符串数组 */
   ownedItems: string[];
+  /**
+   * 限期 buff 剩余关数（key=道具 type 字符串，value=剩余关数）
+   * 仅限期道具有条目；旧存档无此字段时视为永久（兼容老玩家）
+   */
+  ownedItemLevels?: Record<string, number>;
+}
+
+/** 解析 ownedItemLevels：过滤非法 entry（非字符串 key / 非正整数 value，防御被人工编辑的存档） */
+function parseOwnedItemLevels(raw: unknown): Record<string, number> | undefined {
+  if (raw === null || typeof raw !== 'object') return undefined;
+  const result: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof k === 'string' && typeof v === 'number' && Number.isInteger(v) && v > 0) {
+      result[k] = v;
+    }
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
 }
 
 /** 槽位元数据（用于槽位列表展示） */
@@ -440,12 +457,14 @@ export class Storage {
       ) {
         return null;
       }
+      const ownedItemLevels = parseOwnedItemLevels(data.ownedItemLevels);
       return {
         meta,
         progress: {
           currentMoney: data.currentMoney,
           currentLevel: data.currentLevel,
           ownedItems: data.ownedItems.filter((s): s is string => typeof s === 'string'),
+          ...(ownedItemLevels ? { ownedItemLevels } : {}),
         },
       };
     } catch {
@@ -549,10 +568,12 @@ export class Storage {
           typeof data.currentLevel === 'number' &&
           Array.isArray(data.ownedItems)
         ) {
+          const ownedItemLevels = parseOwnedItemLevels(data.ownedItemLevels);
           progress = {
             currentMoney: data.currentMoney,
             currentLevel: data.currentLevel,
             ownedItems: data.ownedItems.filter((s): s is string => typeof s === 'string'),
+            ...(ownedItemLevels ? { ownedItemLevels } : {}),
           };
         }
       } catch {

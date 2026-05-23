@@ -894,14 +894,20 @@ export class GameScene extends SceneBase {
 
     const ctx = renderer.getContext();
     const itemArray = Array.from(items);
-    // 计算道具文字最大宽度
-    ctx.font = 'bold 12px monospace';
-    let maxW = 0;
+    // 预拼接每行最终文本（限期 buff 加"剩余 N 关"后缀），统一测量宽度
+    const labels: { type: ItemType; text: string }[] = [];
     for (const type of itemArray) {
       const name = ITEM_SHORT_NAMES[type];
-      if (name) {
-        maxW = Math.max(maxW, ctx.measureText(name).width);
-      }
+      if (!name) continue;
+      const remaining = this.game.getItemRemainingLevels(type);
+      labels.push({ type, text: remaining !== null ? `${name} 剩余 ${remaining} 关` : name });
+    }
+    if (labels.length === 0) return;
+
+    ctx.font = 'bold 12px monospace';
+    let maxW = 0;
+    for (const { text } of labels) {
+      maxW = Math.max(maxW, ctx.measureText(text).width);
     }
 
     const padX = 8;
@@ -910,7 +916,7 @@ export class GameScene extends SceneBase {
     const gap = 3;
     const marginR = 8;
     const boxW = maxW + padX * 2 + 4; // +4 给左侧金线留位
-    const panelH = itemArray.length * itemH + (itemArray.length - 1) * gap + padY * 2;
+    const panelH = labels.length * itemH + (labels.length - 1) * gap + padY * 2;
     const startX = renderer.width - boxW - marginR;
     const startY = HUD_HEIGHT + 10;
     const panelY = startY - padY;
@@ -921,10 +927,8 @@ export class GameScene extends SceneBase {
     ctx.roundRect(startX - 4, panelY, boxW + 8, panelH, 4);
     ctx.fill();
 
-    for (let i = 0; i < itemArray.length; i++) {
-      const itemType = itemArray[i]!;
-      const name = ITEM_SHORT_NAMES[itemType];
-      if (!name) continue;
+    for (let i = 0; i < labels.length; i++) {
+      const { text } = labels[i]!;
       const y = startY + i * (itemH + gap);
 
       // 道具背景条
@@ -933,8 +937,8 @@ export class GameScene extends SceneBase {
       // 左侧金色边线
       ctx.fillStyle = '#FFD700';
       ctx.fillRect(startX, y, 2, itemH);
-      // 道具文字
-      drawText(renderer, name, startX + padX + 2, y + padY, '#FFD700', 'SMALL');
+      // 道具文字（限期 buff 文本含剩余关数后缀）
+      drawText(renderer, text, startX + padX + 2, y + padY, '#FFD700', 'SMALL');
     }
   }
 
