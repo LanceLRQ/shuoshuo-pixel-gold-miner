@@ -127,7 +127,7 @@ export const STRINGS = {
     hud: {
       difficultyPrefix: '难度: ',
       infiniteEmoji: '🔥 ',
-      endlessLabel: '⚡ 无尽 L',
+      endlessLabel: '⚡️️️️️️️️ 无尽 L',
     },
   },
 
@@ -223,6 +223,43 @@ export const STRINGS = {
     cumulativeAchievedPrefix: '累计达成: $',
     cumulativeFailPrefix: '累计: $',
     gapPrefix: '还差 $',
+    /** 无尽关卡失败时的主按钮文案（替代「重试本关」，无副按钮） */
+    endlessFailPrimary: '前往结算 ▶',
+  },
+
+  // ====================================================================
+  // 通关庆祝页 (VictoryScene) — 通关 L21 后展示，分流到无尽或终局结算
+  // ====================================================================
+  victory: {
+    title: '🏆 全 关 通 过 🏆',
+    subtitle: '恭喜征服全部关卡！',
+    flavor: '冒险尚未结束 — 还要继续挑战自我吗？',
+    statsHeader: '— 本周目战绩 —',
+    statsMoney: '累计金额: $',
+    statsHighScore: '历史最高: $',
+    statsDifficulty: '难度: ',
+    /** statsLevel 模板：前缀 + TOTAL_LEVELS + 后缀，避免硬编码 21 与 levels.ts 失同步 */
+    statsLevelPrefix: '通关章节: 第 ',
+    statsLevelSuffix: ' 关',
+    endlessButton: '挑战无尽 ⚡️️️️️️️️️',
+    settleButton: '立即结算 🏆',
+    endlessHint: '⚡️️️️️️️️ 进入无尽冲榜：失败即结算，登顶排行榜',
+    settleHint: '🏆 提交战绩并清自动存档，不可撤销',
+  },
+
+  // ====================================================================
+  // 通关终局结算页 (VictoryEndScene) — 选择「结算退出」后展示
+  // ====================================================================
+  victoryEnd: {
+    title: '✦ 通关成功 ✦',
+    subtitle: '冒险告一段落',
+    flavor: '你的传说已写入这片大陆。',
+    finalScore: '最终战绩: $',
+    highScore: '历史最高: $',
+    difficulty: '难度: ',
+    /** cleared 模板：前缀 + TOTAL_LEVELS，避免硬编码 21 */
+    clearedPrefix: '通关关数: ',
+    backToMenu: '返回主菜单',
   },
 
   // ====================================================================
@@ -253,7 +290,7 @@ export const STRINGS = {
     justNow: '刚刚',
     emptyHint: '在主菜单点"新游戏"开始',
     manualSlotsDivider: '— 手动槽位（暂停菜单"另存为"写入） —',
-    autoSlotLabel: '⚡ 自动存档',
+    autoSlotLabel: '⚡️️️️️️️️ 自动存档',
     autoSlotEmpty: '（暂无进度）',
     manualSlotEmpty: '[空槽位]',
     /** 槽位卡片字段前缀 */

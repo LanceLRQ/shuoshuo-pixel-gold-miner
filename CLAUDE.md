@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **像素素材：** 代码数据矩阵（PixelMap），Canvas 逐像素绘制，离屏 Canvas 预渲染缓存
 - **音效：** Web Audio API
 - **存储：** localStorage
-- **逻辑分辨率：** 480 x 640（竖屏）
+- **逻辑分辨率：** 800 x 540（横屏，定义在 `src/main.ts:11-12` 的 `LOGICAL_WIDTH/LOGICAL_HEIGHT`）
 
 ## 常用命令
 
@@ -46,7 +46,7 @@ tools/
 - **状态机驱动：** 游戏全局状态（MENU→READY→PLAYING→REELING→RESULT→SHOP→GAME_OVER）驱动场景切换
 - **钩爪系统：** 独立状态机（SWINGING→EXTENDING→REELING），摆动公式 `sin(t*speed)*maxAngle`，收回速度 `baseSpeed/(1+weight*0.5)`
 - **碰撞检测：** 圆形碰撞，钩爪尖端（点）vs 矿物包围圆
-- **自适应缩放：** 逻辑分辨率固定 480x640，`imageSmoothingEnabled = false` 保持像素锐利
+- **自适应缩放：** 逻辑分辨率固定 800x540（横屏），`imageSmoothingEnabled = false` 保持像素锐利
 
 ## 关键编码规范
 

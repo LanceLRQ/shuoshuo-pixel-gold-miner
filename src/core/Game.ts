@@ -11,6 +11,8 @@ import { GameScene } from '../scene/GameScene';
 import { ResultScene } from '../scene/ResultScene';
 import { ShopScene, ItemType, PERSISTENT_ITEM_TYPES } from '../scene/ShopScene';
 import { GameOverScene } from '../scene/GameOverScene';
+import { VictoryScene } from '../scene/VictoryScene';
+import { VictoryEndScene } from '../scene/VictoryEndScene';
 import { DifficultyScene } from '../scene/DifficultyScene';
 import { SlotSelectScene } from '../scene/SlotSelectScene';
 import { ChapterScene } from '../scene/ChapterScene';
@@ -38,6 +40,8 @@ export enum GameState {
   REELING = 'REELING',
   RESULT = 'RESULT',
   SHOP = 'SHOP',
+  VICTORY = 'VICTORY',                    // 通关庆祝页（通关 L21 → 选「继续无尽」或「结算退出」）
+  VICTORY_END = 'VICTORY_END',            // 通关终局结算页（VictoryScene 选「结算退出」后）
   GAME_OVER = 'GAME_OVER',
 }
 
@@ -220,6 +224,12 @@ export class Game {
           this.bonusAlreadyCommitted = false;
           this.levelManager.nextLevel();
           this.persistProgress();
+        } else if (previousState === GameState.VICTORY) {
+          // 通关庆祝页选「挑战无尽」：金额已在 ResultScene.commitLevelResult 累加，
+          // 此处仅推进关卡到 L22（L21+1），并持久化用于断点续玩
+          this.bonusAlreadyCommitted = false;
+          this.levelManager.nextLevel();
+          this.persistProgress();
         }
         // CHAPTER_TRANSITION 回流：金额/关卡已在首次进入时处理过，直接创建 GameScene
         // 章节首关守卫：非 INFINITE 模式 + 非重试 时，进入 L1/L8/L15 走 ChapterScene 过场
@@ -246,13 +256,30 @@ export class Game {
         scene = new ShopScene(this, this.currentMoney);
         this.persistProgress();
         break;
+      case GameState.VICTORY:
+        // 通关庆祝页：金额已在 ResultScene.commitLevelResult 累加 / 持久化，
+        // 此处不动 currentMoney、不清自动槽位、不提交排行榜（玩家可能继续无尽冲榜）
+        scene = new VictoryScene(this);
+        break;
+      case GameState.VICTORY_END:
+        // 通关终局结算：提交最高分 + 排行榜（INFINITE 跳过）+ 清自动槽位
+        this.storage.updateAllHighScores(this.currentDifficulty, this.currentMoney);
+        if (this.currentDifficulty !== Difficulty.INFINITE) {
+          this.storage.commitLeaderboardEntry(this.currentMoney, this.currentDifficulty, this.levelManager.currentLevel);
+        }
+        this.storage.resetAutoSlot();
+        scene = new VictoryEndScene(this, this.currentMoney, this.currentDifficulty);
+        break;
       case GameState.GAME_OVER:
         if (!this.bonusAlreadyCommitted) {
           this.currentMoney += this.lastEarnedMoney;
         }
         this.bonusAlreadyCommitted = false;
         this.storage.updateAllHighScores(this.currentDifficulty, this.currentMoney);
-        this.storage.commitLeaderboardEntry(this.currentMoney, this.currentDifficulty, this.levelManager.currentLevel);
+        // INFINITE 难度为本地纯娱乐玩法，不上榜
+        if (this.currentDifficulty !== Difficulty.INFINITE) {
+          this.storage.commitLeaderboardEntry(this.currentMoney, this.currentDifficulty, this.levelManager.currentLevel);
+        }
         this.storage.resetAutoSlot();
         scene = new GameOverScene(this, this.currentMoney, this.levelManager.currentLevel);
         break;

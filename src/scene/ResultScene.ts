@@ -14,6 +14,8 @@ import { Button } from '../ui/Button';
 import { STRINGS } from '../ui/strings';
 import { SoundType } from '../core/Audio';
 import { clamp } from '../utils/math';
+import { isEndlessLevel } from '../level/levels';
+import { Difficulty } from '../level/difficulty';
 
 /** 入账动画持续时间（秒） */
 const STAGE_EARNED_DURATION = 0.6;
@@ -32,11 +34,14 @@ export class ResultScene extends SceneBase {
   /** 本关起步前的累计金额（用于显示"累计达成 X/Y"） */
   private cumulativeBeforeLevel: number;
 
-  /** 主操作按钮（通过=进入商店；失败=重试本关） */
+  /** 主操作按钮（通过=进入商店；失败=重试本关；无尽失败=前往结算） */
   private primaryButton: Button;
-  /** 次要按钮（仅失败时显示，返回主菜单） */
+  /** 次要按钮（仅普通失败时显示，返回主菜单；无尽失败无副按钮） */
   private secondaryButton: Button | null = null;
   private buttonHandled: boolean = false;
+
+  /** 无尽冲榜失败：无重试、单按钮直通 GAME_OVER（为排行榜铺路） */
+  private readonly endlessFailMode: boolean;
 
   /** 当前动画阶段 */
   private stage: ResultStage = ResultStage.EARNED;
@@ -56,11 +61,17 @@ export class ResultScene extends SceneBase {
     this.cumulativeBeforeLevel = game.getCurrentMoney();
     this.isPassed = (this.cumulativeBeforeLevel + earnedMoney) >= targetMoney;
 
+    // 无尽冲榜失败：无尽关卡（L22+）+ 本关失败 → 不可重试，单按钮去结算
+    this.endlessFailMode = !this.isPassed && isEndlessLevel(game.getLevelManager().currentLevel);
+
     if (this.isPassed) {
       // 通过：单按钮居中
       this.primaryButton = new Button(330, 420, 140, 44, STRINGS.result.enterShop);
+    } else if (this.endlessFailMode) {
+      // 无尽失败：单按钮居中，前往结算
+      this.primaryButton = new Button(330, 420, 140, 44, STRINGS.result.endlessFailPrimary);
     } else {
-      // 失败：双按钮并排
+      // 普通失败：双按钮并排
       this.primaryButton = new Button(240, 420, 140, 44, STRINGS.result.retry);
       this.secondaryButton = new Button(420, 420, 140, 44, STRINGS.common.backToMenuShort);
     }
@@ -196,12 +207,19 @@ export class ResultScene extends SceneBase {
     return this.earnedMoney;
   }
 
-  /** 主按钮：通过=进入商店或通关；失败=重试本关 */
+  /** 主按钮：通过=进入商店/庆祝页；失败=重试或无尽直接结算 */
   private handlePrimary(): void {
     if (this.isPassed) {
-      // 最后一关 → 通关结束
-      if (!this.game.getLevelManager().hasNextLevel()) {
-        this.game.changeScene(GameState.GAME_OVER);
+      const lm = this.game.getLevelManager();
+      // 仅"恰好打通最后一个正常关卡（L21）"触发庆祝页 / GAME_OVER；
+      // 无尽关卡（L22+）通关继续后续 SHOP/PLAYING 路径，由 changeScene 推进 nextLevel
+      const finishedFinalNormalLevel = !isEndlessLevel(lm.currentLevel) && !lm.hasNextLevel();
+      if (finishedFinalNormalLevel) {
+        // 非 INFINITE → 庆祝页；INFINITE 维持现状直跳 GAME_OVER（不上榜不进 VictoryScene）
+        const next = this.game.getDifficulty() === Difficulty.INFINITE
+          ? GameState.GAME_OVER
+          : GameState.VICTORY;
+        this.game.changeScene(next);
         return;
       }
       // INFINITE 模式跳过商店，直接进下一关
@@ -210,6 +228,9 @@ export class ResultScene extends SceneBase {
       } else {
         this.game.changeScene(GameState.SHOP);
       }
+    } else if (this.endlessFailMode) {
+      // 无尽冲榜失败：失败即结算，进 GAME_OVER 提交排行榜
+      this.game.changeScene(GameState.GAME_OVER);
     } else {
       this.game.retryCurrentLevel();
     }
