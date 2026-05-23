@@ -165,12 +165,6 @@ const GOLD_BUDGET_MAX_APPEND = 30;
  */
 const GOLD_TYPES: readonly MineralType[] = VALUE_UPGRADE_CHAIN.slice(-3);
 
-/**
- * MEDIUM 金块的权重系数（× largeWeightScale）
- * 用于在 SMALL(=1) 与 LARGE(=lws) 之间形成梯度过渡，1.5 经模拟器调试得出
- */
-const GOLD_MEDIUM_WEIGHT_FACTOR = 1.5;
-
 /** 章节末关插入章节专属收藏品的概率（详见 docs/design/20260519_chapter-system.md §四） */
 const CHAPTER_COLLECTIBLE_CHANCE = 0.3;
 
@@ -1134,7 +1128,7 @@ export class GameScene extends SceneBase {
    * 矿物生成（金块保底驱动）
    * 1. 按关卡权重 + largeWeightScale 抑制大件，生成基础 count 个矿物
    * 2. 计算金块保底 goldBudget = levelEarning × mineralBudgetRatio / valueScale
-   * 3. 金块保底：循环追加金块（按 largeWeightScale 加权选品种）直到金块总值 ≥ goldBudget
+   * 3. 金块保底：循环追加金块（按 difficulty.goldRefillWeights 选品种）直到金块总值 ≥ goldBudget
    * 4. cap 降级：总价值溢出时沿升级链反向降级最高价矿物
    * 5. 应用幸运草等 buff
    */
@@ -1216,16 +1210,12 @@ export class GameScene extends SceneBase {
   }
 
   /**
-   * 按 largeWeightScale 加权随机选金块品种（NOVICE 偏 LARGE，HARD/EXPERT 偏 SMALL）
-   * 权重数组 [pSmall, pMedium, pLarge] 顺序与 GOLD_TYPES 一一对应
-   * pMedium = lws × 1.5：让 MEDIUM 在 SMALL 与 LARGE 之间形成平滑梯度，避免高难度突变到全 SMALL
+   * 按难度独立配置的 goldRefillWeights 选金块品种（与 largeWeightScale 解耦）
+   * 旧实现复用 lws 导致 HARD/EXPERT 只灌 SMALL（场上 GOLD_SMALL 占 42%+，零碎化严重）；
+   * 现读 difficulty.goldRefillWeights = [SMALL, MEDIUM, LARGE]，保证每档都有稳定大件诱惑
    */
   private pickGoldVariant(): MineralType {
-    const lws = this.difficulty.largeWeightScale;
-    const pLarge = Math.max(0, Math.min(1, lws));
-    const pMedium = Math.max(0, Math.min(1, lws * GOLD_MEDIUM_WEIGHT_FACTOR));
-    const pSmall = 1.0;
-    const idx = weightedRandom([pSmall, pMedium, pLarge]);
+    const idx = weightedRandom(this.difficulty.goldRefillWeights);
     return GOLD_TYPES[idx]!;
   }
 

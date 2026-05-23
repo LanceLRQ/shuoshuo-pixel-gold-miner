@@ -85,7 +85,8 @@ for (const m of levelsSrc.matchAll(levelRE)) {
 }
 
 const DIFFICULTIES = [];
-const diffRE = /\[Difficulty\.(\w+)\]:\s*\{[\s\S]*?valueScale:\s*([\d.]+),\s*timeScale:\s*([\d.]+),\s*weightFactorScale:\s*([\d.]+),\s*motionSpeedScale:\s*([\d.]+),\s*mineralBudgetRatio:\s*([\d.]+),\s*largeWeightScale:\s*([\d.]+),\s*mineralBudgetCap:\s*([\d.]+)/g;
+// 容忍配置项之间夹注释行：用 [\s\S]*? 跳过任意中间内容
+const diffRE = /\[Difficulty\.(\w+)\]:\s*\{[\s\S]*?valueScale:\s*([\d.]+)[\s\S]*?timeScale:\s*([\d.]+)[\s\S]*?weightFactorScale:\s*([\d.]+)[\s\S]*?motionSpeedScale:\s*([\d.]+)[\s\S]*?mineralBudgetRatio:\s*([\d.]+)[\s\S]*?largeWeightScale:\s*([\d.]+)[\s\S]*?goldRefillWeights:\s*\[([\d.,\s]+)\][\s\S]*?mineralBudgetCap:\s*([\d.]+)/g;
 for (const m of difficultySrc.matchAll(diffRE)) {
   if (m[1] === 'INFINITE') continue;
   DIFFICULTIES.push({
@@ -96,7 +97,8 @@ for (const m of difficultySrc.matchAll(diffRE)) {
     motionSpeedScale: parseFloat(m[5]),
     ratio: parseFloat(m[6]),
     largeWeightScale: parseFloat(m[7]),
-    cap: parseFloat(m[8]),
+    goldRefillWeights: m[8].split(',').map(s => parseFloat(s.trim())),
+    cap: parseFloat(m[9]),
   });
 }
 console.log(`📊 解析到 ${LEVELS.length} 关 / ${DIFFICULTIES.length} 档难度`);
@@ -136,10 +138,9 @@ function weightedPick(weights, rng) {
   for (let i = 0; i < weights.length; i++) { r -= weights[i]; if (r < 0) return i; }
   return weights.length - 1;
 }
-function pickGoldVariant(lws, rng) {
-  const pLarge = Math.max(0, Math.min(1, lws));
-  const pMedium = Math.max(0, Math.min(1, lws * 1.5));
-  return ['GOLD_SMALL', 'GOLD_MEDIUM', 'GOLD_LARGE'][weightedPick([1.0, pMedium, pLarge], rng)];
+/** 按难度独立配置的金块保底权重选品种（与运行时 GameScene.pickGoldVariant 一致） */
+function pickGoldVariant(refillWeights, rng) {
+  return ['GOLD_SMALL', 'GOLD_MEDIUM', 'GOLD_LARGE'][weightedPick(refillWeights, rng)];
 }
 
 // ==================== 4. 矿物生成（带坐标） ====================
@@ -180,7 +181,7 @@ function generateMinerals(level, diff, seed) {
   const goldBudget = (earning * diff.ratio) / diff.valueScale;
   const goldTotal = () => minerals.filter(m => ['GOLD_SMALL', 'GOLD_MEDIUM', 'GOLD_LARGE'].includes(m.type)).reduce((s, m) => s + m.value, 0);
   let append = 0;
-  while (goldTotal() < goldBudget && append < 30) { if (!place(pickGoldVariant(lws, rng))) break; append++; }
+  while (goldTotal() < goldBudget && append < 30) { if (!place(pickGoldVariant(diff.goldRefillWeights, rng))) break; append++; }
 
   // 3) cap 降级
   const goldCap = goldBudget * diff.cap;

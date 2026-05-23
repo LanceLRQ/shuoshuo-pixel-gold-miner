@@ -13,8 +13,8 @@ export function randomFloat(min: number, max: number): number {
   return Math.random() * (max - min) + min;
 }
 
-/** 基于权重随机选择一个索引 */
-export function weightedRandom(weights: number[]): number {
+/** 基于权重随机选择一个索引（接受 readonly 数组/元组，函数内只读不写） */
+export function weightedRandom(weights: readonly number[]): number {
   const total = weights.reduce((sum, w) => sum + w, 0);
   let r = Math.random() * total;
   for (let i = 0; i < weights.length; i++) {
