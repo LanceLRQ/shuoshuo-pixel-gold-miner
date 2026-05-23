@@ -85,7 +85,7 @@
 
 - [x] **B1. 重量机制 Bug 修复 + 难度联动** —— Hook.updateReeling 补乘 reelSpeedMultiplier + WEIGHT_FACTOR 0.5→1.0 + weightFactorScale 注入
 - [x] **B2. 矿物预算驱动生成器** —— GameScene.upgradeMineralsToReachBudget + appendMineralsToReachBudget（升级链 BONE→...→GOLD_LARGE）
-- [x] **B3. 矿物金额按难度缩放** —— GameScene.onHookComplete 应用 valueScale（含神秘袋/鼹鼠钻石）
+- [x] **B3. 矿物金额按难度缩放** —— GameScene.onHookComplete 应用 valueScale（含神秘袋/水晶蟹钻石）
 - [x] **B4. 关卡时间按难度缩放** —— GameScene.enter() timeLimit × timeScale + EXTRA_TIME_BONUS
 
 ---
@@ -121,7 +121,7 @@
     * INFINITE：保留所有
     * HARD/EXPERT：清除全部 persistent
     * NOVICE/NORMAL：保留 persistent（跨关投资）
-  - 持久型（6 种）：力量药水/幸运草/石头书/老鼠药/钻石变色油/摇晃饮料
+  - 持久型（6 种）：力量药水/幸运草/爱心增幅器/猪猪魔法/绮彩变色油/摇晃饮料
   - 消耗品（2 种）：炸药/额外时间（使用时已 delete）
 
 - [x] **D9. INFINITE 模式实现**

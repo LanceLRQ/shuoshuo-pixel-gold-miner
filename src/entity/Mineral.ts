@@ -29,7 +29,7 @@ const MYSTERY_CONTENTS: { type: MysteryContent; weight: number; label: string }[
 
 /** 木箱抽奖内容类型（详见 docs/design/20260519_chapter-system.md #12） */
 export enum BoxContent {
-  /** 大奖：钻石 +800 */
+  /** 大奖：绮彩 +800 */
   PRIZE_DIAMOND = 'PRIZE_DIAMOND',
   /** 中奖：金币 +500 */
   PRIZE_GOLD = 'PRIZE_GOLD',
@@ -77,7 +77,7 @@ export class Mineral {
   moveLeft: number = 0;
   /** 移动右边界 */
   moveRight: number = 0;
-  /** 鼹鼠是否带着钻石 */
+  /** 水晶蟹是否带着绮彩 */
   hasDiamond: boolean = false;
   /** 实际渲染用的 sprite 名（默认 = config.spriteName；STONE 时按 variant 覆盖为小/中/大档） */
   effectiveSpriteName: string;
@@ -101,7 +101,7 @@ export class Mineral {
     this.spriteCache = spriteCache;
     this.metaProvider = metaProvider;
 
-    // 鼹鼠 30% 概率带钻石
+    // 水晶蟹 30% 概率带绮彩
     if (type === MineralType.MOLE) {
       this.hasDiamond = Math.random() < 0.3;
     }

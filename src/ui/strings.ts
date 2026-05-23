@@ -108,9 +108,9 @@ export const STRINGS = {
       dynamite: '炸药',
       strength: '力量',
       lucky: '幸运',
-      stoneBook: '石书',
-      ratPoison: '鼠药',
-      diamondGloss: '钻油',
+      stoneBook: '爱心',
+      ratPoison: '魔法',
+      diamondGloss: '绮彩',
     },
     notifications: {
       bombDestroy: '炸药: 摧毁了一个矿物!',
@@ -132,10 +132,10 @@ export const STRINGS = {
   },
 
   // ====================================================================
-  // 矿物 (Mineral / 神秘袋 / 木箱抽奖飘字)
+  // 矿物 (Mineral / 心动盲盒 / 木箱抽奖飘字)
   // ====================================================================
   mineral: {
-    /** 神秘袋开出后飘字显示用 label */
+    /** 心动盲盒开出后飘字显示用 label */
     mystery: {
       cashSmall: '少量现金',
       cashLarge: '大量现金',
@@ -144,7 +144,7 @@ export const STRINGS = {
     },
     /** 木箱抽奖结果飘字 label */
     box: {
-      prizeDiamond: '钻石大奖！',
+      prizeDiamond: '绮彩大奖！',
       prizeGold: '金币 +500',
       prizeCoin: '金币 +200',
       empty: '空盒……',
@@ -171,20 +171,20 @@ export const STRINGS = {
     /** 矿物名 + 备注（按图鉴顺序） */
     minerals: {
       bone:        { name: '骨头',     note: '低价值垫场' },
-      stoneSmall:  { name: '小石头' },
-      stoneMedium: { name: '中石头',   note: '石头书 ×3' },
-      stoneLarge:  { name: '大石头',   note: '石头书 ×3' },
-      mouse:       { name: '老鼠',     note: '会移动 · 老鼠药 ×5' },
-      mole:        { name: '鼹鼠',     note: '会移动 · 30% 携带钻石' },
+      stoneSmall:  { name: '小爱心抱枕' },
+      stoneMedium: { name: '中爱心抱枕',   note: '爱心抱枕书 ×3' },
+      stoneLarge:  { name: '大爱心抱枕',   note: '爱心抱枕书 ×3' },
+      mouse:       { name: '猪子',     note: '会移动 · 猪猪魔法 ×5' },
+      mole:        { name: '水晶蟹',     note: '会移动 · 30% 携带绮彩' },
       goldSmall:   { name: '小金块' },
       goldMedium:  { name: '中金块' },
       crystalOre:  { name: '水晶矿石', note: 'Ch1 章节专属' },
       goldLarge:   { name: '大金块' },
-      diamond:     { name: '钻石',     note: '钻石变色油 ×2' },
+      diamond:     { name: '绮彩',     note: '绮彩变色油 ×2' },
       crabShell:   { name: '水晶蟹甲', note: 'Ch2 章节专属' },
       piggyGem:    { name: '猪猪宝石', note: 'Ch3 章节专属' },
-      mysteryBag:  { name: '神秘袋',   note: '现金 / 大力药剂 / 炸药' },
-      woodenBox:   { name: '木箱',     note: '抽奖：钻石 / 金币 / 骷髅扣分' },
+      mysteryBag:  { name: '心动盲盒',   note: '现金 / 大力药剂 / 炸药' },
+      woodenBox:   { name: '木箱',     note: '抽奖：绮彩 / 金币 / 骷髅扣分' },
       bomb:        { name: '炸药桶',   note: '⚠ 碰到爆炸，避开' },
     },
   },
@@ -200,10 +200,10 @@ export const STRINGS = {
       dynamite: { name: '炸药', desc: '按 F 键引爆收回物' },
       extraTime: { name: '额外时间', desc: '本关开局 +10 秒（一次性）' },
       strengthPotion: { name: '力量药水', desc: '收回速度 +50%' },
-      diamondGloss: { name: '钻石变色油', desc: '钻石价值 x2' },
-      stoneBook: { name: '石头书', desc: '石头价值 x3' },
-      ratPoison: { name: '老鼠药', desc: '老鼠价值 x5' },
-      lucky: { name: '幸运草', desc: '神秘袋最低 200$' },
+      diamondGloss: { name: '绮彩变色油', desc: '绮彩价值 x2' },
+      stoneBook: { name: '爱心增幅器', desc: '爱心抱枕价值 x3' },
+      ratPoison: { name: '猪猪魔法', desc: '猪子价值 x5' },
+      lucky: { name: '幸运草', desc: '心动盲盒最低 200$' },
       shakySoda: { name: '摇晃饮料', desc: '钩爪伸出中 ←/→ 或 A/D 微调' },
     },
   },

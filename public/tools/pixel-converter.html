@@ -1410,14 +1410,14 @@
             setGifModeUI(false);
           }
           // 系统预设（HD 精度方案）：插入"系统预设 W:H"选项 + 锁定比例 + 预填显示尺寸
-          // 防止美术误产出"无法在游戏内正常工作"的 sprite（如老鼠 GIF 转出来 96×64 但碰撞 16）
+          // 防止美术误产出"无法在游戏内正常工作"的 sprite（如猪子 GIF 转出来 96×64 但碰撞 16）
           const presetW = typeof msg.presetDisplayWidth === 'number' && msg.presetDisplayWidth > 0
             ? msg.presetDisplayWidth : null;
           const presetH = typeof msg.presetDisplayHeight === 'number' && msg.presetDisplayHeight > 0
             ? msg.presetDisplayHeight : null;
           if (presetW && presetH) {
             // 强制锁定为系统预设比例：移除其他选项 + 禁用下拉框
-            // 防止美术误产出"水平细长的老鼠"这类无法在游戏内正常工作的 sprite
+            // 防止美术误产出"水平细长的猪子"这类无法在游戏内正常工作的 sprite
             while (aspectRatioSel.firstChild) aspectRatioSel.removeChild(aspectRatioSel.firstChild);
             const opt = document.createElement('option');
             opt.value = `preset:${presetW}:${presetH}`;

@@ -530,7 +530,7 @@ function makeCoinIcon(W, H) {
   });
 }
 
-/** 老鼠：侧面朝右，椭圆身体 + 圆头 + 尖鼻 + 长尾 + 粉耳 */
+/** 猪子：侧面朝右，椭圆身体 + 圆头 + 尖鼻 + 长尾 + 粉耳 */
 function makeMouse(W, H) {
   const cy = H / 2;
   const bodyCx = W * 0.42;  // 身体中心
@@ -604,7 +604,7 @@ function makeMouse(W, H) {
   });
 }
 
-/** 鼹鼠：圆滚正面，大粉鼻头 + 黑眼 + 利爪 */
+/** 水晶蟹：圆滚正面，大粉鼻头 + 黑眼 + 利爪 */
 function makeMole(W, H) {
   const cx = (W - 1) / 2;
   const cy = (H - 1) / 2;

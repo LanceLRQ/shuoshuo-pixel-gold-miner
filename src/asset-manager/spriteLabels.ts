@@ -21,7 +21,7 @@ export const SPRITE_LABELS: Record<string, string> = {
   GOLD_LARGE: '大金块',
 
   // 高价矿物
-  DIAMOND_SPRITE: '钻石',
+  DIAMOND_SPRITE: '绮彩',
 
   // 章节矿物
   CRYSTAL_ORE_SPRITE: '水晶矿石（章节 1）',
@@ -29,16 +29,16 @@ export const SPRITE_LABELS: Record<string, string> = {
   PIGGY_GEM_SPRITE: '猪猪宝石（章节 3）',
 
   // 障碍 / 低价
-  STONE_SPRITE: '石头（重物）',
+  STONE_SPRITE: '爱心抱枕（重物）',
   BONE_SPRITE: '骨头（低价）',
 
   // 移动小动物
-  MOUSE_SPRITE: '老鼠（移动）',
-  MOLE_SPRITE: '鼹鼠（移动）',
+  MOUSE_SPRITE: '猪子（移动）',
+  MOLE_SPRITE: '水晶蟹（移动）',
 
   // 道具 / 容器
   BOMB_SPRITE: '炸弹道具',
-  MYSTERY_BAG: '神秘袋（随机奖励）',
+  MYSTERY_BAG: '心动盲盒（随机奖励）',
   WOODEN_BOX_SPRITE: '木箱（容器）',
 
   // 主菜单装饰（仅 MenuScene 使用，可由各主题独立替换）

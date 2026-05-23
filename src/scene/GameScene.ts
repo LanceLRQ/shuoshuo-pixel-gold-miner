@@ -971,22 +971,22 @@ export class GameScene extends SceneBase {
       // 计算实际价值
       let value = mineral.value;
 
-      // 石头书：石头价值 ×3
+      // 爱心增幅器：爱心抱枕价值 ×3
       if (mineral.config.type === MineralType.STONE && items.has(ItemType.STONE_BOOK)) {
         value = mineral.value * 3;
       }
 
-      // 老鼠药：老鼠价值 ×5
+      // 猪猪魔法：猪子价值 ×5
       if (mineral.config.type === MineralType.MOUSE && items.has(ItemType.MOUSE_POISON)) {
         value = mineral.value * 5;
       }
 
-      // 鼹鼠带钻石额外加钱
+      // 水晶蟹带绮彩额外加钱
       if (mineral.config.type === MineralType.MOLE && mineral.hasDiamond) {
         value += 600;
       }
 
-      // 钻石变色油：钻石价值 ×2
+      // 绮彩变色油：绮彩价值 ×2
       if (mineral.config.type === MineralType.DIAMOND && items.has(ItemType.DIAMOND_OIL)) {
         value = mineral.value * 2;
       }
@@ -1063,7 +1063,7 @@ export class GameScene extends SceneBase {
       this.game.getAudio().play(SoundType.MINER_HAPPY);
       this.miner.setState(MinerState.HAPPY);
     } else if (content === MysteryContent.DYNAMITE) {
-      // 炸药：直接炸毁场上随机一个矿物（优先炸石头）
+      // 炸药：直接炸毁场上随机一个矿物（优先炸爱心抱枕）
       const stones = this.minerals.filter(m => !m.grabbed && m.config.type === MineralType.STONE);
       const targets = stones.length > 0 ? stones : this.minerals.filter(m => !m.grabbed);
       if (targets.length > 0) {
@@ -1175,7 +1175,7 @@ export class GameScene extends SceneBase {
     // 6) 木箱：L5+ 关卡保证 1 个抽奖箱（不进预算系统）
     this.tryAddWoodenBox();
 
-    // 7) 幸运草：神秘袋最低 $200
+    // 7) 幸运草：心动盲盒最低 $200
     const items = this.game.getOwnedItems();
     if (items.has(ItemType.LUCKY_CLOVER)) {
       for (const mineral of this.minerals) {

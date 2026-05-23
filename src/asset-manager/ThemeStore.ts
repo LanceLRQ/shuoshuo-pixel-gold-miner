@@ -15,7 +15,7 @@ const CUSTOM_THEMES_KEY = 'goldminer_custom_themes';
  * lazy 迁移：遍历主题 sprites，对缺 displayWidth/Height 的预设 sprite 自动补齐。
  *
  * 仅作用于内存层；不写回 localStorage（避免静默改用户磁盘数据）。
- * 修复 bug：老主题用 GIF 转换没填显示尺寸 → 老鼠 96×64 显示过大、碰撞抓不到。
+ * 修复 bug：老主题用 GIF 转换没填显示尺寸 → 猪子 96×64 显示过大、碰撞抓不到。
  * 用户下次 commitSprite 时自然持久化补全后的字段。
  */
 function migrateDisplaySize(theme: ThemeJson): ThemeJson {
