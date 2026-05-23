@@ -92,3 +92,10 @@ tools/
 | 文档 | 路径 | 说明 |
 |------|------|------|
 | GIF 动画 sprite 方案 | `docs/design/20260520_gif-animation-sprite.md` | 📋 探讨阶段：横向 spritesheet 拼帧方案 + pixel-converter GIF 解帧路径 |
+
+### 排行榜（2026-05-20 / 2026-05-23）
+
+| 文档 | 路径 | 说明 |
+|------|------|------|
+| 本地榜调研 | `docs/design/20260520_leaderboard-research.md` | 纯前端维度的排名设计、难度权重、签名 / 合理性校验 |
+| 服务端协议 v1 | `docs/design/20260523_leaderboard-server-protocol.md` | 📋 设计阶段：sessionId + token 鉴权 + 3 类结算事件 + 按难度独立分榜的客户端↔服务端协议 |
