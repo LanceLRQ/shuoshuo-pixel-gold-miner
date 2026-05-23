@@ -324,14 +324,16 @@ export class GameScene extends SceneBase {
     // 设置炸药桶爆炸回调
     this.hook.setOnBombExplode((x, y) => this.onBombExplode(x, y));
 
-    // 提前结算按钮（HUD 正下方右上角，避免挡住下方的道具）
+    // 提前结算按钮（HUD 正下方左上角，避开右侧道具栏）
     this.finishButton = new Button(
-      GAME_CONFIG.CANVAS_WIDTH - 130,
+      10,
       HUD_HEIGHT + 8,
       120,
       36,
       STRINGS.game.finishEarly
     );
+    // 字号缩小到 14，使"提前结算 ▶"在 120px 宽按钮内有合理留白
+    this.finishButton.fontSize = 14;
   }
 
   enter(): void {

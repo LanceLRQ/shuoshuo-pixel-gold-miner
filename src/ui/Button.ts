@@ -75,6 +75,9 @@ export class Button {
   /** 禁用状态（置灰、不响应点击/悬停） */
   disabled: boolean = false;
 
+  /** 可选字号覆盖：未设置时按高度自动计算（min(h-12, 22)） */
+  fontSize?: number;
+
   /** 是否被点击 */
   private clicked: boolean = false;
 
@@ -163,7 +166,7 @@ export class Button {
     }
 
     // 按钮文字（居中，按下时下沉 1px 模拟手感）
-    const fontSize = Math.min(h - 12, 22);
+    const fontSize = this.fontSize ?? Math.min(h - 12, 22);
     const textOffsetY = this.state === ButtonState.PRESSED && !this.disabled ? 1 : 0;
     ctx.font = `bold ${fontSize}px monospace`;
     ctx.fillStyle = colors.text;
