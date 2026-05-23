@@ -51,15 +51,21 @@ const levelsSrc = fs.readFileSync(path.join(ROOT, 'src/level/levels.ts'), 'utf-8
 const difficultySrc = fs.readFileSync(path.join(ROOT, 'src/level/difficulty.ts'), 'utf-8');
 const typesSrc = fs.readFileSync(path.join(ROOT, 'src/entity/types.ts'), 'utf-8');
 
+/**
+ * 解析 types.ts 中的数值常量
+ * 安全策略：仅接受纯数字（parseFloat），含表达式的字段（如 HOOK_MAX_ANGLE = Math.PI * 4 / 9）
+ * 必须显式传 fallback 兜底；不再使用 new Function() 求值，避免源文件内容当代码执行
+ */
 function readConst(name, fallback) {
   const m = typesSrc.match(new RegExp(`${name}:\\s*([^,\\n]+)`));
   if (!m) return fallback;
-  try { return Function(`"use strict"; return (${m[1].trim()});`)(); }
-  catch { return fallback; }
+  const val = parseFloat(m[1].trim());
+  return Number.isFinite(val) ? val : fallback;
 }
 const CFG = {
   HOOK_SWING_SPEED:   readConst('HOOK_SWING_SPEED', 1.5),
-  HOOK_MAX_ANGLE:     readConst('HOOK_MAX_ANGLE', Math.PI * 4 / 9),
+  // HOOK_MAX_ANGLE 在 types.ts 是 `Math.PI * 4 / 9` 表达式，parseFloat 解析不出，固定取计算后的值
+  HOOK_MAX_ANGLE:     Math.PI * 4 / 9,
   HOOK_EXTEND_SPEED:  readConst('HOOK_EXTEND_SPEED', 400),
   HOOK_BASE_REEL_SPEED: readConst('HOOK_BASE_REEL_SPEED', 250),
   HOOK_MAX_LENGTH:    readConst('HOOK_MAX_LENGTH', 550),
@@ -308,7 +314,7 @@ function simulateImperfect(level, diff, seed) {
     const weights = pool.map((c, i) => 1 / (i + 1));  // 1, 1/2, 1/3, ...
     const choice = pool[weightedPick(weights, rng)];
     // 模拟"瞄准角度有 ±5° 抖动"
-    const aimError = (rng() - 0.5) * (Math.PI / 18); // ±10°
+    const aimError = (rng() - 0.5) * (Math.PI / 18); // ±5°（PI/18 = 10°，(rng()-0.5) 范围 [-0.5, 0.5)）
     const aim = choice.t.angle + aimError;
     const hit = rayHit(aim, minerals);
     const grabbed = hit || choice.m;
@@ -441,17 +447,21 @@ console.log('\n========== 六、HARD 零碎化诊断（场上 GOLD_SMALL 占比�
 console.log('关卡 | HARD 场上总数 | GOLD_SMALL% | 大件(MED+LRG+DIA)%');
 console.log('-----|---------------|-------------|---------------------');
 const hardDiff = DIFFICULTIES.find(d => d.id === 'HARD');
-for (const level of LEVELS) {
-  let total = 0, sm = 0, lg = 0;
-  for (let s = 0; s < 30; s++) {
-    const { minerals } = generateMinerals(level, hardDiff, level.level * 1000 + s);
-    total += minerals.length;
-    for (const m of minerals) {
-      if (m.type === 'GOLD_SMALL') sm++;
-      if (['GOLD_MEDIUM', 'GOLD_LARGE', 'DIAMOND'].includes(m.type)) lg++;
+if (!hardDiff) {
+  console.warn('⚠️ 找不到 HARD 难度配置，跳过零碎化诊断');
+} else {
+  for (const level of LEVELS) {
+    let total = 0, sm = 0, lg = 0;
+    for (let s = 0; s < 30; s++) {
+      const { minerals } = generateMinerals(level, hardDiff, level.level * 1000 + s);
+      total += minerals.length;
+      for (const m of minerals) {
+        if (m.type === 'GOLD_SMALL') sm++;
+        if (['GOLD_MEDIUM', 'GOLD_LARGE', 'DIAMOND'].includes(m.type)) lg++;
+      }
     }
+    console.log(`L${level.level.toString().padStart(2)} | ${(total / 30).toFixed(0).padStart(10)}    | ${((sm / total) * 100).toFixed(0).padStart(8)}%   | ${((lg / total) * 100).toFixed(0).padStart(17)}%`);
   }
-  console.log(`L${level.level.toString().padStart(2)} | ${(total / 30).toFixed(0).padStart(10)}    | ${((sm / total) * 100).toFixed(0).padStart(8)}%   | ${((lg / total) * 100).toFixed(0).padStart(17)}%`);
 }
 
 console.log('\n💡 解读：');

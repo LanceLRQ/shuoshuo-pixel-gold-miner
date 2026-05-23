@@ -62,7 +62,8 @@ export interface DifficultyConfig {
 
 /** 难度配置表 */
 export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
-  // 新数值经过 analyze-difficulty.mjs 模拟验证（贪心抓取率达 NOVICE 10% / NORMAL 33% / HARD 60% / EXPERT 75%）
+  // 数值经 analyze-difficulty.mjs v3 真实玩家模型模拟验证
+  // 失误容忍通关率：NOVICE 100% (期望 95%) / NORMAL 85% (期望 80%) / HARD 65% (期望 60%) / EXPERT 43% (期望 45%)
   [Difficulty.NOVICE]: {
     id: Difficulty.NOVICE,
     name: STRINGS.difficulty.list.novice.name,
