@@ -172,10 +172,13 @@ export class ShopScene extends SceneBase {
       renderer.fillRect(x, y, CARD_LAYOUT.cardW, 2, '#444466');
       renderer.fillRect(x, y + CARD_LAYOUT.cardH - 2, CARD_LAYOUT.cardW, 2, '#444466');
 
-      // 道具信息
+      // 道具信息（限期 buff 在描述后追加"· N 关有效"，关数与 SHOP_ITEMS 配置同源）
       const textColor = item.owned ? '#888888' : '#FFFFFF';
       drawText(renderer, item.name, x + 20, y + 12, textColor, 'MEDIUM');
-      drawText(renderer, item.description, x + 20, y + 38, '#AAAAAA', 'SMALL');
+      const descText = item.durationLevels !== undefined
+        ? `${item.description} · ${item.durationLevels} 关有效`
+        : item.description;
+      drawText(renderer, descText, x + 20, y + 38, '#AAAAAA', 'SMALL');
 
       // 价格 / 已购买（限期 buff 显示"剩余 N 关"，永久买断显示"已购买"）
       if (item.owned) {
