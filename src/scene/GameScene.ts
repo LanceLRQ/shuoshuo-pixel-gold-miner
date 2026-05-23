@@ -160,7 +160,7 @@ const GOLD_BUDGET_MAX_APPEND = 30;
 
 /**
  * 金块（仅 GOLD_SMALL/MEDIUM/LARGE，不含钻石）
- * 顺序必须与 pickGoldVariant 的权重数组 [pSmall, pMedium, pLarge] 一一对应
+ * 顺序必须与 difficulty.goldRefillWeights 元组 [SMALL, MEDIUM, LARGE] 一一对应
  * 复用 VALUE_UPGRADE_CHAIN 末三项确保单一真值源
  */
 const GOLD_TYPES: readonly MineralType[] = VALUE_UPGRADE_CHAIN.slice(-3);

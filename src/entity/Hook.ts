@@ -68,8 +68,11 @@ export class Hook {
   /** 重量影响系数倍率（由难度配置注入，新手/无限=0 表示无重量影响） */
   weightFactorScale: number = 1;
 
-  /** 甩动速度倍率（由难度配置 motionSpeedScale 注入，HARD=1.0 / NORMAL,NOVICE,INFINITE=0.65 / EXPERT=1.3） */
-  swingSpeedScale: number = 1;
+  /**
+   * 甩动速度倍率（由难度配置 motionSpeedScale 注入，HARD=1.0 / NORMAL,NOVICE,INFINITE=0.65 / EXPERT=1.3）
+   * 默认 0.65 = NORMAL/NOVICE 基准，让非 GameScene 实例化（如未来工具/测试）时落在宽松速度
+   */
+  swingSpeedScale: number = 0.65;
 
   /** 收回完成回调 */
   private onComplete: HookCallback | null = null;
@@ -117,7 +120,10 @@ export class Hook {
   fire(): void {
     if (this.state !== HookState.SWINGING) return;
     // 捕获当前甩动方向，待本轮抓取结束后从同方向继续
-    this.pendingSwingDir = this.currentSwingDir;
+    // 首帧 currentSwingDir 可能仍为 0（角度无变化），此时 fallback 到当前 swingDirection
+    this.pendingSwingDir = this.currentSwingDir !== 0
+      ? this.currentSwingDir
+      : (this.swingDirection > 0 ? 1 : -1);
     this.state = HookState.EXTENDING;
   }
 
@@ -158,7 +164,13 @@ export class Hook {
         && this.grabbedMineral.config.weight >= weightThreshold;
   }
 
-  /** 重置钩爪到摆动状态 */
+  /**
+   * 重置钩爪到摆动状态
+   *
+   * 方向记忆设计：reset 后 angle 从 0（竖直中位）开始，但 swingDirection 沿用 fire 时记录的方向，
+   * 让钩爪从中位向"上一次抓取前的同向"继续摆。这是有意设计——不延续抓取瞬间的具体角度，
+   * 只延续"向左/向右"的运动趋势，避免抓后角度突跳但保留方向连贯感。
+   */
   reset(): void {
     this.state = HookState.SWINGING;
     this.ropeLength = 30;

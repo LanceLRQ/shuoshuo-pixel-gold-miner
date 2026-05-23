@@ -110,6 +110,13 @@ for (const m of difficultySrc.matchAll(diffRE)) {
 console.log(`📊 解析到 ${LEVELS.length} 关 / ${DIFFICULTIES.length} 档难度`);
 console.log(`⚙️  GAME_CONFIG: swing=${CFG.HOOK_SWING_SPEED}, maxAngle=${(CFG.HOOK_MAX_ANGLE * 180 / Math.PI).toFixed(0)}°, reel=${CFG.HOOK_BASE_REEL_SPEED}, weight=${CFG.WEIGHT_FACTOR}\n`);
 
+// 防御：新增难度若未在 ERROR_TOPK / ERROR_TOLERANCE / EXPECTED_WIN_RATE 注册，会导致仿真用 fallback 值
+for (const diff of DIFFICULTIES) {
+  if (ERROR_TOPK[diff.id] === undefined) console.warn(`⚠️ 难度 ${diff.id} 未注册 ERROR_TOPK，将使用 fallback=3`);
+  if (ERROR_TOLERANCE[diff.id] === undefined) console.warn(`⚠️ 难度 ${diff.id} 未注册 ERROR_TOLERANCE`);
+  if (EXPECTED_WIN_RATE[diff.id] === undefined) console.warn(`⚠️ 难度 ${diff.id} 未注册 EXPECTED_WIN_RATE`);
+}
+
 // ==================== 2. 矿物属性 ====================
 
 const MINERAL_DATA = {

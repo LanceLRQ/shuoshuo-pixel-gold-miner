@@ -151,8 +151,8 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     weightFactorScale: 0,
     motionSpeedScale: 0.65,
     mineralBudgetRatio: 3.0,
-    goldRefillWeights: [0.20, 0.35, 0.45],  // 同 NOVICE 大件为主，娱乐模式
     largeWeightScale: 1.0,
+    goldRefillWeights: [0.20, 0.35, 0.45],  // 同 NOVICE 大件为主，娱乐模式
     mineralBudgetCap: 2.0,  // 几乎无限制
     shopEnabled: false,
     infiniteItems: true,
