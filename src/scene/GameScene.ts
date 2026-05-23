@@ -280,9 +280,10 @@ export class GameScene extends SceneBase {
     this.hud = new HUD(this.spriteCache, this.targetMoney, this.levelConfig.timeLimit, this.spriteMetaProvider);
     this.hud.money = this.levelStartMoney;
 
-    // 难度联动：缓存配置 + 注入重量影响系数倍率 + HUD 标签
+    // 难度联动：缓存配置 + 注入重量影响系数倍率 + 甩动速度倍率 + HUD 标签
     this.difficulty = game.getDifficultyConfig();
     this.hook.weightFactorScale = this.difficulty.weightFactorScale;
+    this.hook.swingSpeedScale = this.difficulty.motionSpeedScale;
 
     // 章节背景色板：构造时一次性合成（同关章节固定，避免每帧 spread 临时对象）
     this.chapterColors = getChapterBackgroundColors(
@@ -1283,9 +1284,10 @@ export class GameScene extends SceneBase {
       const y = randomInt(GAME_CONFIG.MINERAL_AREA_TOP, GAME_CONFIG.MINERAL_AREA_BOTTOM);
       const mineral = new Mineral(x, y, type, this.spriteCache, this.spriteMetaProvider);
 
-      // 移动矿物设置速度和边界
+      // 移动矿物设置速度和边界（速度按难度 motionSpeedScale 同步缩放：NORMAL/NOVICE/INFINITE=0.65x，HARD=1.0x，EXPERT=1.3x）
       if (type === MineralType.MOUSE || type === MineralType.MOLE) {
-        const speed = type === MineralType.MOUSE ? 120 : 60;
+        const baseSpeed = type === MineralType.MOUSE ? 120 : 60;
+        const speed = baseSpeed * this.difficulty.motionSpeedScale;
         mineral.vx = Math.random() > 0.5 ? speed : -speed;
         mineral.moveLeft = GAME_CONFIG.MINERAL_AREA_LEFT;
         mineral.moveRight = GAME_CONFIG.MINERAL_AREA_RIGHT;

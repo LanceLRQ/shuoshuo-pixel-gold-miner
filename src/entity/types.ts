@@ -217,7 +217,8 @@ export const GAME_CONFIG = {
   CANVAS_HEIGHT: 540,
 
   // 钩爪参数
-  HOOK_SWING_SPEED: 2,
+  // 基础甩动角速度（rad/s 系数）。1.5 作为 HARD=1.0x 体感基准，难度通过 motionSpeedScale 再缩放
+  HOOK_SWING_SPEED: 1.5,
   HOOK_MAX_ANGLE: Math.PI * 4 / 9,
   HOOK_EXTEND_SPEED: 400,
   HOOK_BASE_REEL_SPEED: 250,

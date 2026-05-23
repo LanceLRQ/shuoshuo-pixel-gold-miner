@@ -31,6 +31,11 @@ export interface DifficultyConfig {
   timeScale: number;
   /** 重量影响系数倍率（与 GAME_CONFIG.WEIGHT_FACTOR 相乘，控制重物收回慢的程度） */
   weightFactorScale: number;
+  /**
+   * 运动速度倍率：同时驱动钩爪甩动速度（Hook.swingSpeedScale）和移动型矿物（猪子/水晶蟹）的水平速度。
+   * HARD=1.0 为基准；NORMAL/NOVICE/INFINITE=0.65（更慢更宽松）；EXPERT=1.3（节奏更紧）。
+   */
+  motionSpeedScale: number;
   /** 金块（GOLD_SMALL/MEDIUM/LARGE，不含钻石）总金额相对 target 的最低保障倍率 */
   mineralBudgetRatio: number;
   /** 大件矿物权重倍率（GOLD_MEDIUM/LARGE/DIAMOND），值越小高难度越多小件 */
@@ -59,6 +64,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     valueScale: 1.5,
     timeScale: 1.0,
     weightFactorScale: 0,
+    motionSpeedScale: 0.65,
     mineralBudgetRatio: 2.0,
     largeWeightScale: 1.0,
     mineralBudgetCap: 1.40,  // 上限较宽（允许场上富裕）
@@ -75,6 +81,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     valueScale: 0.85,
     timeScale: 1.0,
     weightFactorScale: 1.0,
+    motionSpeedScale: 0.65,
     mineralBudgetRatio: 1.5,
     largeWeightScale: 0.35,
     mineralBudgetCap: 1.20,
@@ -91,6 +98,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     valueScale: 0.45,
     timeScale: 1.0,
     weightFactorScale: 1.5,
+    motionSpeedScale: 1.0,
     mineralBudgetRatio: 1.25,
     largeWeightScale: 0.10,
     mineralBudgetCap: 1.10,
@@ -105,8 +113,9 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     name: STRINGS.difficulty.list.expert.name,
     description: STRINGS.difficulty.list.expert.description,
     valueScale: 0.15,
-    timeScale: 0.5,
+    timeScale: 1.0,
     weightFactorScale: 2.0,
+    motionSpeedScale: 1.3,
     mineralBudgetRatio: 1.25,
     largeWeightScale: 0.0,
     mineralBudgetCap: 1.05,
@@ -123,6 +132,7 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     valueScale: 1.0,
     timeScale: 1.0,
     weightFactorScale: 0,
+    motionSpeedScale: 0.65,
     mineralBudgetRatio: 3.0,
     largeWeightScale: 1.0,
     mineralBudgetCap: 2.0,  // 几乎无限制

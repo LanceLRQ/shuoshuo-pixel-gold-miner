@@ -20,9 +20,6 @@ export const SHAKE_ANGLE_RATE = 0.8;
 /** 钩爪角度上限安全系数（避免完全水平摆动） */
 const HOOK_ANGLE_SAFE_RATIO = 0.95;
 
-/** 绳索下垂偏移系数：sag(px) = weight × SAG_FACTOR */
-const ROPE_SAG_FACTOR = 10;
-
 /** 钩爪状态 */
 export enum HookState {
   /** 摆动中，等待玩家操作 */
@@ -71,6 +68,9 @@ export class Hook {
   /** 重量影响系数倍率（由难度配置注入，新手/无限=0 表示无重量影响） */
   weightFactorScale: number = 1;
 
+  /** 甩动速度倍率（由难度配置 motionSpeedScale 注入，HARD=1.0 / NORMAL,NOVICE,INFINITE=0.65 / EXPERT=1.3） */
+  swingSpeedScale: number = 1;
+
   /** 收回完成回调 */
   private onComplete: HookCallback | null = null;
 
@@ -82,8 +82,17 @@ export class Hook {
   /** sprite 动画元数据查询函数（无则视为全部静态） */
   private metaProvider?: SpriteMetaProvider;
 
-  /** 爪子摆动初始方向（随机） */
-  private readonly swingDirection: number;
+  /** 爪子摆动初始方向（首次随机；reset 时可被 pendingSwingDir 覆写以延续抓取前方向） */
+  private swingDirection: number;
+
+  /**
+   * 实时观察的甩动方向（+1=角度增大/向右；-1=角度减小/向左；0=未知）
+   * 在 updateSwinging 中根据帧间 angle 变化更新，供 fire() 捕获
+   */
+  private currentSwingDir: -1 | 0 | 1 = 0;
+
+  /** fire() 时捕获的方向，reset() 时用于决定下一轮甩动起始方向 */
+  private pendingSwingDir: -1 | 0 | 1 = 0;
 
   constructor(anchorX: number, anchorY: number, spriteCache: SpriteCacheMap, metaProvider?: SpriteMetaProvider) {
     this.anchorX = anchorX;
@@ -107,6 +116,8 @@ export class Hook {
   /** 玩家操作：发射钩爪 */
   fire(): void {
     if (this.state !== HookState.SWINGING) return;
+    // 捕获当前甩动方向，待本轮抓取结束后从同方向继续
+    this.pendingSwingDir = this.currentSwingDir;
     this.state = HookState.EXTENDING;
   }
 
@@ -153,6 +164,13 @@ export class Hook {
     this.ropeLength = 30;
     this.grabbedMineral = null;
     this.swingTime = 0;
+    // 沿用 fire 时记录的方向继续甩；未记录时保持上一次 swingDirection
+    if (this.pendingSwingDir !== 0) {
+      this.swingDirection = this.pendingSwingDir;
+      this.pendingSwingDir = 0;
+    }
+    // currentSwingDir 由下一帧 updateSwinging 重新观察
+    this.currentSwingDir = 0;
   }
 
   /** 更新钩爪逻辑 */
@@ -179,10 +197,15 @@ export class Hook {
 
   /** 摆动状态：正弦函数控制角度 */
   private updateSwinging(dt: number): void {
+    const prevAngle = this.angle;
     this.swingTime += dt;
-    // 摆动公式: sin(t * swingSpeed) * maxAngle
-    this.angle = Math.sin(this.swingTime * GAME_CONFIG.HOOK_SWING_SPEED * this.swingDirection) * GAME_CONFIG.HOOK_MAX_ANGLE;
+    // 摆动公式: sin(t * baseSpeed * swingSpeedScale * swingDirection) * maxAngle
+    const omega = GAME_CONFIG.HOOK_SWING_SPEED * this.swingSpeedScale * this.swingDirection;
+    this.angle = Math.sin(this.swingTime * omega) * GAME_CONFIG.HOOK_MAX_ANGLE;
     this.ropeLength = 30;
+    // 实时记录当前甩动方向（角度增大=向右；减小=向左），供 fire() 时捕获
+    if (this.angle > prevAngle) this.currentSwingDir = 1;
+    else if (this.angle < prevAngle) this.currentSwingDir = -1;
   }
 
   /** 发射状态：沿当前角度匀速延伸，超出边界或最大距离时空收回 */
@@ -270,19 +293,12 @@ export class Hook {
   render(renderer: Renderer): void {
     const ctx = renderer.getContext();
 
-    // 绘制绳索：抓重物时用二次贝塞尔曲线模拟下垂感（#17）
+    // 绘制绳索：直线连接锚点到钩爪尖端
     ctx.strokeStyle = '#DEB887';
     ctx.lineWidth = GAME_CONFIG.HOOK_ROPE_WIDTH;
     ctx.beginPath();
     ctx.moveTo(this.anchorX, this.anchorY);
-    if (this.grabbedMineral && this.state === HookState.REELING_WITH_MINERAL) {
-      const sag = this.grabbedMineral.config.weight * ROPE_SAG_FACTOR;
-      const midX = (this.anchorX + this.tipX) / 2;
-      const midY = (this.anchorY + this.tipY) / 2 + sag;
-      ctx.quadraticCurveTo(midX, midY, this.tipX, this.tipY);
-    } else {
-      ctx.lineTo(this.tipX, this.tipY);
-    }
+    ctx.lineTo(this.tipX, this.tipY);
     ctx.stroke();
 
     // 绘制钩爪精灵
