@@ -11,8 +11,11 @@ import type { Mineral } from './Mineral';
 import { GAME_CONFIG, MineralType } from './types';
 import { pointInCircle, pointInEllipse } from '../utils/collision';
 
-/** 摇晃饮料单次微调步长（弧度，约 2.86°） */
-const SHAKE_ANGLE_STEP = 0.05;
+/**
+ * 摇晃饮料钩爪微调角速度（弧度/秒，约 45.8°/秒）
+ * 调用方需乘以 dt 得到本帧步长，确保刷新率独立
+ */
+export const SHAKE_ANGLE_RATE = 0.8;
 
 /** 钩爪角度上限安全系数（避免完全水平摆动） */
 const HOOK_ANGLE_SAFE_RATIO = 0.95;
@@ -111,9 +114,9 @@ export class Hook {
    * 玩家操作：钩爪伸出过程中微调角度（摇晃饮料道具效果）
    * 仅在 EXTENDING 状态有效
    * @param direction -1=向左 / +1=向右
-   * @param step 单次调整步长（弧度）
+   * @param step 本帧调整量（弧度）。调用方通常传 SHAKE_ANGLE_RATE * dt
    */
-  tryAdjustAngle(direction: -1 | 1, step: number = SHAKE_ANGLE_STEP): boolean {
+  tryAdjustAngle(direction: -1 | 1, step: number): boolean {
     if (this.state !== HookState.EXTENDING) return false;
     const newAngle = this.angle + direction * step;
     const maxAngle = GAME_CONFIG.HOOK_MAX_ANGLE * HOOK_ANGLE_SAFE_RATIO;

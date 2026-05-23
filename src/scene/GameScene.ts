@@ -10,7 +10,7 @@ import { GameState } from '../core/Game';
 import type { Game } from '../core/Game';
 import { GAME_CONFIG, MineralType } from '../entity/types';
 import { Miner, MinerState, type SpriteMetaProvider } from '../entity/Miner';
-import { Hook, HookState } from '../entity/Hook';
+import { Hook, HookState, SHAKE_ANGLE_RATE } from '../entity/Hook';
 import { Mineral, MysteryContent } from '../entity/Mineral';
 import { HUD, HUD_HEIGHT } from '../ui/HUD';
 import { SoundType } from '../core/Audio';
@@ -63,7 +63,7 @@ const TUTORIAL_BTN_RIGHT_OFFSET = 60; // 距右边距：暂停 + 间距 + 自身
 const EXTRA_TIME_BONUS = 10;
 
 /** TNT 引爆键位（F 或 ↑，任一触发） */
-const KEY_DETONATE_CODES = ['KeyF', 'ArrowUp'] as const;
+const KEY_DETONATE_CODES = ['KeyF', 'ArrowUp', 'KeyW'] as const;
 
 /** 暂停菜单按钮动作类型 */
 type PauseAction = 'resume' | 'saveAs' | 'menu';
@@ -392,6 +392,9 @@ export class GameScene extends SceneBase {
     // 更新钩爪
     this.hook.update(dt);
 
+    // 摇晃饮料：按住 ←/→ 或 A/D 微调钩爪角度（仅持有道具且难度允许）
+    this.tryShakeAdjust(this.game.getInput(), dt);
+
     // 更新爆炸效果计时器
     if (this.explosionTimer > 0) {
       this.explosionTimer -= dt;
@@ -458,8 +461,7 @@ export class GameScene extends SceneBase {
       this.tryDetonate();
     }
 
-    // 摇晃饮料：钩爪伸出过程中按 ←/→ 微调角度（仅持有道具且难度允许）
-    this.tryShakeAdjust(input);
+    // 摇晃饮料微调挪到 update(dt) 内执行（需要 dt 做时间步进、刷新率独立）
 
     // 点击事件
     if (input.wasTapped()) {
@@ -514,17 +516,21 @@ export class GameScene extends SceneBase {
     this.game.getAudio().play(SoundType.HOOK_FIRE);
   }
 
-  /** 摇晃饮料：钩爪伸出中持续按住 ←/→ 微调角度（难度门控 + 道具门控） */
-  private tryShakeAdjust(input: Input): void {
+  /**
+   * 摇晃饮料：钩爪伸出中按 ←/→ 或 A/D 微调角度（难度门控 + 道具门控）
+   * 时间步进：本帧步长 = SHAKE_ANGLE_RATE × dt，保证不同刷新率下手感一致
+   */
+  private tryShakeAdjust(input: Input, dt: number): void {
     // 硬核难度强制失效（设计意图：纯硬核体验），用缓存避免每帧 getDifficultyConfig
     if (this.difficulty.isHardcore) return;
     if (!this.game.getOwnedItems().has(ItemType.SHAKE_DRINK)) return;
 
-    if (input.isPressed('ArrowLeft')) {
-      this.hook.tryAdjustAngle(-1);
+    const step = SHAKE_ANGLE_RATE * dt;
+    if (input.isPressed('ArrowLeft') || input.isPressed('KeyA')) {
+      this.hook.tryAdjustAngle(-1, step);
     }
-    if (input.isPressed('ArrowRight')) {
-      this.hook.tryAdjustAngle(1);
+    if (input.isPressed('ArrowRight') || input.isPressed('KeyD')) {
+      this.hook.tryAdjustAngle(1, step);
     }
   }
 

@@ -96,8 +96,8 @@ export const STRINGS = {
     tutorial: {
       title: '操作说明',
       shoot: '空格 / 点击画面 - 发射钩爪',
-      fineAdjust: '钩爪伸出中←/→微调',
-      bomb: 'F / ↑ 键 - 引爆 TNT（需购买炸药）',
+      fineAdjust: '钩爪伸出中 ←/→ 或 A/D 微调',
+      bomb: 'F / ↑ / W 键 - 引爆 TNT（需购买炸药）',
       pause: 'ESC / 右上角按钮 - 暂停',
       goal: '抓取矿物达到目标金额即可过关',
       clickToStart: '点击任意位置开始',
@@ -165,7 +165,7 @@ export const STRINGS = {
     /** 操作说明列表 */
     controls: [
       { key: '空格 / 点击画面', desc: '发射钩爪' },
-      { key: 'F / ↑ 键',         desc: '引爆 TNT（需购买炸药）' },
+      { key: 'F / ↑ / W 键',     desc: '引爆 TNT（需购买炸药）' },
       { key: 'ESC / 右上角按钮', desc: '暂停游戏' },
     ],
     /** 矿物名 + 备注（按图鉴顺序） */
@@ -204,7 +204,7 @@ export const STRINGS = {
       stoneBook: { name: '石头书', desc: '石头价值 x3' },
       ratPoison: { name: '老鼠药', desc: '老鼠价值 x5' },
       lucky: { name: '幸运草', desc: '神秘袋最低 200$' },
-      shakySoda: { name: '摇晃饮料', desc: '钩爪伸出中←/→微调' },
+      shakySoda: { name: '摇晃饮料', desc: '钩爪伸出中 ←/→ 或 A/D 微调' },
     },
   },
 
