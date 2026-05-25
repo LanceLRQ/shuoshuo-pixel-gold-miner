@@ -76,7 +76,8 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     mineralBudgetRatio: 1.7,
     largeWeightScale: 1.0,
     goldRefillWeights: [0.20, 0.35, 0.45],  // 大件为主，玩家上手轻松
-    mineralBudgetCap: 1.40,  // 上限较宽（允许场上富裕）
+    // 2026-05-25：1.40 让 NOVICE L1 大件占比仅 2%（自然生成的大件被砍光），放宽到 2.5 保留大件诱惑
+    mineralBudgetCap: 2.5,
     shopEnabled: true,
     infiniteItems: false,
     isHardcore: false,
@@ -96,7 +97,8 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     mineralBudgetRatio: 1.0,
     largeWeightScale: 0.35,
     goldRefillWeights: [0.40, 0.40, 0.20],  // 均衡梯度
-    mineralBudgetCap: 1.20,
+    // 2026-05-25：1.20 让 NORMAL L1 大件占比仅 3%，放宽到 1.6 让前几关保留大件视觉
+    mineralBudgetCap: 1.6,
     shopEnabled: true,
     infiniteItems: false,
     isHardcore: false,
