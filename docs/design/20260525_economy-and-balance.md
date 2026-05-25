@@ -18,7 +18,7 @@
 | `valueScale`（入账倍率） | **×1.5** | **×0.75** | **×0.50** | **×0.40** | ×1.0 |
 | `timeScale` | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 |
 | `weightFactorScale`（重物拖拽系数） | **0**（无重量） | 1.0 | 1.5 | 1.5 | 0 |
-| `motionSpeedScale`（钩爪+动物速度） | 0.65 | 0.65 | **1.0** | **1.3** | 0.65 |
+| `motionSpeedScale`（钩爪+动物速度） | 0.85 | 0.85 | **1.0** | **1.3** | 0.85 |
 | `mineralBudgetRatio`（金块保底倍率） | 1.7 | 1.0 | 1.25 | 1.25 | 3.0 |
 | `largeWeightScale`（基础生成大件压制） | 1.0 | 0.35 | 0.25 | 0.05 | 1.0 |
 | `goldRefillWeights`（保底追加 [S/M/L]） | [.20,.35,.45] | [.40,.40,.20] | [.55,.35,.10] | [.55,.35,.10] | [.20,.35,.45] |
@@ -365,6 +365,7 @@ const LARGE_MINERAL_Y_MIN_FACTOR = 0.4;  // 大件 y 起点 = MA_TOP + 0.4 × �
 | 2026-05-23 | 解耦 `goldRefillWeights` + 4 档达标期望通关率 | commit `1190c54` |
 | 2026-05-24 | code-review 反馈修复 | commits `c3b963b` / `3659300` |
 | 2026-05-25 | 高难度前 3 关 ratio 收紧 + 大件下层偏置 + NOVICE/NORMAL cap 放宽 | commits `7f72c12` / `443fb7a` |
+| 2026-05-25 | 钩爪甩速：NOVICE/NORMAL/INFINITE `motionSpeedScale` 0.65 → 0.85（体感更顺手） | — |
 
 ---
 

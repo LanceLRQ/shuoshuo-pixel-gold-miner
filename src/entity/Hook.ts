@@ -69,10 +69,10 @@ export class Hook {
   weightFactorScale: number = 1;
 
   /**
-   * 甩动速度倍率（由难度配置 motionSpeedScale 注入，HARD=1.0 / NORMAL,NOVICE,INFINITE=0.65 / EXPERT=1.3）
-   * 默认 0.65 = NORMAL/NOVICE 基准，让非 GameScene 实例化（如未来工具/测试）时落在宽松速度
+   * 甩动速度倍率（由难度配置 motionSpeedScale 注入，HARD=1.0 / NORMAL,NOVICE,INFINITE=0.85 / EXPERT=1.3）
+   * 默认 0.85 = NORMAL/NOVICE 基准，让非 GameScene 实例化（如未来工具/测试）时落在宽松速度
    */
-  swingSpeedScale: number = 0.65;
+  swingSpeedScale: number = 0.85;
 
   /** 收回完成回调 */
   private onComplete: HookCallback | null = null;

@@ -71,7 +71,8 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     valueScale: 1.5,
     timeScale: 1.0,
     weightFactorScale: 0,
-    motionSpeedScale: 0.65,
+    // 2026-05-25：0.65 体感偏慢，提到 0.85（HARD=1.0 仍为基准，差异化保留）
+    motionSpeedScale: 0.85,
     // 2026-05-24 二次调优：原 ratio 2.0 让 NOVICE 用时仅 18%，资源过剩；降至 1.7 让玩家更主动找大件
     mineralBudgetRatio: 1.7,
     largeWeightScale: 1.0,
@@ -93,7 +94,8 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     valueScale: 0.75,
     timeScale: 1.0,
     weightFactorScale: 1.0,
-    motionSpeedScale: 0.65,
+    // 2026-05-25：0.65 体感偏慢，提到 0.85（HARD=1.0 仍为基准）
+    motionSpeedScale: 0.85,
     mineralBudgetRatio: 1.0,
     largeWeightScale: 0.35,
     goldRefillWeights: [0.40, 0.40, 0.20],  // 均衡梯度
@@ -151,7 +153,8 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     valueScale: 1.0,
     timeScale: 1.0,
     weightFactorScale: 0,
-    motionSpeedScale: 0.65,
+    // 2026-05-25：与 NOVICE/NORMAL 同步，0.65 → 0.85
+    motionSpeedScale: 0.85,
     mineralBudgetRatio: 3.0,
     largeWeightScale: 1.0,
     goldRefillWeights: [0.20, 0.35, 0.45],  // 同 NOVICE 大件为主，娱乐模式
