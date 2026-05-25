@@ -165,6 +165,31 @@ const GOLD_BUDGET_MAX_APPEND = 30;
  */
 const GOLD_TYPES: readonly MineralType[] = VALUE_UPGRADE_CHAIN.slice(-3);
 
+/**
+ * 高难度（isHardcore=true，即 HARD/EXPERT）前 N 关 budget 收紧：
+ * mineralBudgetRatio 强制下调为 1.0，避免起步关因预算富裕而"随便过"。
+ * 让高手玩家从 L1 就要主动抓 ~80% 矿物，呼应难度定位。
+ */
+const EARLY_HARDCORE_RATIO_OVERRIDE = 1.0;
+const EARLY_HARDCORE_LEVEL_THRESHOLD = 3;
+
+/**
+ * 大件矿物类型（生成时偏置在矿区下半部，避免钩爪一甩就秒抓）
+ * GOLD_LARGE / DIAMOND / MYSTERY_BAG 都是"看到就想抓"的高价目标，
+ * 限制 y ≥ MA_TOP + factor × 矿区高度，强迫玩家承担更长的下钩等待
+ */
+const LARGE_MINERAL_TYPES: readonly MineralType[] = [
+  MineralType.GOLD_LARGE,
+  MineralType.DIAMOND,
+  MineralType.MYSTERY_BAG,
+];
+/**
+ * 大件最小 y 在矿区高度中的占比（0.4 = 矿区下 60% 区域起点）
+ * 经 v3 仿真验证：0.5 让 EXPERT（motionSpeedScale=1.3 钩爪快）瞄准窗口过窄超线 -8%，
+ * 放宽到 0.4 保留 HARD 抬难效果 + 给 EXPERT 多 10% 瞄准空间
+ */
+const LARGE_MINERAL_Y_MIN_FACTOR = 0.4;
+
 /** 章节末关插入章节专属收藏品的概率（详见 docs/design/20260519_chapter-system.md §四） */
 const CHAPTER_COLLECTIBLE_CHANCE = 0.3;
 
@@ -1155,8 +1180,14 @@ export class GameScene extends SceneBase {
     // 2) 计算金块保底预算
     //    累计模式：预算按"本关增量"算（不是累计目标），否则预算会无意义地放大
     //    除以 valueScale 是因为玩家最终看到的金额会再乘 valueScale
+    //    高难度（HARD/EXPERT）前 3 关收紧 ratio 至 1.0，避免起步关因预算富裕而过松
     const levelEarning = getLevelEarning(this.levelConfig.level);
-    const goldBudget = (levelEarning * this.difficulty.mineralBudgetRatio) / this.difficulty.valueScale;
+    const isEarlyHardcore = this.difficulty.isHardcore
+      && this.levelConfig.level <= EARLY_HARDCORE_LEVEL_THRESHOLD;
+    const effectiveRatio = isEarlyHardcore
+      ? EARLY_HARDCORE_RATIO_OVERRIDE
+      : this.difficulty.mineralBudgetRatio;
+    const goldBudget = (levelEarning * effectiveRatio) / this.difficulty.valueScale;
 
     // 3) 金块保底：场上金块总额不足时按 largeWeightScale 加权追加 GOLD_SMALL/MEDIUM/LARGE
     this.ensureGoldBudget(goldBudget);
@@ -1267,11 +1298,21 @@ export class GameScene extends SceneBase {
     }
   }
 
-  /** 尝试在不重叠的位置放置矿物 */
+  /**
+   * 尝试在不重叠的位置放置矿物
+   * 大件（GOLD_LARGE/DIAMOND/MYSTERY_BAG）限制在矿区下半部，避免钩爪一甩就秒抓
+   * 注：仅缩窄 y 上限，水平范围不变；若下层放不下（场上拥挤）会按常规返回 null，
+   *    由调用方（generateMinerals 基础生成 / ensureGoldBudget 保底循环）兜底
+   */
   private tryPlaceMineral(type: MineralType, maxAttempts: number = 20): Mineral | null {
+    const isLarge = LARGE_MINERAL_TYPES.includes(type);
+    const yTop = isLarge
+      ? GAME_CONFIG.MINERAL_AREA_TOP
+        + Math.round((GAME_CONFIG.MINERAL_AREA_BOTTOM - GAME_CONFIG.MINERAL_AREA_TOP) * LARGE_MINERAL_Y_MIN_FACTOR)
+      : GAME_CONFIG.MINERAL_AREA_TOP;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const x = randomInt(GAME_CONFIG.MINERAL_AREA_LEFT, GAME_CONFIG.MINERAL_AREA_RIGHT);
-      const y = randomInt(GAME_CONFIG.MINERAL_AREA_TOP, GAME_CONFIG.MINERAL_AREA_BOTTOM);
+      const y = randomInt(yTop, GAME_CONFIG.MINERAL_AREA_BOTTOM);
       const mineral = new Mineral(x, y, type, this.spriteCache, this.spriteMetaProvider);
 
       // 移动矿物设置速度和边界（速度按难度 motionSpeedScale 同步缩放：NORMAL/NOVICE/INFINITE=0.65x，HARD=1.0x，EXPERT=1.3x）

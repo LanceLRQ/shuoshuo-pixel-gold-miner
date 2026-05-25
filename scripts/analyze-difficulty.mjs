@@ -134,6 +134,14 @@ const MINERAL_DATA = {
 const TYPE_ORDER = ['GOLD_SMALL', 'GOLD_MEDIUM', 'GOLD_LARGE', 'DIAMOND', 'STONE', 'BOMB', 'MYSTERY_BAG', 'BONE', 'MOUSE', 'MOLE'];
 const UPGRADE_CHAIN = ['BONE', 'STONE', 'MOUSE', 'MOLE', 'GOLD_SMALL', 'GOLD_MEDIUM', 'GOLD_LARGE'];
 
+// 与 GameScene.ts 对齐：大件下层偏置 + 高难度前 3 关 ratio 覆盖
+const LARGE_TYPES = new Set(['GOLD_LARGE', 'DIAMOND', 'MYSTERY_BAG']);
+const LARGE_Y_MIN_FACTOR = 0.4;
+const EARLY_HARDCORE_RATIO = 1.0;
+const EARLY_HARDCORE_LV_THRESHOLD = 3;
+// difficulty.ts 中 isHardcore=true 的难度（脚本未解析该字段，硬编码对齐）
+const HARDCORE_IDS = new Set(['HARD', 'EXPERT']);
+
 // ==================== 3. 工具 ====================
 
 function makeRNG(seed) {
@@ -171,9 +179,13 @@ function generateMinerals(level, diff, seed) {
   function place(type) {
     const data = MINERAL_DATA[type];
     if (!data) return false;
+    // 大件下层偏置：y 起点从矿区下半部开始
+    const yTop = LARGE_TYPES.has(type)
+      ? CFG.MA_TOP + (CFG.MA_BOTTOM - CFG.MA_TOP) * LARGE_Y_MIN_FACTOR
+      : CFG.MA_TOP;
     for (let attempt = 0; attempt < 20; attempt++) {
       const x = CFG.MA_LEFT + rng() * (CFG.MA_RIGHT - CFG.MA_LEFT);
-      const y = CFG.MA_TOP + rng() * (CFG.MA_BOTTOM - CFG.MA_TOP);
+      const y = yTop + rng() * (CFG.MA_BOTTOM - yTop);
       if (!isOverlap(x, y, data.radius)) {
         minerals.push({ type, x, y, value: data.value, weight: data.weight, r: data.radius, isMistake: data.isMistake });
         return true;
@@ -189,9 +201,11 @@ function generateMinerals(level, diff, seed) {
   adjustedWeights[3] = Math.max(0, Math.round(adjustedWeights[3] * lws));
   for (let i = 0; i < level.mineralCount; i++) place(TYPE_ORDER[weightedPick(adjustedWeights, rng)]);
 
-  // 2) 金块保底
+  // 2) 金块保底（高难度前 3 关 ratio 收紧至 1.0，对齐 GameScene.EARLY_HARDCORE_RATIO_OVERRIDE）
   const earning = level.level === 1 ? level.targetMoney : level.targetMoney - LEVELS[level.level - 2].targetMoney;
-  const goldBudget = (earning * diff.ratio) / diff.valueScale;
+  const isEarlyHardcore = HARDCORE_IDS.has(diff.id) && level.level <= EARLY_HARDCORE_LV_THRESHOLD;
+  const effectiveRatio = isEarlyHardcore ? EARLY_HARDCORE_RATIO : diff.ratio;
+  const goldBudget = (earning * effectiveRatio) / diff.valueScale;
   const goldTotal = () => minerals.filter(m => ['GOLD_SMALL', 'GOLD_MEDIUM', 'GOLD_LARGE'].includes(m.type)).reduce((s, m) => s + m.value, 0);
   let append = 0;
   while (goldTotal() < goldBudget && append < 30) { if (!place(pickGoldVariant(diff.goldRefillWeights, rng))) break; append++; }
