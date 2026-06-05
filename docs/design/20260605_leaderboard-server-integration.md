@@ -386,7 +386,7 @@ src/core/AuthService.ts        登录态：GET /api/login 一次性拉取 + 缓�
 src/core/LeaderboardClient.ts  协议层单例：openSession / submit / fetchBoard / withdraw / replayPending
 src/utils/hmac.ts              buildCanonical + hmacSha256Hex（Web Crypto，§4.3）
 src/ui/RankPanel.ts            结算三选一面板（GameOverScene / VictoryEndScene 复用的像素 UI 组件）
-src/scene/LeaderboardScene.ts  在线榜查看场景（主菜单入口，三榜切换 + around 高亮）
+src/ui/LeaderboardModal.ts     在线榜 DOM overlay 模态（仿 CodexModal；主菜单入口，三榜 tab + around 高亮，不新建场景）
 ```
 
 #### LeaderboardClient 接口草案
@@ -441,7 +441,7 @@ type SettleResult =
 | `src/scene/ResultScene.ts` | `handleSecondary`（:240）改造：`clearProgress()+MENU` → 走 `changeScene(GAME_OVER)`（事件自动判定为 RUN_ABANDONED）。GAME_OVER 场景的「返回菜单」继续承担清进度职责 |
 | `src/scene/GameOverScene.ts` | 嵌入 `RankPanel`：有 SettlePayload 时展示三选一 → 提交 → 结果（名次/降级提示） |
 | `src/scene/VictoryEndScene.ts` | 同上（GAME_CLEARED 路径） |
-| `src/scene/MenuScene.ts` | 新增「排行榜」按钮 → `LeaderboardScene` |
+| `src/scene/MenuScene.ts` | 新增「排行榜」按钮 → 打开 `LeaderboardModal`（DOM overlay，不切场景） |
 | `src/level/difficulty.ts` | `DifficultyConfig` 增加 `boardKey?: string`（或独立映射表）；`leaderboardWeight` 保留（本地总榜折算仍用） |
 | `vite.config.ts` / `.env` | `VITE_LEADERBOARD_API_BASE`（默认 `/api`）；dev proxy；`__APP_VERSION__` define 注入 package.json version |
 | `src/main.ts` | 启动时 `AuthService.refresh()` + `LeaderboardClient.replayPending()`（异步、不阻塞首屏） |
@@ -546,10 +546,115 @@ localStorage key: goldminer_h5_pending_submissions
 |---|---|
 | 生产部署 | 构建产物部署到主站 `https://shuoshuo.sikong.ren/game/gold-miner/`（seed entry_url 已指向此处）；同源 → Cookie/API 零配置 |
 | `VITE_LEADERBOARD_API_BASE` | 生产 `/api`；不配置时代码默认 `/api` |
-| 本地 dev | `vite.config.ts` 增加 proxy：`'/api' → 'https://shuoshuo.sikong.ren'`（或本地 crystal 后端 `http://localhost:<port>`），`changeOrigin: true` |
-| dev 登录态 | Cookie 跨域不可用；用 `VITE_DEV_AUTH_TOKEN`（主站 JWT）让 LeaderboardClient/AuthService 在 dev 模式附加 `Authorization: Bearer` 头（服务端 internal 鉴权优先读该头）。仅 dev 生效，禁止打进生产构建 |
+| 本地 dev | 本地 nginx 已将 dev 服务器（固定端口 15715）挂到 `https://shuoshuo.sikong.ren/game/gold-miner/`（`dev_lance.conf`），与主站 API **天然同源**——无需 vite proxy |
+| dev 登录态 | 同源部署后浏览器直接携带主站 Cookie `shuoshuo-auth-token`，**无需额外配置**；`VITE_DEV_AUTH_TOKEN`（Bearer 注入）仅保留为非同源环境的后备方案，禁止打进生产构建 |
 | client_version | vite `define: { __APP_VERSION__: JSON.stringify(pkg.version) }` |
 | 设备标识 | `localStorage goldminer_h5_device_id`（UUID，首次生成），拉榜时附 `X-Device-Id` |
+
+### 9.1 控制台手工提交成绩（curl 联调脚本）
+
+> 用途：不进游戏，直接在终端走完 `sessions → HMAC 签名 → submissions → 拉榜` 全链路，
+> 验证协议实现 / 灌模拟数据。匿名通道无需任何登录态。
+
+```bash
+#!/bin/bash
+# 黄金矿工 · 排行榜手工提交（已在 macOS 自带 openssl/uuidgen + jq 下验证字段口径）
+API="https://shuoshuo.sikong.ren/api/game/shuoshuo-pixel-gold-miner"
+
+BOARD="normal"            # normal / hard / expert
+EVENT="GAME_CLEARED"      # GAME_CLEARED / ENDLESS_FAILED / RUN_ABANDONED
+RAW_MONEY=24500
+HIGHEST_LEVEL=22          # 默认 gate 要求 ≥ 8
+ENDED_AT_LEVEL=22
+SESSION_LEVELS=24
+
+NOW_MS=$(($(date +%s) * 1000))
+# started_at 往前推：durationSec 由服务端按 ended_at−started_at 注入，
+# 推 25×sessionLevels+60 秒即可在【不删 gate】的情况下通过时长门槛
+STARTED_AT=$((NOW_MS - (25 * SESSION_LEVELS + 60) * 1000))
+SESSION_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
+
+# 1) 开会话（匿名通道；实名则加 Cookie 并把两处 display_mode 改 real）
+RESP=$(curl -sk -X POST "$API/sessions" -H 'Content-Type: application/json' -d "{
+  \"board_key\": \"$BOARD\", \"display_mode\": \"anonymous\",
+  \"session_id\": \"$SESSION_ID\", \"client_version\": \"dev-cli\",
+  \"started_at\": $STARTED_AT }")
+echo "sessions => $RESP"
+TOKEN=$(echo "$RESP"  | jq -r '.data.session_token')
+SECRET=$(echo "$RESP" | jq -r '.data.signing_secret')
+
+# 2) HMAC 签名：canonical 键名 camelCase、字典序升序、k=v&… 拼接
+#    只含 sessionId/event/endedAt + 客户端原始 metrics（不含服务端注入的 durationSec）
+CANONICAL="endedAt=$NOW_MS&endedAtLevel=$ENDED_AT_LEVEL&event=$EVENT&highestLevel=$HIGHEST_LEVEL&rawMoney=$RAW_MONEY&sessionId=$SESSION_ID&sessionLevels=$SESSION_LEVELS"
+SIG=$(printf '%s' "$CANONICAL" | openssl dgst -sha256 -hmac "$SECRET" -r | cut -d' ' -f1)
+
+# 3) 提交（注意 body 是 snake_case，与 canonical 的 camelCase 是两套约定）
+curl -sk -X POST "$API/submissions" -H 'Content-Type: application/json' -d "{
+  \"board_key\": \"$BOARD\", \"session_id\": \"$SESSION_ID\",
+  \"session_token\": \"$TOKEN\", \"display_mode\": \"anonymous\",
+  \"event\": \"$EVENT\", \"ended_at\": $NOW_MS,
+  \"metrics\": { \"rawMoney\": $RAW_MONEY, \"highestLevel\": $HIGHEST_LEVEL,
+                 \"endedAtLevel\": $ENDED_AT_LEVEL, \"sessionLevels\": $SESSION_LEVELS },
+  \"client_sig\": \"$SIG\" }" | jq .
+
+# 4) 拉榜验证
+curl -sk "$API/leaderboard?board=$BOARD&top=10" -H "X-Device-Id: dev-cli" | jq '.data'
+```
+
+**实名提交**：第 1、3 步加 `-H "Cookie: shuoshuo-auth-token=<从浏览器 DevTools 复制>"`，
+两处 `display_mode` 改 `real`。
+
+**已知坑（脚本跑不通先看这里）：**
+
+| 现象 | 原因 |
+|---|---|
+| 反复跑只在榜上留一条 | 匿名按 ipHash 去重——同机所有匿名提交是同一 member，只保留最高分。**灌多条模拟数据须用不同账号实名提交**（每账号一条），匿名最多占一行 |
+| `5041008` | 提交限速 5/分/member，灌数据时放慢节奏 |
+| `5041003` | session_id 重复提交（脚本每次重新 uuidgen 即可） |
+| `5041006` | highestLevel < 8 或时长不达标（见 §9.2 删 gate） |
+| `5041010` | canonical 拼接与服务端不一致：检查键序 / metrics 数值是否为最短数字串（`24500` 而非 `24500.0`） |
+
+### 9.2 临时关闭 gate（允许任意模拟数据）
+
+后台「应用管理 → 榜单管理」编辑对应榜单（`PUT /api/open_platform/manage/boards/:id`，站长权限），
+JSON 模式把 config 中的 gates 清空：
+
+```jsonc
+"gates": []        // 原为 [ {min highestLevel 8}, {minRatio durationSec/sessionLevels 25} ]
+```
+
+**删 gate 后仍然生效、绕不开的校验**（属独立逻辑，与 gates 无关）：
+
+- `require_sign=true` 的 HMAC 验签（5041010）——脚本必须正确签名
+- metrics 四键 `required` + min/max 范围（5041005）
+- `started_at` ∈ [now−TTL, now+5s]、`ended_at` 不得超前（5041015）等时间合理性
+- display_mode 与开会话一致（5041014）、提交限速（5041008）
+
+**测试完恢复 / 清理：**
+
+| 操作 | 路径 |
+|---|---|
+| 恢复 gate | 榜单管理「恢复默认配置」（一键读回 seed 默认 config，已含 sessionLevels 版 gate） |
+| 清空测试数据 | 榜单管理「清空榜单」（`POST .../boards/:boardKey/reset`，删 Redis ZSET + 全部条目） |
+| 删单条 | 站长删除指定条目（`DELETE .../boards/:boardKey/entry`，匿名条目也可删） |
+
+### 9.3 游戏内控制台联调命令（god mode 扩展，📋 待实现）
+
+> 游戏已有 `window.god` 调试入口（`src/dev/godMode.ts`：dev 自动启用 / prod 放 `whoisyourdaddy.html` 探针启用）。
+> 计划追加「排行榜」命令组——相比 §9.1 curl 脚本的独特优势：**浏览器同源 Cookie 自动携带，可直接联调实名提交**。
+
+| 命令 | 行为 |
+|---|---|
+| `god.lbSubmit(opts?)` | 完整走 `sessions → HMAC → submissions` 链路提交一条成绩。默认取**当前游戏真实状态**（关卡/金额），`opts` 可覆盖：`{board, displayMode, event, rawMoney, highestLevel, endedAtLevel, sessionLevels}`；`started_at` 自动回推 `25×sessionLevels+60` 秒过时长 gate |
+| `god.lbTop(board?, top?)` | 拉榜 `console.table` 打印（默认 normal / top10） |
+| `god.lbLogin()` | 查 `GET /api/login` 登录态，确认实名/匿名通道可用性 |
+
+实现要点：
+
+- **随 M1 协议层一并实现**：直接复用 `LeaderboardClient` / `hmac.ts`（god 命令同时充当协议层的手工冒烟入口）
+- API 走同源 `/api`：须经 `https://shuoshuo.sikong.ren/game/gold-miner/` 访问游戏；检测到 `localhost` 直连时打印提示并拒绝执行
+- `god.help()` 同步补「排行榜」命令组说明
+- 提交结果打印：code / 名次 / display_name（匿名派生名），错误码按 §五表翻译为可读文案
 
 ---
 
@@ -581,7 +686,8 @@ M1 — 协议层（不动游戏逻辑，可独立联调）
   ├─ src/utils/hmac.ts（buildCanonical + hmacSha256Hex）＋ 单元自测（与服务端互验一组向量）
   ├─ src/core/AuthService.ts（GET /api/login + 缓存 + dev Bearer 注入）
   ├─ src/core/LeaderboardClient.ts（openSession/submit/fetchBoard + 错误码映射 + 退避）
-  └─ vite env / proxy / __APP_VERSION__
+  ├─ godMode.ts 追加 lbSubmit / lbTop / lbLogin 联调命令（§9.3，复用上述模块做手工冒烟）
+  └─ vite env / __APP_VERSION__
 
 M2 — Run 追踪与结算改造
   ├─ Game.ts：RunTracking 重置/计数/SettlePayload 构造
@@ -589,8 +695,8 @@ M2 — Run 追踪与结算改造
   └─ 验证：三事件的 payload 数值正确（含续盘 sessionLevels 口径）
 
 M3 — UI
-  ├─ RankPanel 三选一面板（GameOverScene / VictoryEndScene 嵌入）
-  ├─ LeaderboardScene 在线榜（三榜切换 + around 高亮 + 30s 缓存）
+  ├─ RankPanel 三选一面板（Canvas 像素组件，GameOverScene / VictoryEndScene 嵌入）
+  ├─ LeaderboardModal 在线榜（DOM overlay 仿 CodexModal，三榜 tab + around 高亮 + 30s 缓存）
   └─ MenuScene 入口按钮
 
 M4 — 离线降级 + 验收
@@ -636,3 +742,6 @@ M4 — 离线降级 + 验收
 
 - 2026-06-05 v2 初稿（LanceLRQ）：按服务端实装重写协议；落定 D6 匿名三选一 / D7 懒开会话 / D8 sessionLevels 门槛 / D9 事件命名沿用
 - 2026-06-05 v2.1：§八 服务端配置变更核实并标记已落地（seed 三榜逐项核对一致 + 运行库已刷新），M0 里程碑完成
+- 2026-06-05 v2.2：UI 形态拍板——RankPanel 用 Canvas 像素组件；在线榜由 LeaderboardScene 场景改为 LeaderboardModal（DOM overlay 仿 CodexModal）
+- 2026-06-05 v2.3：新增 §9.1 控制台 curl 手工提交脚本、§9.2 临时关闭 gate 指引；§九 dev 环境同步同源 nginx 方案（不再需要 vite proxy / VITE_DEV_AUTH_TOKEN）
+- 2026-06-05 v2.4：新增 §9.3 god mode 排行榜联调命令规划（lbSubmit/lbTop/lbLogin，随 M1 实现）
