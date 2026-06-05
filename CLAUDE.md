@@ -93,12 +93,13 @@ tools/
 |------|------|------|
 | GIF 动画 sprite 方案 | `docs/design/20260520_gif-animation-sprite.md` | 📋 探讨阶段：横向 spritesheet 拼帧方案 + pixel-converter GIF 解帧路径 |
 
-### 排行榜（2026-05-20 / 2026-05-23）
+### 排行榜（2026-05-20 / 2026-05-23 / 2026-06-05）
 
 | 文档 | 路径 | 说明 |
 |------|------|------|
 | 本地榜调研 | `docs/design/20260520_leaderboard-research.md` | 纯前端维度的排名设计、难度权重、签名 / 合理性校验 |
-| 服务端协议 v1 | `docs/design/20260523_leaderboard-server-protocol.md` | 📋 设计阶段：sessionId + token 鉴权 + 3 类结算事件 + 按难度独立分榜的客户端↔服务端协议 |
+| 服务端协议 v1 | `docs/design/20260523_leaderboard-server-protocol.md` | ⚠️ 已被 20260605 取代（设计演进记录） |
+| 服务端接入 v2 ⭐ | `docs/design/20260605_leaderboard-server-integration.md` | **正式开发文档**：对接 shuoshuo-crystal 开放平台实装服务端（内部应用主站登录态 + 匿名三选一 + 懒开会话 + HMAC 签名 + 3 榜 normal/hard/expert + 错误码表 + 里程碑/验收清单） |
 
 ### 数值平衡（2026-05-25）
 
