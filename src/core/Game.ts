@@ -27,7 +27,13 @@ import { loadTheme } from '../assets/themeLoader';
 import { initAnimation } from '../assets/animation';
 import { ThemeStore } from '../asset-manager/ThemeStore';
 import { Difficulty, DEFAULT_DIFFICULTY, getDifficultyConfig, type DifficultyConfig } from '../level/difficulty';
-import { isChapterFirstLevel, getChapterByLevel } from '../level/levels';
+import { isChapterFirstLevel, getChapterByLevel, isEndlessLevel } from '../level/levels';
+import {
+  BOARD_KEY_BY_DIFFICULTY,
+  type RunTracking,
+  type SettleEvent,
+  type SettlePayload,
+} from './LeaderboardClient';
 
 /** 游戏全局状态枚举 */
 export enum GameState {
@@ -103,6 +109,18 @@ export class Game {
 
   /** 失败重试标记：retryCurrentLevel 设置后 changeScene 跳过 nextLevel + 金额累加 + 章节过场 */
   private isRetrying: boolean = false;
+
+  /**
+   * 服务端排行榜 Run 追踪（纯内存，刷新页面即丢弃；本地榜不受影响）
+   * 开新局 / 读档时由 resetRunTracking 重建；结算收口构造 payload 后置 null（Run 已消费）
+   */
+  private runTracking: RunTracking | null = null;
+
+  /** 本次 Run 购买/获得的道具清单（服务端 extra.itemsPurchased 审计字段，含重复购买） */
+  private runItemsPurchased: string[] = [];
+
+  /** 待结算场景消费的服务端上送 payload（NOVICE/INFINITE 或无 Run 时为 null，不渲染上榜面板） */
+  private pendingSettle: SettlePayload | null = null;
 
   // FPS 统计
   private frameCount: number = 0;
@@ -198,6 +216,7 @@ export class Game {
         this.levelManager.reset();
         this.ownedItems.clear();
         this.itemDurations.clear();
+        this.pendingSettle = null; // 上一局结算 payload 不跨菜单存活
         break;
       case GameState.DIFFICULTY_SELECT:
         scene = new DifficultyScene(this);
@@ -241,6 +260,9 @@ export class Game {
           scene = new ChapterScene(this, getChapterByLevel(this.levelManager.currentLevel));
           break;
         }
+        // Run 追踪：GameScene 实例化即计 1 局（含重试；ChapterScene 过场回流不重复计——
+        // 过场分支在上方 break，回流后 previousState=CHAPTER_TRANSITION 才走到这里）
+        if (this.runTracking) this.runTracking.sessionLevels++;
         scene = new GameScene(this, this.levelManager.getCurrentConfig());
         break;
       }
@@ -267,6 +289,8 @@ export class Game {
         if (this.currentDifficulty !== Difficulty.INFINITE) {
           this.storage.commitLeaderboardEntry(this.currentMoney, this.currentDifficulty, this.levelManager.currentLevel);
         }
+        // 服务端结算 payload（本地双写之后构造；网络交互由场景内上榜面板触发，此处不发网络）
+        this.consumeRunForSettle('GAME_CLEARED');
         this.storage.resetAutoSlot();
         scene = new VictoryEndScene(this, this.currentMoney, this.currentDifficulty);
         break;
@@ -280,6 +304,10 @@ export class Game {
         if (this.currentDifficulty !== Difficulty.INFINITE) {
           this.storage.commitLeaderboardEntry(this.currentMoney, this.currentDifficulty, this.levelManager.currentLevel);
         }
+        // 服务端结算 payload：无尽段失败 = ENDLESS_FAILED，否则为中途放弃 RUN_ABANDONED（§3.3）
+        this.consumeRunForSettle(
+          isEndlessLevel(this.levelManager.currentLevel) ? 'ENDLESS_FAILED' : 'RUN_ABANDONED'
+        );
         this.storage.resetAutoSlot();
         scene = new GameOverScene(this, this.currentMoney, this.levelManager.currentLevel);
         break;
@@ -335,6 +363,7 @@ export class Game {
     if (durationLevels !== undefined) {
       this.itemDurations.set(item, durationLevels);
     }
+    this.runItemsPurchased.push(item); // Run 审计（服务端 extra.itemsPurchased；存档载入不走此方法不计入）
   }
 
   /** 清空已购买道具 */
@@ -443,6 +472,7 @@ export class Game {
     this.levelManager.setLevel(save.progress.currentLevel);
     this.loadOwnedItemsFromProgress(save.progress);
     this.activeSlot = AUTO_SLOT_ID;
+    this.resetRunTracking(); // 续盘 = 新 Run（§3.1）
     this.state = GameState.MENU; // 临时设回 MENU，让 changeScene 内部 previousState 为 MENU 不触发 nextLevel
     this.changeScene(GameState.PLAYING);
     return true;
@@ -460,6 +490,7 @@ export class Game {
     this.ownedItems.clear();
     this.itemDurations.clear();
     this.activeSlot = AUTO_SLOT_ID;
+    this.resetRunTracking();
     this.state = GameState.MENU;
     this.changeScene(GameState.PLAYING);
   }
@@ -484,6 +515,7 @@ export class Game {
     this.levelManager.setLevel(save.progress.currentLevel);
     this.loadOwnedItemsFromProgress(save.progress);
     this.activeSlot = AUTO_SLOT_ID;
+    this.resetRunTracking(); // 读档续盘 = 新 Run（§3.1）
     this.state = GameState.MENU;
     this.changeScene(GameState.PLAYING);
     return true;
@@ -552,7 +584,62 @@ export class Game {
     this.lastEarnedMoney = 0;
     this.bonusAlreadyCommitted = false;
     this.isRetrying = true;
+    if (this.runTracking) this.runTracking.retries++; // 同一 Run；重试也是一局（sessionLevels 在 GameScene 实例化点照常 ++）
     this.changeScene(GameState.PLAYING);
+  }
+
+  /**
+   * 重置服务端 Run 追踪（开新局 / 读档 = 新 Run，§3.1）
+   * 续盘口径：runStartedAt = 读档时刻、sessionLevels 从 0 计 —— 配合服务端
+   * 时长门槛 durationSec ≥ 25 × sessionLevels（决策 D8），续盘局不被误杀
+   */
+  private resetRunTracking(): void {
+    this.runTracking = {
+      sessionId: crypto.randomUUID(),
+      runStartedAt: Date.now(),
+      sessionLevels: 0,
+      retries: 0,
+    };
+    this.runItemsPurchased = [];
+    this.pendingSettle = null;
+  }
+
+  /**
+   * 结算收口：按事件构造服务端上送 payload 并消费当前 Run。
+   * 不上榜难度（NOVICE/INFINITE 无榜单映射）或无 Run 追踪时 payload 为 null。
+   * 注意：必须在 currentMoney 完成最终累加之后调用（rawMoney 取最终值）。
+   */
+  private consumeRunForSettle(event: SettleEvent): void {
+    const boardKey = BOARD_KEY_BY_DIFFICULTY[this.currentDifficulty];
+    if (!boardKey || !this.runTracking) {
+      this.pendingSettle = null;
+      this.runTracking = null;
+      return;
+    }
+    // highestLevel === endedAtLevel 恒成立（关卡单调推进，重试不回退），字段分立为兼容服务端通用榜单声明
+    const level = this.levelManager.currentLevel;
+    this.pendingSettle = {
+      event,
+      boardKey,
+      tracking: { ...this.runTracking },
+      metrics: {
+        rawMoney: this.currentMoney,
+        highestLevel: level,
+        endedAtLevel: level,
+        sessionLevels: Math.max(1, this.runTracking.sessionLevels),
+      },
+      extra: {
+        retries: this.runTracking.retries,
+        itemsPurchased: [...this.runItemsPurchased],
+        clientVersion: __APP_VERSION__,
+      },
+    };
+    this.runTracking = null; // Run 已消费，防止重复结算
+  }
+
+  /** 获取待消费的服务端结算 payload（结算场景上榜面板读取；null = 不渲染面板） */
+  getPendingSettlePayload(): SettlePayload | null {
+    return this.pendingSettle;
   }
 
   /** 获取全局音效实例 */

@@ -139,6 +139,8 @@ function installGod(game: Game): void {
         items: Array.from(game.getOwnedItems()),
         difficulty: game.getDifficulty(),
         theme: themeMgr.getCurrentThemeId(),
+        // 服务端结算 payload（仅 GAME_OVER/VICTORY_END 且 N/H/E 难度下非 null，用于 M2 口径验收）
+        settle: game.getPendingSettlePayload(),
       };
     },
 

@@ -236,9 +236,12 @@ export class ResultScene extends SceneBase {
     }
   }
 
-  /** 次按钮：失败时返回主菜单（清进度） */
+  /**
+   * 次按钮：失败后返回 → 改走 GAME_OVER 结算收口（§3.2 RUN_ABANDONED 上送点）。
+   * 清进度由 GAME_OVER case 的 resetAutoSlot 承担；本地榜双写也在该收口完成；
+   * GameOverScene 的「返回菜单」继续承担回菜单职责。
+   */
   private handleSecondary(): void {
-    this.game.clearProgress();
-    this.game.changeScene(GameState.MENU);
+    this.game.changeScene(GameState.GAME_OVER);
   }
 }
