@@ -27,6 +27,7 @@ export class MenuScene extends SceneBase {
   private continueButton: Button;
   private newGameButton: Button;
   private loadGameButton: Button;
+  private leaderboardButton: Button;
   private highScore: number;
   private hasProgress: boolean = false;
 
@@ -56,6 +57,7 @@ export class MenuScene extends SceneBase {
     this.continueButton = new Button(btnX, 280, btnW, btnH, STRINGS.common.continueGame);
     this.newGameButton = new Button(btnX, 340, btnW, btnH, STRINGS.menu.newGame);
     this.loadGameButton = new Button(btnX, 400, btnW, btnH, STRINGS.menu.loadSave);
+    this.leaderboardButton = new Button(btnX, 460, btnW, btnH, STRINGS.leaderboard.menuButton);
   }
 
   enter(): void {
@@ -100,6 +102,11 @@ export class MenuScene extends SceneBase {
       if (this.loadGameButton.containsPoint(pos.x, pos.y)) {
         // 读取存档：进入槽位管理
         this.game.changeScene(GameState.SLOT_SELECT);
+        return;
+      }
+      if (this.leaderboardButton.containsPoint(pos.x, pos.y)) {
+        // 在线排行榜：打开 DOM 弹窗（不切场景）
+        this.game.getLeaderboardModal()?.open();
         return;
       }
       // 设置图标
@@ -152,6 +159,7 @@ export class MenuScene extends SceneBase {
     this.continueButton.render(renderer);
     this.newGameButton.render(renderer);
     this.loadGameButton.render(renderer);
+    this.leaderboardButton.render(renderer);
 
     // 右上角设置图标（深棕金边像素风）
     this.renderSettingsIcon(renderer);

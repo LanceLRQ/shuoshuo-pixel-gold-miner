@@ -6,6 +6,8 @@
 import { Renderer } from './core/Renderer';
 import { Game } from './core/Game';
 import { CodexModal } from './ui/CodexModal';
+import { LeaderboardModal } from './ui/LeaderboardModal';
+import { AuthService } from './core/AuthService';
 
 // 逻辑分辨率常量（横屏）
 const LOGICAL_WIDTH = 800;
@@ -23,6 +25,14 @@ const game = new Game(renderer);
 const codexModal = new CodexModal(game.getThemeManager());
 codexModal.onToggle = (open) => game.setPausedByExternal(open);
 game.setCodexModal(codexModal);
+
+// 在线排行榜 DOM 弹窗（主菜单入口，复用同一暂停机制防止空格误触）
+const leaderboardModal = new LeaderboardModal();
+leaderboardModal.onToggle = (open) => game.setPausedByExternal(open);
+game.setLeaderboardModal(leaderboardModal);
+
+// 启动时拉取主站登录态并缓存（异步、不阻塞首屏；失败按未登录处理，仍可匿名上榜）
+void AuthService.refresh();
 
 game.start();
 

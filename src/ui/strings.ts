@@ -279,6 +279,53 @@ export const STRINGS = {
   },
 
   // ====================================================================
+  // 服务端排行榜（RankPanel 三选一面板 + LeaderboardModal 在线榜）
+  // ====================================================================
+  leaderboard: {
+    /** 主菜单入口按钮 */
+    menuButton: '排行榜',
+    /** RankPanel 三选一面板 */
+    panel: {
+      title: '上传成绩到公榜?',
+      /** 已登录主按钮：prefix + 昵称 + suffix */
+      submitRealPrefix: '以「',
+      submitRealSuffix: '」上榜',
+      loginThenSubmit: '登录后上榜',
+      loginWaitTitle: '已完成登录？',
+      refreshAndSubmit: '刷新登录态并上榜',
+      stillNotLoggedIn: '仍未检测到登录，请先完成主站登录',
+      submitAnonymous: '匿名上榜',
+      anonymousHint: '同一网络仅保留一人最高成绩',
+      skip: '暂不上榜',
+      submitting: '提交中',
+      /** 成功文案：displayPrefix + 显名 + displaySuffix；rankPrefix + N + rankSuffix */
+      displayPrefix: '以「',
+      displaySuffix: '」之名上榜',
+      rankPrefix: '当前第 ',
+      rankSuffix: ' 名',
+      personalBest: '★ 个人新高',
+      /** rank=0（重复提交幂等）时的成功文案 */
+      recorded: '成绩已记录',
+      back: '返回',
+      close: '关闭',
+    },
+    /** LeaderboardModal 在线榜 */
+    modal: {
+      dialogLabel: '排行榜',
+      closeAria: '关闭',
+      footer: '按 ESC 关闭 · 点击遮罩关闭 · 上方切换难度榜',
+      loading: '加载中...',
+      empty: '暂无上榜记录，快来抢占第一名！',
+      colRank: '名次',
+      colPlayer: '玩家',
+      colMoney: '金币',
+      colLevel: '最高关',
+      aroundHeader: '— 我的附近 —',
+      anonymousTag: '匿名',
+    },
+  },
+
+  // ====================================================================
   // 存档管理 (SlotSelectScene)
   // ====================================================================
   slotSelect: {

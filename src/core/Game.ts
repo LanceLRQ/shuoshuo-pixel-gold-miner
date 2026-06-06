@@ -99,6 +99,9 @@ export class Game {
   /** 外部 UI 弹窗注入（main.ts 创建后调用 setCodexModal）— 用 unknown 避免 Game 强耦合 UI 层 */
   private codexModal: { open(): void; close(): void; toggle(): void; isOpened(): boolean } | null = null;
 
+  /** 在线排行榜 DOM 弹窗注入（main.ts 创建后调用 setLeaderboardModal，结构同 codexModal） */
+  private leaderboardModal: { open(): void; close(): void; toggle(): void; isOpened(): boolean } | null = null;
+
   /** 当前关卡的金额信息（用于场景间传递） */
   private lastEarnedMoney: number = 0;
   private lastTargetMoney: number = 200;
@@ -554,6 +557,16 @@ export class Game {
   /** 获取已注入的图鉴弹窗（GameScene 在 ? 按钮点击时调用） */
   getCodexModal(): { open(): void; close(): void; toggle(): void; isOpened(): boolean } | null {
     return this.codexModal;
+  }
+
+  /** 注入在线排行榜弹窗（main.ts 启动时调用一次） */
+  setLeaderboardModal(modal: { open(): void; close(): void; toggle(): void; isOpened(): boolean }): void {
+    this.leaderboardModal = modal;
+  }
+
+  /** 获取已注入的在线排行榜弹窗（MenuScene 在「排行榜」按钮点击时调用） */
+  getLeaderboardModal(): { open(): void; close(): void; toggle(): void; isOpened(): boolean } | null {
+    return this.leaderboardModal;
   }
 
   /**

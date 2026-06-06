@@ -10,6 +10,7 @@ import type { Game } from '../core/Game';
 import { GameState } from '../core/Game';
 import { drawTextCentered } from '../ui/PixelText';
 import { Button } from '../ui/Button';
+import { RankPanel } from '../ui/RankPanel';
 import { STRINGS } from '../ui/strings';
 import { isEndlessLevel, TOTAL_LEVELS } from '../level/levels';
 
@@ -21,6 +22,8 @@ export class GameOverScene extends SceneBase {
   private readonly title: string;
   /** 关卡显示文案：无尽模式显示"坚持到无尽第 N 关"，普通显示"到达关卡: 第 N 关" */
   private readonly levelText: string;
+  /** 服务端上榜三选一面板（SettlePayload 非 null 即 N/H/E 难度结算时出现） */
+  private rankPanel: RankPanel | null;
 
   constructor(game: Game, score: number, level: number) {
     super();
@@ -32,15 +35,24 @@ export class GameOverScene extends SceneBase {
     this.levelText = endless
       ? `${STRINGS.gameOver.endlessLevelPrefix}${level - TOTAL_LEVELS}${STRINGS.gameOver.endlessLevelSuffix}`
       : `${STRINGS.gameOver.normalLevelPrefix}${level}${STRINGS.gameOver.endlessLevelSuffix}`;
+    const payload = game.getPendingSettlePayload();
+    this.rankPanel = payload ? new RankPanel(payload) : null;
   }
 
   enter(): void {}
 
   exit(): void {}
 
-  update(_dt: number): void {}
+  update(dt: number): void {
+    this.rankPanel?.update(dt);
+  }
 
   handleInput(input: Input): void {
+    // 上榜面板激活时独占输入（含空格快捷键），避免误触返回菜单
+    if (this.rankPanel?.isActive()) {
+      this.rankPanel.handleInput(input);
+      return;
+    }
     if (input.wasTapped()) {
       const pos = input.getTapPosition();
       if (this.button.containsPoint(pos.x, pos.y)) {
@@ -69,5 +81,8 @@ export class GameOverScene extends SceneBase {
 
     // 重新开始按钮
     this.button.render(renderer);
+
+    // 上榜面板最后绘制（全屏遮罩覆盖场景内容）
+    this.rankPanel?.render(renderer);
   }
 }

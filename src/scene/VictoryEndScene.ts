@@ -16,6 +16,7 @@ import type { Game } from '../core/Game';
 import { GameState } from '../core/Game';
 import { drawTextCentered } from '../ui/PixelText';
 import { Button } from '../ui/Button';
+import { RankPanel } from '../ui/RankPanel';
 import { STRINGS } from '../ui/strings';
 import { getDifficultyConfig, type Difficulty } from '../level/difficulty';
 import { TOTAL_LEVELS } from '../level/levels';
@@ -34,6 +35,9 @@ export class VictoryEndScene extends SceneBase {
   /** 入场动画：奖牌从下方弹起 + 标题渐入 */
   private elapsed: number = 0;
 
+  /** 服务端上榜三选一面板（GAME_CLEARED 路径；INFINITE 不走本场景，NOVICE payload 为 null） */
+  private rankPanel: RankPanel | null;
+
   constructor(game: Game, finalMoney: number, difficulty: Difficulty) {
     super();
     this.game = game;
@@ -43,6 +47,9 @@ export class VictoryEndScene extends SceneBase {
 
     // 800×540 居中：x = (800-140)/2 = 330
     this.backButton = new Button(330, 470, 140, 44, STRINGS.victoryEnd.backToMenu);
+
+    const payload = game.getPendingSettlePayload();
+    this.rankPanel = payload ? new RankPanel(payload) : null;
   }
 
   enter(): void {
@@ -54,9 +61,15 @@ export class VictoryEndScene extends SceneBase {
 
   update(dt: number): void {
     this.elapsed += dt;
+    this.rankPanel?.update(dt);
   }
 
   handleInput(input: Input): void {
+    // 上榜面板激活时独占输入（含空格快捷键），避免误触返回菜单
+    if (this.rankPanel?.isActive()) {
+      this.rankPanel.handleInput(input);
+      return;
+    }
     if (input.wasTapped()) {
       const pos = input.getTapPosition();
       if (!this.buttonHandled && this.backButton.update(pos.x, pos.y, true)) {
@@ -106,6 +119,9 @@ export class VictoryEndScene extends SceneBase {
     }
 
     this.backButton.render(renderer);
+
+    // 上榜面板最后绘制（全屏遮罩覆盖场景内容）
+    this.rankPanel?.render(renderer);
   }
 
   /** 简易像素奖牌：金色圆盘 + 红色绶带 + ★ 字符 */
