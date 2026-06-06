@@ -1,12 +1,17 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import react from '@vitejs/plugin-react';
+import pkg from './package.json';
 
 // 部署根路径：https://shuoshuo.sikong.ren/game/gold-miner/（与开放平台 seed entry_url 一致）
 // dev 与 build 统一使用该前缀：本地 nginx 以 /game/gold-miner/ 子路径反代 dev 服务器（端口 15715），
 // base 一致才能保证模块请求 / HMR ws 不漏到主站
 export default defineConfig(() => ({
   base: '/game/gold-miner/',
+  define: {
+    // 注入 package.json version，运行时作为排行榜协议的 client_version 上报
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   plugins: [react()],
   resolve: {
     alias: {

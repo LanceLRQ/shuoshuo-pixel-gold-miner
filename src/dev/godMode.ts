@@ -15,6 +15,14 @@ import type { Game } from '../core/Game';
 import { GameState } from '../core/Game';
 import { Difficulty } from '../level/difficulty';
 import { ItemType } from '../scene/ShopScene';
+import { AuthService } from '../core/AuthService';
+import {
+  BOARD_KEY_BY_DIFFICULTY,
+  LeaderboardClient,
+  type BoardEntry,
+  type DisplayMode,
+  type SettleEvent,
+} from '../core/LeaderboardClient';
 
 /** 启动时调用一次：在 dev 模式或 prod 探针存在时暴露 window.god */
 export async function setupGodMode(game: Game): Promise<void> {
@@ -40,6 +48,34 @@ const CHAPTER_START: Record<number, number> = { 1: 1, 2: 8, 3: 15 };
 
 /** 所有道具的 ID（用于 give / giveAll / items 列表） */
 const ALL_ITEMS = Object.values(ItemType);
+
+/** lbSubmit 的 started_at 回推参数：服务端时长 gate 为 25s/局，额外加 60s 余量保证通过 */
+const LB_GATE_SEC_PER_LEVEL = 25;
+const LB_GATE_MARGIN_SEC = 60;
+
+/** 排行榜命令前置检查：API 走同源 /api，localhost 直连拿不到主站 Cookie/反代，拒绝执行 */
+function assertLbOrigin(): boolean {
+  const h = location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1' || h === '[::1]') {
+    console.warn(
+      '[GOD] 排行榜 API 需同源访问：请经 https://shuoshuo.sikong.ren/game/gold-miner/ 打开游戏后再执行'
+    );
+    return false;
+  }
+  return true;
+}
+
+/** 榜单条目 → console.table 行 */
+function lbTableRow(e: BoardEntry) {
+  return {
+    名次: e.rank,
+    玩家: e.displayName + (e.anonymous ? '（匿名）' : ''),
+    金币: e.metrics.rawMoney ?? 0,
+    最高关: e.metrics.highestLevel ?? 0,
+    事件: e.event,
+    提交时间: new Date(e.submittedAt * 1000).toLocaleString(),
+  };
+}
 
 function installGod(game: Game): void {
   const lm = game.getLevelManager();
@@ -74,11 +110,18 @@ function installGod(game: Game): void {
         "  god.scene('PLAYING' | 'MENU' | 'SHOP' | 'RESULT' | 'GAME_OVER' | ...)",
         "  god.difficulty('NOVICE' | 'NORMAL' | 'HARD' | 'EXPERT' | 'INFINITE')",
         '  god.theme(id)                          切主题；不传 = 列出所有主题',
+        '',
+        '%c排行榜（联调，需经 shuoshuo.sikong.ren 同源访问）',
+        '  god.lbSubmit(opts?)                    提交一条成绩（默认当前关卡/金额、匿名、GAME_CLEARED）',
+        "    opts: { board, displayMode: 'real'|'anonymous', event, rawMoney, highestLevel, endedAtLevel, sessionLevels }",
+        "  god.lbTop(board?, top?)                拉榜打印（默认 'normal' / 10）",
+        '  god.lbLogin()                          查主站登录态（实名通道可用性）',
       ];
       const style = (color: string) => `color:${color};font-weight:bold;`;
       console.log(
         lines.join('\n'),
         style('gold'),
+        style('cyan'),
         style('cyan'),
         style('cyan'),
         style('cyan'),
@@ -207,6 +250,92 @@ function installGod(game: Game): void {
       }
       themeMgr.setTheme(id);
       console.log(`主题已设为 ${themeMgr.getCurrentThemeId()}`);
+    },
+
+    // -------- 排行榜（联调，§9.3） --------
+    async lbSubmit(
+      opts: {
+        board?: string;
+        displayMode?: DisplayMode;
+        event?: SettleEvent;
+        rawMoney?: number;
+        highestLevel?: number;
+        endedAtLevel?: number;
+        sessionLevels?: number;
+      } = {}
+    ) {
+      if (!assertLbOrigin()) return;
+      // 默认取当前游戏真实状态，opts 可逐项覆盖
+      const level = lm.currentLevel;
+      const metrics = {
+        rawMoney: opts.rawMoney ?? game.getCurrentMoney(),
+        highestLevel: opts.highestLevel ?? level,
+        endedAtLevel: opts.endedAtLevel ?? level,
+        sessionLevels: opts.sessionLevels ?? Math.max(1, level),
+      };
+      const boardKey = opts.board ?? BOARD_KEY_BY_DIFFICULTY[game.getDifficulty()];
+      if (!boardKey) {
+        console.warn(
+          `当前难度 ${game.getDifficulty()} 不上榜（NOVICE/INFINITE），可传 { board: 'normal' | 'hard' | 'expert' } 指定`
+        );
+        return;
+      }
+      const displayMode = opts.displayMode ?? 'anonymous';
+      const event = opts.event ?? 'GAME_CLEARED';
+      // started_at 回推：durationSec 由服务端按 ended_at − started_at 注入，回推量过时长 gate
+      const runStartedAt =
+        Date.now() - (LB_GATE_SEC_PER_LEVEL * metrics.sessionLevels + LB_GATE_MARGIN_SEC) * 1000;
+      console.log(`[GOD] lbSubmit → 榜=${boardKey} 模式=${displayMode} 事件=${event}`, metrics);
+      const result = await LeaderboardClient.settle(
+        {
+          event,
+          boardKey,
+          tracking: {
+            sessionId: crypto.randomUUID(),
+            runStartedAt,
+            sessionLevels: metrics.sessionLevels,
+            retries: 0,
+          },
+          metrics,
+          extra: { retries: 0, itemsPurchased: [], clientVersion: __APP_VERSION__ },
+        },
+        displayMode
+      );
+      if (result.ok) {
+        console.log(
+          `✅ 上榜成功：以「${result.displayName}」之名，当前第 ${result.rank || '?'} 名${result.personalBest ? '（个人新高）' : ''}`
+        );
+      } else {
+        console.warn(`❌ 提交失败 code=${result.code} reason=${result.reason}：${result.message}`);
+      }
+      return result;
+    },
+
+    async lbTop(board = 'normal', top = 10) {
+      if (!assertLbOrigin()) return;
+      try {
+        const data = await LeaderboardClient.fetchBoard(board, top);
+        console.log(`[GOD] ${board} 榜 Top${top}（30s 缓存）`);
+        console.table(data.list.map(lbTableRow));
+        if (data.around.length > 0) {
+          console.log('我的附近（around ±5）：');
+          console.table(data.around.map(lbTableRow));
+        }
+        return data;
+      } catch (e) {
+        console.warn(`❌ 拉榜失败：${(e as Error).message}`);
+      }
+    },
+
+    async lbLogin() {
+      if (!assertLbOrigin()) return;
+      const st = await AuthService.refresh();
+      console.log(
+        st.login
+          ? `已登录：${st.nickName}（account_id=${st.accountId}）— 实名 / 匿名通道均可用`
+          : '未登录 — 仅匿名通道可用（实名需先在主站登录）'
+      );
+      return st;
     },
   };
 
