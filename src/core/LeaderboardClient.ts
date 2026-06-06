@@ -144,6 +144,10 @@ const BOARD_CACHE_TTL_MS = 30_000;
 const BOARD_DEFAULT_TOP = 50;
 /** 设备标识持久化 key（拉榜限速按设备计，避免共享出口 IP 误伤） */
 const DEVICE_ID_KEY = 'goldminer_h5_device_id';
+/** 离线重试队列持久化 key（§七） */
+const PENDING_KEY = 'goldminer_h5_pending_submissions';
+/** 回放重试上限：网络/5xx 失败累计 ≥ 此值放弃出队（本地榜兜底） */
+const PENDING_MAX_ATTEMPTS = 5;
 
 // ==================== 服务端原始响应（snake_case） ====================
 
@@ -179,6 +183,26 @@ interface SessionData {
   signingSecret: string;
   serverTime: number;
   displayName: string;
+}
+
+/**
+ * 离线重试队列条目（§七）
+ * 仅存「玩家已选择上榜但网络/5xx 最终失败」的结算（选「暂不上榜」不入队）。
+ * sessionToken/signingSecret 在开会话成功但提交失败时持久化（单会话有效，
+ * 泄露仅能伪造该次提交，风险可接受）。
+ */
+interface PendingSubmission {
+  sessionId: string;
+  boardKey: string;
+  displayMode: DisplayMode;
+  startedAt: number;
+  endedAt: number;
+  event: SettleEvent;
+  metrics: SettleMetrics;
+  extra: SettleExtra;
+  sessionToken?: string;
+  signingSecret?: string;
+  attempts: number;
 }
 
 // ==================== HTTP 基础设施 ====================
@@ -350,13 +374,16 @@ class LeaderboardClientImpl {
 
   /**
    * 三选一面板点击后调用：开会话 → 签名 → 提交，一气呵成。
-   * 错误码消化为 SettleResult（§五）；网络/5xx 退避后仍失败返回 offline。
-   * TODO(M4)：offline 场景入 pending 队列（goldminer_h5_pending_submissions）+ 启动回放
+   * 错误码消化为 SettleResult（§五）；网络/5xx 退避后仍失败 → 入 pending 队列（§七）
+   * 并返回 offline（下次启动 replayPending 补传，本地榜兜底）。
    */
   async settle(payload: SettlePayload, displayMode: DisplayMode): Promise<SettleResult> {
+    // catch 入队时需要的阶段信息：会话是否已开成、最后一次使用的 ended_at
+    let sessionId = payload.tracking.sessionId;
+    let session: SessionData | null = null;
+    let lastEndedAt = 0;
     try {
       // 1) 开会话；5041002（session_id 已占用）换新 UUID 重开一次
-      let sessionId = payload.tracking.sessionId;
       const open = (sid: string) =>
         this.openSession({
           sessionId: sid,
@@ -372,25 +399,28 @@ class LeaderboardClientImpl {
         opened = await open(sessionId);
       }
       if (opened.code !== 0 || !opened.data) return failResult(opened);
-      const session = toSessionData(opened.data);
+      session = toSessionData(opened.data);
+      const sess = session;
 
       // 2) 时钟偏差校正（§4.4）：ended_at 不得超前服务端时间
-      const skewMs = session.serverTime > 0 ? session.serverTime - Date.now() : 0;
+      const skewMs = sess.serverTime > 0 ? sess.serverTime - Date.now() : 0;
       const endedAtNow = () => Math.max(payload.tracking.runStartedAt, Date.now() + skewMs);
 
       // 3) 提交（签名在 submit 内随 endedAt 重算）
-      const doSubmit = () =>
-        this.submit({
+      const doSubmit = () => {
+        lastEndedAt = endedAtNow();
+        return this.submit({
           sessionId,
-          sessionToken: session.sessionToken,
-          signingSecret: session.signingSecret,
+          sessionToken: sess.sessionToken,
+          signingSecret: sess.signingSecret,
           boardKey: payload.boardKey,
           displayMode,
           event: payload.event,
-          endedAt: endedAtNow(),
+          endedAt: lastEndedAt,
           metrics: payload.metrics,
           extra: payload.extra,
         });
+      };
       let resp = await doSubmit();
       // 5041015：用 skew 重新取样校正后重试一次
       if (resp.code === LB_ERR.ENDED_AT_AHEAD) {
@@ -407,17 +437,31 @@ class LeaderboardClientImpl {
           ok: true,
           rank: resp.data.rank ?? 0,
           personalBest: resp.data.personal_best ?? false,
-          displayName: session.displayName,
+          displayName: sess.displayName,
         };
       }
       // 幂等：同会话已提交过 → 视为成功（名次未知，rank=0）
       if (resp.code === LB_ERR.ALREADY_SUBMITTED) {
-        return { ok: true, rank: 0, personalBest: false, displayName: session.displayName };
+        return { ok: true, rank: 0, personalBest: false, displayName: sess.displayName };
       }
       return failResult(resp);
     } catch (e) {
-      console.warn('[Leaderboard] settle 网络失败（pending 队列于 M4 实装）', e);
-      return { ok: false, code: -1, reason: 'offline', message: '网络异常，成绩已记录在本地' };
+      // 网络/5xx 退避后仍失败：入队（玩家已做出上榜选择，§七）
+      console.warn('[Leaderboard] settle 网络失败，入 pending 队列待补传', e);
+      this.enqueuePending({
+        sessionId,
+        boardKey: payload.boardKey,
+        displayMode,
+        startedAt: payload.tracking.runStartedAt,
+        endedAt: lastEndedAt || Date.now(),
+        event: payload.event,
+        metrics: payload.metrics,
+        extra: payload.extra,
+        // 开会话成功但提交失败：持久化凭证，回放时跳过重开直接提交
+        ...(session ? { sessionToken: session.sessionToken, signingSecret: session.signingSecret } : {}),
+        attempts: 0,
+      });
+      return { ok: false, code: -1, reason: 'offline', message: '网络异常，成绩已记录在本地，恢复后自动补传' };
     }
   }
 
@@ -442,6 +486,115 @@ class LeaderboardClientImpl {
     };
     this.boardCache.set(cacheKey, { at: Date.now(), data });
     return data;
+  }
+
+  // -------- 离线重试队列（§七） --------
+
+  /**
+   * 启动时回放 pending 队列（main.ts 调用，静默执行不打断玩家）。
+   * 逐条：补传成功/幂等 → 出队；4xx 被拒 → 丢弃出队（本地榜兜底）；
+   * 网络/5xx/限速 → attempts++ 留队（≥PENDING_MAX_ATTEMPTS 放弃）。
+   */
+  async replayPending(): Promise<void> {
+    const queue = this.loadPending();
+    if (queue.length === 0) return;
+    console.log(`[Leaderboard] 回放 pending 队列：${queue.length} 条`);
+    const remain: PendingSubmission[] = [];
+    for (const item of queue) {
+      const outcome = await this.replayOne(item);
+      if (outcome === 'retry') {
+        item.attempts++;
+        if (item.attempts < PENDING_MAX_ATTEMPTS) {
+          remain.push(item);
+        } else {
+          console.warn(`[Leaderboard] pending 重试超限放弃：${item.sessionId}`);
+        }
+      }
+    }
+    this.savePending(remain);
+  }
+
+  /** 回放单条：done=成功出队 / drop=被拒丢弃 / retry=留队下次再试 */
+  private async replayOne(item: PendingSubmission): Promise<'done' | 'drop' | 'retry'> {
+    try {
+      let token = item.sessionToken;
+      let secret = item.signingSecret ?? '';
+      // 1) 无凭证：重开会话（started_at 用原值；超 24h TTL 被 5041007 拒、
+      //    5041002 会话已存在但本地丢了 token —— 均无法恢复，丢弃出队）
+      if (!token) {
+        const opened = await this.openSession({
+          sessionId: item.sessionId,
+          boardKey: item.boardKey,
+          displayMode: item.displayMode,
+          startedAt: item.startedAt,
+          clientVersion: item.extra.clientVersion,
+        });
+        if (opened.code !== 0 || !opened.data) {
+          console.warn(`[Leaderboard] pending 重开会话被拒 code=${opened.code}，丢弃：${item.sessionId}`);
+          return 'drop';
+        }
+        const s = toSessionData(opened.data);
+        token = s.sessionToken;
+        secret = s.signingSecret;
+        // 凭证回写条目：若接下来提交网络失败留队，下次回放直接提交，
+        // 避免再次重开吃 5041002 被误丢弃（§七 持久化语义）
+        item.sessionToken = token;
+        item.signingSecret = secret;
+      }
+      // 2) 直接提交（ended_at 用入队原值，签名随之重算）
+      const resp = await this.submit({
+        sessionId: item.sessionId,
+        sessionToken: token,
+        signingSecret: secret,
+        boardKey: item.boardKey,
+        displayMode: item.displayMode,
+        event: item.event,
+        endedAt: item.endedAt,
+        metrics: item.metrics,
+        extra: item.extra,
+      });
+      // 5041003（已提交过）视为成功出队
+      if (resp.code === 0 || resp.code === LB_ERR.ALREADY_SUBMITTED) {
+        console.log(`[Leaderboard] pending 补传成功：${item.sessionId}`);
+        return 'done';
+      }
+      // 限速：留队下次启动再试（不算确定性拒绝）
+      if (resp.code === LB_ERR.SUBMIT_RATE_LIMITED) return 'retry';
+      // 其余 4xx：调用方的错不重试，丢弃出队
+      console.warn(`[Leaderboard] pending 提交被拒 code=${resp.code}，丢弃：${item.sessionId}`);
+      return 'drop';
+    } catch {
+      return 'retry'; // 网络/5xx（withBackoff 已退避过）
+    }
+  }
+
+  private loadPending(): PendingSubmission[] {
+    try {
+      const raw = localStorage.getItem(PENDING_KEY);
+      if (!raw) return [];
+      const arr: unknown = JSON.parse(raw);
+      return Array.isArray(arr) ? (arr as PendingSubmission[]) : [];
+    } catch {
+      return []; // 损坏数据按空队列处理
+    }
+  }
+
+  private savePending(queue: PendingSubmission[]): void {
+    try {
+      if (queue.length === 0) {
+        localStorage.removeItem(PENDING_KEY);
+      } else {
+        localStorage.setItem(PENDING_KEY, JSON.stringify(queue));
+      }
+    } catch {
+      // localStorage 满/禁用：放弃持久化（本地榜兜底）
+    }
+  }
+
+  private enqueuePending(item: PendingSubmission): void {
+    const queue = this.loadPending();
+    queue.push(item);
+    this.savePending(queue);
   }
 }
 

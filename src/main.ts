@@ -8,6 +8,7 @@ import { Game } from './core/Game';
 import { CodexModal } from './ui/CodexModal';
 import { LeaderboardModal } from './ui/LeaderboardModal';
 import { AuthService } from './core/AuthService';
+import { LeaderboardClient } from './core/LeaderboardClient';
 
 // 逻辑分辨率常量（横屏）
 const LOGICAL_WIDTH = 800;
@@ -33,6 +34,8 @@ game.setLeaderboardModal(leaderboardModal);
 
 // 启动时拉取主站登录态并缓存（异步、不阻塞首屏；失败按未登录处理，仍可匿名上榜）
 void AuthService.refresh();
+// 回放离线重试队列（上次「已选择上榜但网络失败」的结算静默补传）
+void LeaderboardClient.replayPending();
 
 game.start();
 
