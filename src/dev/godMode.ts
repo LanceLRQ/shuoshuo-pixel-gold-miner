@@ -241,7 +241,7 @@ function installGod(game: Game): void {
       console.log(`难度已设为 ${norm}`);
     },
 
-    theme(id?: string) {
+    async theme(id?: string) {
       if (!id) {
         const list = themeMgr.getAvailableThemes();
         console.log('可用主题：');
@@ -250,7 +250,8 @@ function installGod(game: Game): void {
         }
         return list;
       }
-      themeMgr.setTheme(id);
+      // 经典主题为懒加载 → setThemeAsync 按需拉取后再切换
+      await themeMgr.setThemeAsync(id);
       console.log(`主题已设为 ${themeMgr.getCurrentThemeId()}`);
     },
 

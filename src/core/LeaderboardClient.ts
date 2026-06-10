@@ -188,8 +188,8 @@ interface SessionData {
 /**
  * 离线重试队列条目（§七）
  * 仅存「玩家已选择上榜但网络/5xx 最终失败」的结算（选「暂不上榜」不入队）。
- * sessionToken/signingSecret 在开会话成功但提交失败时持久化（单会话有效，
- * 泄露仅能伪造该次提交，风险可接受）。
+ * 安全：不持久化 sessionToken/signingSecret（签名凭证不落盘，避免 XSS 读取伪造提交）；
+ * 回放时统一重开会话获取新凭证（见 replayOne）。
  */
 interface PendingSubmission {
   sessionId: string;
@@ -200,8 +200,6 @@ interface PendingSubmission {
   event: SettleEvent;
   metrics: SettleMetrics;
   extra: SettleExtra;
-  sessionToken?: string;
-  signingSecret?: string;
   attempts: number;
 }
 
@@ -300,6 +298,40 @@ function toBoardEntry(raw: RawBoardEntry): BoardEntry {
     event: raw.event ?? '',
     submittedAt: raw.submitted_at ?? 0,
     anonymous: raw.anonymous ?? false,
+  };
+}
+
+/** 校验离线队列条目字段完整性（防手工篡改 / 旧版本脏数据） */
+function isValidPending(item: unknown): item is PendingSubmission {
+  if (!item || typeof item !== 'object') return false;
+  const o = item as Record<string, unknown>;
+  return (
+    typeof o.sessionId === 'string' &&
+    typeof o.boardKey === 'string' &&
+    (o.displayMode === 'real' || o.displayMode === 'anonymous') &&
+    typeof o.startedAt === 'number' &&
+    typeof o.endedAt === 'number' &&
+    typeof o.event === 'string' &&
+    typeof o.metrics === 'object' &&
+    o.metrics !== null &&
+    typeof o.extra === 'object' &&
+    o.extra !== null &&
+    typeof o.attempts === 'number'
+  );
+}
+
+/** 仅保留持久化所需字段，剥离凭证（sessionToken/signingSecret 不落盘） */
+function toCleanPending(item: PendingSubmission): PendingSubmission {
+  return {
+    sessionId: item.sessionId,
+    boardKey: item.boardKey,
+    displayMode: item.displayMode,
+    startedAt: item.startedAt,
+    endedAt: item.endedAt,
+    event: item.event,
+    metrics: item.metrics,
+    extra: item.extra,
+    attempts: item.attempts,
   };
 }
 
@@ -447,6 +479,8 @@ class LeaderboardClientImpl {
       return failResult(resp);
     } catch (e) {
       // 网络/5xx 退避后仍失败：入队（玩家已做出上榜选择，§七）
+      // 安全：不持久化 sessionToken/signingSecret（签名凭证不落盘，避免 XSS 读取伪造提交）；
+      // 回放时统一重开会话获取新凭证，代价仅为一次 /sessions 请求。
       console.warn('[Leaderboard] settle 网络失败，入 pending 队列待补传', e);
       this.enqueuePending({
         sessionId,
@@ -457,8 +491,6 @@ class LeaderboardClientImpl {
         event: payload.event,
         metrics: payload.metrics,
         extra: payload.extra,
-        // 开会话成功但提交失败：持久化凭证，回放时跳过重开直接提交
-        ...(session ? { sessionToken: session.sessionToken, signingSecret: session.signingSecret } : {}),
         attempts: 0,
       });
       return { ok: false, code: -1, reason: 'offline', message: '网络异常，成绩已记录在本地，恢复后自动补传' };
@@ -517,35 +549,38 @@ class LeaderboardClientImpl {
   /** 回放单条：done=成功出队 / drop=被拒丢弃 / retry=留队下次再试 */
   private async replayOne(item: PendingSubmission): Promise<'done' | 'drop' | 'retry'> {
     try {
-      let token = item.sessionToken;
-      let secret = item.signingSecret ?? '';
-      // 1) 无凭证：重开会话（started_at 用原值；超 24h TTL 被 5041007 拒、
-      //    5041002 会话已存在但本地丢了 token —— 均无法恢复，丢弃出队）
-      if (!token) {
-        const opened = await this.openSession({
-          sessionId: item.sessionId,
+      // 1) 重开会话获取新凭证（凭证不持久化，每次回放都重开）。
+      //    started_at 用原值；5041002（session_id 已占用，多见于上次 settle 已开过会话）
+      //    换新 UUID 重开一次，与 settle 主流程对齐；超 24h TTL（5041007）等仍丢弃出队。
+      let sessionId = item.sessionId;
+      let opened = await this.openSession({
+        sessionId,
+        boardKey: item.boardKey,
+        displayMode: item.displayMode,
+        startedAt: item.startedAt,
+        clientVersion: item.extra.clientVersion,
+      });
+      if (opened.code === LB_ERR.SESSION_TAKEN) {
+        sessionId = crypto.randomUUID();
+        console.warn(`[Leaderboard] pending 重开会话 session_id 冲突，换新 UUID：${sessionId}`);
+        opened = await this.openSession({
+          sessionId,
           boardKey: item.boardKey,
           displayMode: item.displayMode,
           startedAt: item.startedAt,
           clientVersion: item.extra.clientVersion,
         });
-        if (opened.code !== 0 || !opened.data) {
-          console.warn(`[Leaderboard] pending 重开会话被拒 code=${opened.code}，丢弃：${item.sessionId}`);
-          return 'drop';
-        }
-        const s = toSessionData(opened.data);
-        token = s.sessionToken;
-        secret = s.signingSecret;
-        // 凭证回写条目：若接下来提交网络失败留队，下次回放直接提交，
-        // 避免再次重开吃 5041002 被误丢弃（§七 持久化语义）
-        item.sessionToken = token;
-        item.signingSecret = secret;
       }
+      if (opened.code !== 0 || !opened.data) {
+        console.warn(`[Leaderboard] pending 重开会话被拒 code=${opened.code}，丢弃：${item.sessionId}`);
+        return 'drop';
+      }
+      const s = toSessionData(opened.data);
       // 2) 直接提交（ended_at 用入队原值，签名随之重算）
       const resp = await this.submit({
-        sessionId: item.sessionId,
-        sessionToken: token,
-        signingSecret: secret,
+        sessionId,
+        sessionToken: s.sessionToken,
+        signingSecret: s.signingSecret,
         boardKey: item.boardKey,
         displayMode: item.displayMode,
         event: item.event,
@@ -573,7 +608,9 @@ class LeaderboardClientImpl {
       const raw = localStorage.getItem(PENDING_KEY);
       if (!raw) return [];
       const arr: unknown = JSON.parse(raw);
-      return Array.isArray(arr) ? (arr as PendingSubmission[]) : [];
+      if (!Array.isArray(arr)) return [];
+      // 逐项字段校验：丢弃畸形条目（手工篡改 / 旧版本脏数据），并剥离已废弃的凭证字段
+      return arr.filter(isValidPending).map(toCleanPending);
     } catch {
       return []; // 损坏数据按空队列处理
     }
@@ -584,7 +621,8 @@ class LeaderboardClientImpl {
       if (queue.length === 0) {
         localStorage.removeItem(PENDING_KEY);
       } else {
-        localStorage.setItem(PENDING_KEY, JSON.stringify(queue));
+        // 落盘前剥离凭证字段（双保险：内存条目若残留凭证也不写入磁盘）
+        localStorage.setItem(PENDING_KEY, JSON.stringify(queue.map(toCleanPending)));
       }
     } catch {
       // localStorage 满/禁用：放弃持久化（本地榜兜底）

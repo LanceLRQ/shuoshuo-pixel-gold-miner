@@ -417,12 +417,12 @@ export class MenuScene extends SceneBase {
       return;
     }
     if (pointInRect(x, y, this.themeBtnArea)) {
-      // 循环切换主题
+      // 循环切换主题（经典主题为懒加载 → 用 setThemeAsync 按需拉取后再切换）
       const tm = this.game.getThemeManager();
       const themes = tm.getAvailableThemes();
       const idx = themes.findIndex(t => t.id === tm.getCurrentThemeId());
       const next = themes[(idx + 1) % themes.length]!;
-      tm.setTheme(next.id);
+      void tm.setThemeAsync(next.id);
       return;
     }
     if (pointInRect(x, y, this.clearProgressBtnArea)) {

@@ -228,8 +228,14 @@ export class Storage {
       createdAt: existing?.createdAt ?? now,
       lastPlayedAt: now,
     };
-    localStorage.setItem(slotMetaKey(slotId), JSON.stringify(meta));
-    localStorage.setItem(slotProgressKey(slotId), JSON.stringify(autoSave.progress));
+    try {
+      localStorage.setItem(slotMetaKey(slotId), JSON.stringify(meta));
+      localStorage.setItem(slotProgressKey(slotId), JSON.stringify(autoSave.progress));
+    } catch {
+      // localStorage 配额满/禁用：另存为失败，返回 null 告知调用方（不崩溃）
+      console.warn(`槽位 ${slotId} 另存为失败（存储配额不足或被禁用）`);
+      return null;
+    }
     return meta;
   }
 
@@ -306,7 +312,12 @@ export class Storage {
     const autoMeta = this.readMeta(AUTO_SLOT_ID);
     if (autoMeta && !autoMeta.empty && score > autoMeta.highScore) {
       autoMeta.highScore = score;
-      localStorage.setItem(slotMetaKey(AUTO_SLOT_ID), JSON.stringify(autoMeta));
+      try {
+        localStorage.setItem(slotMetaKey(AUTO_SLOT_ID), JSON.stringify(autoMeta));
+      } catch {
+        // 配额满/禁用：全局高分已落盘，此处槽位 meta 同步失败不影响主流程
+        console.warn('自动槽位最高分同步失败（存储配额不足或被禁用）');
+      }
     }
     return updated;
   }

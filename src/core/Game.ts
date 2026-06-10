@@ -21,7 +21,7 @@ import { LevelManager } from '../level/LevelManager';
 import { Audio } from './Audio';
 import { ThemeManager } from '../assets/theme/ThemeManager';
 import { Button } from '../ui/Button';
-import { CLASSIC_THEME } from '../assets/theme/classic';
+import { CLASSIC_THEME_META, loadClassicTheme } from '../assets/theme/classic';
 import { SHUOSHUO_CRYSTAL_THEME } from '../assets/theme/shuoshuo-crystal';
 import { loadTheme } from '../assets/themeLoader';
 import { initAnimation } from '../assets/animation';
@@ -143,8 +143,9 @@ export class Game {
 
     // 初始化主题管理器（默认 shuoshuo_crystal，详见 ThemeManager 默认值）
     this.themeManager = new ThemeManager();
-    this.themeManager.register(CLASSIC_THEME);
+    // 默认主题同步注册（首屏必需）；经典主题体积大且非默认 → 懒登记，选中时再按需加载
     this.themeManager.register(SHUOSHUO_CRYSTAL_THEME);
+    this.themeManager.registerLazy({ ...CLASSIC_THEME_META, loader: loadClassicTheme });
     // 加载用户在素材管理页（/tools/assets.html）创建的自定义主题
     for (const json of new ThemeStore().loadCustom()) {
       try {
@@ -153,7 +154,9 @@ export class Game {
         console.error('[Game] 自定义主题加载失败', json.id, e);
       }
     }
-    this.themeManager.restoreTheme();
+    // 恢复上次主题选择：已注册主题当帧生效；若为懒主题（经典）则异步加载后生效
+    // （加载间隙先用默认 crystal 渲染，完成后下一帧 getSpriteCache 自然拾取）
+    void this.themeManager.restoreTheme();
 
     // 把 ThemeManager 提供给 Button 类用于 sprite 渲染（无 sprite 时自动 fallback 几何）
     Button.setSpriteProvider(this.themeManager);
@@ -290,7 +293,10 @@ export class Game {
         // 通关终局结算：提交最高分 + 排行榜（INFINITE 跳过）+ 清自动槽位
         this.storage.updateAllHighScores(this.currentDifficulty, this.currentMoney);
         if (this.currentDifficulty !== Difficulty.INFINITE) {
-          this.storage.commitLeaderboardEntry(this.currentMoney, this.currentDifficulty, this.levelManager.currentLevel);
+          // 本地榜写入含异步 HMAC 签名：fire-and-forget，不阻塞场景切换；失败仅记录不影响结算
+          void this.storage
+            .commitLeaderboardEntry(this.currentMoney, this.currentDifficulty, this.levelManager.currentLevel)
+            .catch((e) => console.warn('[排行榜] 本地榜写入失败', e));
         }
         // 服务端结算 payload（本地双写之后构造；网络交互由场景内上榜面板触发，此处不发网络）
         this.consumeRunForSettle('GAME_CLEARED');
@@ -305,7 +311,10 @@ export class Game {
         this.storage.updateAllHighScores(this.currentDifficulty, this.currentMoney);
         // INFINITE 难度为本地纯娱乐玩法，不上榜
         if (this.currentDifficulty !== Difficulty.INFINITE) {
-          this.storage.commitLeaderboardEntry(this.currentMoney, this.currentDifficulty, this.levelManager.currentLevel);
+          // 本地榜写入含异步 HMAC 签名：fire-and-forget，不阻塞场景切换；失败仅记录不影响结算
+          void this.storage
+            .commitLeaderboardEntry(this.currentMoney, this.currentDifficulty, this.levelManager.currentLevel)
+            .catch((e) => console.warn('[排行榜] 本地榜写入失败', e));
         }
         // 服务端结算 payload：无尽段失败 = ENDLESS_FAILED，否则为中途放弃 RUN_ABANDONED（§3.3）
         this.consumeRunForSettle(

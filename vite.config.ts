@@ -21,7 +21,9 @@ export default defineConfig(() => ({
   build: {
     target: 'es2020',
     outDir: 'dist',
-    sourcemap: true,
+    // 生产构建关闭 sourcemap：避免 .map 文件泄漏完整源码（含调试入口、认证/签名逻辑）。
+    // 如需线上排查，临时改为 true 重新构建，排查完务必改回 false。
+    sourcemap: false,
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
