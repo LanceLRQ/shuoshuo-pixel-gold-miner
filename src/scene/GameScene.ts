@@ -1443,6 +1443,20 @@ export class GameScene extends SceneBase {
     return this.hud.money - this.levelStartMoney;
   }
 
+  /**
+   * 同步抬高本关起步基准（god mode 关卡中改钱专用）
+   * 关卡中直接改 hud.money 会被 getEarnedThisLevel 当成本关挖到的钱、结算时二次累加；
+   * 改钱时同步 levelStartMoney 相同增量，使本关入账差值不变，避免结算翻倍。
+   */
+  adjustBaselineBy(delta: number): void {
+    this.levelStartMoney += delta;
+  }
+
+  /** 同步 HUD 显示金额（god mode 调试改钱后刷新 HUD） */
+  setHudMoney(money: number): void {
+    this.hud.money = money;
+  }
+
   /** 获取目标金额 */
   getTargetMoney(): number {
     return this.targetMoney;

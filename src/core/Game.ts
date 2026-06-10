@@ -574,10 +574,13 @@ export class Game {
    * GameScene 时立即在 HUD 上看到变化；其他场景下只更新底层累计金额。
    */
   setCurrentMoney(n: number): void {
-    this.currentMoney = Math.max(0, Math.floor(n));
-    const scene = this.currentScene as unknown as { hud?: { money: number } };
-    if (scene && scene.hud && typeof scene.hud.money === 'number') {
-      scene.hud.money = this.currentMoney;
+    const next = Math.max(0, Math.floor(n));
+    const delta = next - this.currentMoney;
+    this.currentMoney = next;
+    // GameScene 中改钱：同步抬高本关起步基准，避免增量被当作本关入账结算时二次累加
+    if (this.state === GameState.PLAYING && this.currentScene instanceof GameScene) {
+      this.currentScene.adjustBaselineBy(delta);
+      this.currentScene.setHudMoney(this.currentMoney);
     }
   }
 
