@@ -217,6 +217,8 @@ export const STRINGS = {
     failure: '未达标...',
     skipAnimation: '点击跳过动画 ▶',
     enterShop: '进入商店',
+    /** 打通最后一个正常关卡（L21）时的主按钮文案：下一步是终局结算而非商店 */
+    enterSettle: '下一步 ▶',
     retry: '重试本关',
     earnedPrefix: '本关入账: +$',
     cumulativeTargetPrefix: '累计目标: $',

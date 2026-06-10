@@ -65,8 +65,11 @@ export class ResultScene extends SceneBase {
     this.endlessFailMode = !this.isPassed && isEndlessLevel(game.getLevelManager().currentLevel);
 
     if (this.isPassed) {
-      // 通过：单按钮居中
-      this.primaryButton = new Button(330, 420, 140, 44, STRINGS.result.enterShop);
+      // 通过：单按钮居中。打通最后一个正常关卡（L21）时下一步是终局结算而非商店，文案改「下一步」
+      const lm = game.getLevelManager();
+      const finishedFinalNormalLevel = !isEndlessLevel(lm.currentLevel) && !lm.hasNextLevel();
+      const primaryLabel = finishedFinalNormalLevel ? STRINGS.result.enterSettle : STRINGS.result.enterShop;
+      this.primaryButton = new Button(330, 420, 140, 44, primaryLabel);
     } else if (this.endlessFailMode) {
       // 无尽失败：单按钮居中，前往结算
       this.primaryButton = new Button(330, 420, 140, 44, STRINGS.result.endlessFailPrimary);
