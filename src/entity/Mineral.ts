@@ -91,7 +91,9 @@ export class Mineral {
     y: number,
     type: MineralType,
     spriteCache: SpriteCacheMap,
-    metaProvider?: SpriteMetaProvider
+    metaProvider?: SpriteMetaProvider,
+    /** 水晶蟹带绮彩概率（按章节传入，默认 0.3 兜底；仅 MOLE 生效） */
+    moleDiamondChance: number = 0.3
   ) {
     this.x = x;
     this.y = y;
@@ -101,9 +103,9 @@ export class Mineral {
     this.spriteCache = spriteCache;
     this.metaProvider = metaProvider;
 
-    // 水晶蟹 30% 概率带绮彩
+    // 水晶蟹按章节概率带绮彩（默认 0.3，由生成方按 levelConfig.chapter 传入）
     if (type === MineralType.MOLE) {
-      this.hasDiamond = Math.random() < 0.3;
+      this.hasDiamond = Math.random() < moleDiamondChance;
     }
 
     // 神秘袋内容随机

@@ -200,6 +200,16 @@ const CHAPTER_COLLECTIBLE_MAP: Record<ChapterId, MineralType> = {
   [ChapterId.PIGGY_THRONE]: MineralType.PIGGY_GEM,
 };
 
+/**
+ * 水晶蟹（MOLE）带绮彩概率按章节分档：前期克制、后期慷慨，避免前期靠运气暴富。
+ * 带绮彩额外 +600（见 onHookComplete），传入 Mineral 构造决定 hasDiamond。
+ */
+const MOLE_DIAMOND_CHANCE_BY_CHAPTER: Record<ChapterId, number> = {
+  [ChapterId.CRYSTAL_MINE]: 0.15,
+  [ChapterId.CRAB_BAY]: 0.22,
+  [ChapterId.PIGGY_THRONE]: 0.3,
+};
+
 /** 木箱抽奖箱的最小关卡（前几关玩家还在学基础玩法，不放抽奖箱） */
 const WOODEN_BOX_MIN_LEVEL = 5;
 
@@ -1288,7 +1298,11 @@ export class GameScene extends SceneBase {
 
       const oldMineral = this.minerals[candidateIdx]!;
       const prevType = VALUE_UPGRADE_CHAIN[candidateChainIdx - 1]!;
-      const newMineral = new Mineral(oldMineral.x, oldMineral.y, prevType, this.spriteCache, this.spriteMetaProvider);
+      // 降级链仅在金块品种间流转（prevType 必为 GOLD 系，非 MOLE），chance 传入仅为签名一致
+      const newMineral = new Mineral(
+        oldMineral.x, oldMineral.y, prevType, this.spriteCache, this.spriteMetaProvider,
+        MOLE_DIAMOND_CHANCE_BY_CHAPTER[this.levelConfig.chapter],
+      );
       if (oldMineral.vx !== 0) {
         newMineral.vx = oldMineral.vx;
         newMineral.moveLeft = oldMineral.moveLeft;
@@ -1313,7 +1327,10 @@ export class GameScene extends SceneBase {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const x = randomInt(GAME_CONFIG.MINERAL_AREA_LEFT, GAME_CONFIG.MINERAL_AREA_RIGHT);
       const y = randomInt(yTop, GAME_CONFIG.MINERAL_AREA_BOTTOM);
-      const mineral = new Mineral(x, y, type, this.spriteCache, this.spriteMetaProvider);
+      const mineral = new Mineral(
+        x, y, type, this.spriteCache, this.spriteMetaProvider,
+        MOLE_DIAMOND_CHANCE_BY_CHAPTER[this.levelConfig.chapter],
+      );
 
       // 移动矿物设置速度和边界（速度按难度 motionSpeedScale 同步缩放：NORMAL/NOVICE/INFINITE=0.65x，HARD=1.0x，EXPERT=1.3x）
       if (type === MineralType.MOUSE || type === MineralType.MOLE) {
