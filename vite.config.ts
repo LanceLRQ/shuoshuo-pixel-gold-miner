@@ -24,6 +24,11 @@ export default defineConfig(() => ({
     // 生产构建关闭 sourcemap：避免 .map 文件泄漏完整源码（含调试入口、认证/签名逻辑）。
     // 如需线上排查，临时改为 true 重新构建，排查完务必改回 false。
     sourcemap: false,
+    // 超标 chunk 是主题精灵的 JSON 数据矩阵（非代码）：
+    //   默认主题 shuoshuo_crystal（~1.2MB，gzip 90KB）首屏渲染必需，无法再拆/懒加载；
+    //   经典主题 classic 已改按需懒加载（见 src/assets/theme/classic.ts）。
+    // 数据 chunk 无法靠代码分割消除，gzip/brotli 后体积可接受，故调高阈值消除无意义告警。
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
