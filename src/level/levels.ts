@@ -108,7 +108,8 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 200,
     mineralCount: 10,
     timeLimit: 60,
-    mineralWeights: [18, 16, 12, 2, 22, 4, 6, 8, 6, 6],
+    // 前两关不出炸药桶（BOMB=0）：玩家尚无道具/金币应对误爆，避免连带炸金致死局；炸弹自 L3 引入
+    mineralWeights: [18, 16, 12, 2, 26, 0, 6, 8, 6, 6],
   },
   {
     level: 2,
@@ -116,7 +117,8 @@ export const LEVELS: LevelConfig[] = [
     targetMoney: 450,
     mineralCount: 12,
     timeLimit: 60,
-    mineralWeights: [16, 16, 12, 3, 22, 5, 7, 7, 6, 6],
+    // 同 L1：BOMB=0，原 5 点权重并入 STONE（22→27），总权重保持 100
+    mineralWeights: [16, 16, 12, 3, 27, 0, 7, 7, 6, 6],
   },
   {
     level: 3,
