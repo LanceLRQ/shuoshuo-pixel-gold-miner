@@ -213,6 +213,9 @@ const MOLE_DIAMOND_CHANCE_BY_CHAPTER: Record<ChapterId, number> = {
 /** 木箱抽奖箱的最小关卡（前几关玩家还在学基础玩法，不放抽奖箱） */
 const WOODEN_BOX_MIN_LEVEL = 5;
 
+/** 保证至少 1 个中金块的关卡（第一关首因体验：避免全是小金矿导致新手观感不佳） */
+const GUARANTEED_MEDIUM_GOLD_LEVEL = 1;
+
 /** 矿工进入 STRAIN 用力态的矿物重量阈值（基础矿物 weight 范围 0.2-1.5，0.8 让大金/石头/骨头都触发） */
 const STRAIN_WEIGHT_THRESHOLD = 0.8;
 
@@ -1211,6 +1214,9 @@ export class GameScene extends SceneBase {
     // 6) 木箱：L5+ 关卡保证 1 个抽奖箱（不进预算系统）
     this.tryAddWoodenBox();
 
+    // 6.5) 第一关首因体验：场上无中金及以上时补 1 个中金块（放在降级之后，避免被降级吃掉）
+    this.tryGuaranteeMediumGold();
+
     // 7) 幸运草：心动盲盒最低 $200
     const items = this.game.getOwnedItems();
     if (items.has(ItemType.LUCKY_CLOVER)) {
@@ -1233,6 +1239,20 @@ export class GameScene extends SceneBase {
   private tryAddWoodenBox(): void {
     if (this.levelConfig.level < WOODEN_BOX_MIN_LEVEL) return;
     this.tryAddBonusMineral(MineralType.WOODEN_BOX);
+  }
+
+  /**
+   * 第一关保证至少 1 个中金块（首因体验）：
+   * 仅当 level=1 且场上无中金及以上（GOLD_MEDIUM/GOLD_LARGE）时补 1 个 GOLD_MEDIUM。
+   * 已自然出中金/大金则不补，避免金币过富。
+   */
+  private tryGuaranteeMediumGold(): void {
+    if (this.levelConfig.level !== GUARANTEED_MEDIUM_GOLD_LEVEL) return;
+    const hasMediumOrLarger = this.minerals.some(
+      (m) => m.config.type === MineralType.GOLD_MEDIUM || m.config.type === MineralType.GOLD_LARGE
+    );
+    if (hasMediumOrLarger) return;
+    this.tryAddBonusMineral(MineralType.GOLD_MEDIUM);
   }
 
   /** 追加独立于预算系统的彩蛋矿物（收藏品/木箱等，找不到空位则静默放弃） */
