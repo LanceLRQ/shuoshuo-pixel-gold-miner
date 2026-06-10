@@ -83,6 +83,13 @@ const STYLE_CSS = `
 }
 .lb-status { padding: 60px 0; text-align: center; color: #888; font-size: 15px; }
 .lb-status.lb-error { color: #ff8888; }
+.lb-retry-btn {
+  display: inline-block; margin-top: 16px; padding: 6px 20px;
+  font: inherit; font-size: 14px; color: #ffd700; cursor: pointer;
+  background: rgba(255, 215, 0, 0.08); border: 1px solid #ffd700; border-radius: 4px;
+  transition: background 0.15s;
+}
+.lb-retry-btn:hover { background: rgba(255, 215, 0, 0.18); }
 .lb-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .lb-table th {
   text-align: left; color: #ffd700; font-weight: bold;
@@ -205,7 +212,14 @@ export class LeaderboardModal {
       this.renderBoard(data);
     } catch (e) {
       if (seq !== this.loadSeq) return;
-      this.bodyEl.innerHTML = `<div class="lb-status lb-error">${escapeHtml((e as Error).message)}</div>`;
+      this.bodyEl.innerHTML = `
+        <div class="lb-status lb-error">
+          ${escapeHtml((e as Error).message)}
+          <div><button type="button" class="lb-retry-btn">${T.retry}</button></div>
+        </div>`;
+      // 重试当前榜（缓存内拉榜失败不会写缓存，重试会重新发起请求）
+      this.bodyEl.querySelector<HTMLButtonElement>('.lb-retry-btn')
+        ?.addEventListener('click', () => void this.loadBoard(board));
     }
   }
 

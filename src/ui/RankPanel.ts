@@ -53,6 +53,8 @@ export class RankPanel {
   private loginHint: string = '';
   /** submitting 态省略号动画计时 */
   private dotTimer: number = 0;
+  /** 上次提交使用的显名模式（error 态「重试」复用同一身份重新提交） */
+  private lastMode: DisplayMode = 'anonymous';
   /** 当前状态下可点的按钮（rebuildButtons 按状态重建） */
   private buttons: { btn: Button; onClick: () => void }[] = [];
 
@@ -187,11 +189,13 @@ export class RankPanel {
         this.addButton(T.close, 200, () => this.close(), 34);
         break;
       case 'error': {
-        // 实名需登录被拒：保留匿名通道兜底（§五 5041011 引导改选匿名）
+        // 重试：复用上次身份重新提交（网络/限速等场景有意义；门槛等必然失败也尊重用户主动重试）
+        this.addButton(T.retry, 116, () => this.doSettle(this.lastMode));
+        // 实名需登录被拒：额外保留匿名通道兜底（§五 5041011 引导改选匿名）
         if (this.result && !this.result.ok && this.result.reason === 'need_login') {
-          this.addButton(T.submitAnonymous, 140, () => this.doSettle('anonymous'));
+          this.addButton(T.submitAnonymous, 160, () => this.doSettle('anonymous'));
         }
-        this.addButton(T.close, 200, () => this.close(), 34);
+        this.addButton(T.close, 210, () => this.close(), 34);
         break;
       }
       case 'closed':
@@ -213,6 +217,7 @@ export class RankPanel {
 
   /** 开会话 + 签名 + 提交（错误码已在协议层消化为 SettleResult） */
   private doSettle(mode: DisplayMode): void {
+    this.lastMode = mode; // 记住身份，error 态「重试」复用
     this.dotTimer = 0;
     this.setState('submitting');
     void LeaderboardClient.settle(this.payload, mode).then((res) => {

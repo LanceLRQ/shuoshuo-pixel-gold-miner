@@ -309,6 +309,7 @@ export const STRINGS = {
       /** rank=0（重复提交幂等）时的成功文案 */
       recorded: '成绩已记录',
       back: '返回',
+      retry: '重试',
       close: '关闭',
     },
     /** LeaderboardModal 在线榜 */
@@ -318,6 +319,8 @@ export const STRINGS = {
       footer: '按 ESC 关闭 · 点击遮罩关闭 · 上方切换难度榜',
       loading: '加载中...',
       empty: '暂无上榜记录，快来抢占第一名！',
+      /** 拉榜失败时错误文案下方的重试按钮 */
+      retry: '重试',
       colRank: '名次',
       colPlayer: '玩家',
       colMoney: '金币',
