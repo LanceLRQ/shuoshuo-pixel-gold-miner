@@ -138,7 +138,10 @@ export const DIFFICULTY_CONFIGS: Record<Difficulty, DifficultyConfig> = {
     motionSpeedScale: 1.3,
     mineralBudgetRatio: 1.25,
     largeWeightScale: 0.05,
-    goldRefillWeights: [0.55, 0.35, 0.10],  // 与 HARD 同梯度，避免高难度退化为"小金海"
+    // 2026-06-12：用户反馈 EXPERT"几乎必出中/大金块"。根因为 goldBudget 被 /valueScale(0.40) 放大 2.5x，
+    // 保底循环按 [0.55,0.35,0.10] 补金时 45% 是中/大金 → 场上中大金占比达 42%。
+    // 改为偏小金 [0.78,0.18,0.04]：中大金占比降至 ~21%，金块总面值仅降 3-7%（不破坏通关曲线）。
+    goldRefillWeights: [0.78, 0.18, 0.04],
     mineralBudgetCap: 1.30,
     shopEnabled: true,
     infiniteItems: false,
