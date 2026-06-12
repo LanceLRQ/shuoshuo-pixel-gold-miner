@@ -49,7 +49,9 @@ export const MINERAL_CONFIGS: Record<MineralType, MineralConfig> = {
   [MineralType.GOLD_SMALL]: {
     type: MineralType.GOLD_SMALL,
     value: 50,
-    weight: 0.3,
+    // 2026-06-12：原 0.3 拖起来几乎不减速，加重到 0.7 让小金块也有明显拖拽阻力感
+    // （一般难度收回 192→147），但仍快于石头(100)，维持"越大越沉"的金块重量梯度
+    weight: 0.7,
     radius: 20,
     spriteName: 'GOLD_SMALL',
     width: 8,
